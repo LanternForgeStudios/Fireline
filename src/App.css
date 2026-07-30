@@ -194,8 +194,7 @@
 .hud-cockpit-frame {
   position: absolute;
   inset: 0;
-  box-shadow: inset 0 0 10vw 2vw rgba(0, 0, 0, 0.85);
-  border: 2px solid rgba(20, 22, 26, 0.9);
+  box-shadow: inset 0 0 6vw 1vw rgba(0, 0, 0, 0.55);
 }
 
 .hud-hit-flash {

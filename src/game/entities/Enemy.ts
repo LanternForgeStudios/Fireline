@@ -39,13 +39,15 @@ export class Enemy {
     this.jitterSeed = Math.random() * Math.PI * 2
     this.nextFireAt = spawnTime + def.fireIntervalMs * (0.4 + Math.random() * 0.6)
 
+    const shadow = scene.add.ellipse(0, def.baseRadius * 0.75, def.baseRadius * 1.7, def.baseRadius * 0.7, 0x000000, 0.35)
+
     const sprite = scene.add.image(0, 0, textureKey)
     sprite.setDisplaySize(def.baseRadius * 2, def.baseRadius * 2)
 
     this.healthBarBg = scene.add.rectangle(0, -def.baseRadius - 14, 34, 5, 0x000000, 0.55)
     this.healthBarFill = scene.add.rectangle(0, -def.baseRadius - 14, 34, 5, 0x4ade80, 0.95)
 
-    this.container = scene.add.container(spawn.x, spawn.y, [sprite, this.healthBarBg, this.healthBarFill])
+    this.container = scene.add.container(spawn.x, spawn.y, [shadow, sprite, this.healthBarBg, this.healthBarFill])
     this.container.setScale(0.35)
     this.updateHealthBar()
   }

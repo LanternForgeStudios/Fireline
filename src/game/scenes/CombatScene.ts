@@ -19,9 +19,11 @@ export const WORLD_HEIGHT = 720
 
 const MAX_HEALTH = 100
 const DAMAGE_PER_SHOT = 9
-const HORIZON_Y_RANGE: [number, number] = [170, 250]
-const IMPACT_Y_RANGE: [number, number] = [560, 650]
+const HORIZON_Y = 130
+const HORIZON_Y_RANGE: [number, number] = [110, 165]
+const IMPACT_Y_RANGE: [number, number] = [545, 610]
 const SPAWN_X_MARGIN = 90
+const DOOR_SILL_HEIGHT = 56
 
 export class CombatScene extends Phaser.Scene {
   private weapon = new Weapon()
@@ -29,7 +31,6 @@ export class CombatScene extends Phaser.Scene {
   private crosshair!: Phaser.GameObjects.Image
   private crosshairPos = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }
   private ground!: Phaser.GameObjects.TileSprite
-  private clouds!: Phaser.GameObjects.TileSprite
 
   private health = MAX_HEALTH
   private score = 0
@@ -56,44 +57,93 @@ export class CombatScene extends Phaser.Scene {
 
     this.buildBackground()
     this.buildEnemyTextures()
+    this.buildHelicopterFrame()
     this.buildCrosshair()
     this.setupInput()
 
     this.emitHud()
   }
 
+  /**
+   * Oblique 3/4-view desert diorama: a shallow sky/horizon strip up top,
+   * a large sand-colored ground plane filling most of the frame, and a
+   * distance-shading overlay (light near the horizon, dark near the
+   * helicopter) to sell camera height. Placeholder procedural art —
+   * swap the ground/enemy textures for PixelLab sprites without touching
+   * this layout once that's wired up.
+   */
   private buildBackground() {
     // Drawn directly (not baked to a texture) because generateTexture uses the
     // Canvas API under the hood, which can't reproduce fillGradientStyle.
     const sky = this.add.graphics()
-    sky.fillGradientStyle(0x142033, 0x142033, 0x4a6b8a, 0x4a6b8a, 1)
-    sky.fillRect(0, 0, WORLD_WIDTH, 420)
+    sky.fillGradientStyle(0xf7d9a0, 0xf7d9a0, 0xf2b26b, 0xf2b26b, 1)
+    sky.fillRect(0, 0, WORLD_WIDTH, HORIZON_Y)
 
-    const cloudGfx = this.add.graphics()
-    cloudGfx.fillStyle(0xffffff, 0.06)
-    for (let i = 0; i < 10; i++) {
-      cloudGfx.fillEllipse(i * 130 + 40, 60 + (i % 3) * 40, 90, 22)
+    const sun = this.add.graphics()
+    sun.fillStyle(0xfff3d6, 0.22)
+    sun.fillCircle(WORLD_WIDTH * 0.78, HORIZON_Y * 0.4, 70)
+    sun.fillStyle(0xfff8e6, 0.9)
+    sun.fillCircle(WORLD_WIDTH * 0.78, HORIZON_Y * 0.4, 40)
+
+    const mountains = this.add.graphics()
+    mountains.fillStyle(0xc98f5e, 0.5)
+    for (let i = 0; i < 9; i++) {
+      const bx = i * 170 - 40
+      mountains.fillTriangle(bx, HORIZON_Y, bx + 90, HORIZON_Y - 50, bx + 180, HORIZON_Y)
     }
-    cloudGfx.generateTexture('clouds-tex', WORLD_WIDTH, 420)
-    cloudGfx.destroy()
-    this.clouds = this.add.tileSprite(WORLD_WIDTH / 2, 210, WORLD_WIDTH, 420, 'clouds-tex')
 
     const groundGfx = this.add.graphics()
-    groundGfx.fillStyle(0x2b3a24, 1)
-    groundGfx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT - 420)
-    groundGfx.fillStyle(0x354a2c, 1)
-    for (let i = 0; i < 16; i++) {
-      groundGfx.fillTriangle(i * 90, WORLD_HEIGHT - 420, i * 90 + 45, WORLD_HEIGHT - 460, i * 90 + 90, WORLD_HEIGHT - 420)
+    groundGfx.fillStyle(0xcfa66a, 1)
+    groundGfx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT - HORIZON_Y)
+    groundGfx.fillStyle(0xb98f52, 0.6)
+    for (let i = 0; i < 26; i++) {
+      const rx = (i * 173 + (i % 3) * 61) % WORLD_WIDTH
+      const ry = (i * 97 + (i % 5) * 53) % (WORLD_HEIGHT - HORIZON_Y)
+      groundGfx.fillEllipse(rx, ry, 20 + (i % 4) * 6, 8 + (i % 3) * 4)
     }
-    groundGfx.generateTexture('ground-tex', WORLD_WIDTH, WORLD_HEIGHT - 420)
+    groundGfx.fillStyle(0x8a6a3c, 0.5)
+    for (let i = 0; i < 14; i++) {
+      const rx = (i * 233 + (i % 4) * 41) % WORLD_WIDTH
+      const ry = (i * 151 + (i % 6) * 37) % (WORLD_HEIGHT - HORIZON_Y)
+      groundGfx.fillCircle(rx, ry, 3 + (i % 3))
+    }
+    groundGfx.generateTexture('ground-tex', WORLD_WIDTH, WORLD_HEIGHT - HORIZON_Y)
     groundGfx.destroy()
     this.ground = this.add.tileSprite(
       WORLD_WIDTH / 2,
-      420 + (WORLD_HEIGHT - 420) / 2,
+      HORIZON_Y + (WORLD_HEIGHT - HORIZON_Y) / 2,
       WORLD_WIDTH,
-      WORLD_HEIGHT - 420,
+      WORLD_HEIGHT - HORIZON_Y,
       'ground-tex',
     )
+
+    // Distance shading: fades the ground darker near the helicopter to fake
+    // camera height/perspective without needing a warped mesh.
+    const shading = this.add.graphics()
+    shading.fillGradientStyle(0xcfa66a, 0xcfa66a, 0x5a4322, 0x5a4322, 0, 0, 0.55, 0.55)
+    shading.fillRect(0, HORIZON_Y, WORLD_WIDTH, WORLD_HEIGHT - HORIZON_Y)
+  }
+
+  /**
+   * A sliver of the helicopter's open door frame and skid at the bottom
+   * edge of the screen, so the oblique ground view still reads as "looking
+   * down out of the aircraft" rather than a flat top-down map.
+   */
+  private buildHelicopterFrame() {
+    const g = this.add.graphics()
+    g.setDepth(1500)
+    g.fillStyle(0x14120f, 0.94)
+    g.beginPath()
+    g.moveTo(0, WORLD_HEIGHT)
+    g.lineTo(0, WORLD_HEIGHT - DOOR_SILL_HEIGHT * 0.35)
+    g.lineTo(WORLD_WIDTH * 0.3, WORLD_HEIGHT - DOOR_SILL_HEIGHT)
+    g.lineTo(WORLD_WIDTH * 0.7, WORLD_HEIGHT - DOOR_SILL_HEIGHT)
+    g.lineTo(WORLD_WIDTH, WORLD_HEIGHT - DOOR_SILL_HEIGHT * 0.35)
+    g.lineTo(WORLD_WIDTH, WORLD_HEIGHT)
+    g.closePath()
+    g.fillPath()
+    g.fillStyle(0x3a352c, 1)
+    g.fillRect(WORLD_WIDTH * 0.12, WORLD_HEIGHT - 9, WORLD_WIDTH * 0.76, 4)
   }
 
   private buildEnemyTextures() {
@@ -203,8 +253,8 @@ export class CombatScene extends Phaser.Scene {
   update(_time: number, delta: number) {
     if (this.missionEnded) return
 
-    this.clouds.tilePositionX += delta * 0.01
-    this.ground.tilePositionX += delta * 0.09
+    this.ground.tilePositionX += delta * 0.06
+    this.ground.tilePositionY += delta * 0.03
 
     this.weapon.tick(delta)
     this.updateWaveSpawning(delta)
