@@ -1,0 +1,317 @@
+.app-root {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  background: #05070a;
+}
+
+/* ---------- shared screen chrome ---------- */
+
+.screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at center, rgba(74, 107, 138, 0.15), transparent 60%),
+    #05070a;
+}
+
+.btn {
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.85rem 2.2rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.35);
+}
+
+.btn-primary:hover {
+  background: #f25f5f;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: #9ca3af;
+  border-color: #3a3f4a;
+}
+
+.btn-secondary:hover {
+  border-color: #6b7280;
+  color: #e6e8ec;
+}
+
+.hud-label {
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  display: block;
+}
+
+.briefing-value {
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 1.1rem;
+  color: #e6e8ec;
+  display: block;
+  margin-top: 0.2rem;
+}
+
+/* ---------- main menu ---------- */
+
+.menu-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.title {
+  font-size: 4.5rem;
+  letter-spacing: 0.15em;
+  color: #f2c14e;
+  text-shadow: 0 0 30px rgba(242, 193, 78, 0.35);
+}
+
+.subtitle {
+  font-family: 'Courier New', ui-monospace, monospace;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  margin-bottom: 1.5rem;
+}
+
+.menu-blurb {
+  color: #c3c7ce;
+  max-width: 26rem;
+  margin-bottom: 2rem;
+}
+
+.menu-footnote {
+  margin-top: 2rem;
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: #4b5563;
+  letter-spacing: 0.08em;
+}
+
+/* ---------- briefing ---------- */
+
+.briefing-content {
+  width: 30rem;
+  max-width: 90vw;
+  padding: 2.5rem;
+  border: 1px solid #2e303a;
+  border-radius: 8px;
+  background: rgba(17, 20, 26, 0.7);
+  text-align: left;
+}
+
+.briefing-type {
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f2c14e;
+  margin-bottom: 0.5rem;
+}
+
+.briefing-name {
+  font-size: 1.8rem;
+  color: #e6e8ec;
+  margin-bottom: 1rem;
+}
+
+.briefing-text {
+  color: #9ca3af;
+  display: block;
+  line-height: 1.6;
+  margin-bottom: 1.75rem;
+}
+
+.briefing-details {
+  display: flex;
+  gap: 2.5rem;
+  margin-bottom: 2rem;
+}
+
+.briefing-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.briefing-actions .btn {
+  flex: 1;
+}
+
+/* ---------- gameplay ---------- */
+
+.play-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.game-canvas {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-canvas canvas {
+  cursor: none;
+}
+
+/* ---------- HUD overlay ---------- */
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: 'Courier New', ui-monospace, monospace;
+}
+
+.hud-cockpit-frame {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 10vw 2vw rgba(0, 0, 0, 0.85);
+  border: 2px solid rgba(20, 22, 26, 0.9);
+}
+
+.hud-hit-flash {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hud-top-left,
+.hud-top-right,
+.hud-bottom-left,
+.hud-bottom-right {
+  position: absolute;
+  padding: 1rem 1.4rem;
+  min-width: 12rem;
+}
+
+.hud-top-left {
+  top: 0;
+  left: 0;
+}
+
+.hud-top-right {
+  top: 0;
+  right: 0;
+  text-align: right;
+}
+
+.hud-bottom-left {
+  bottom: 0;
+  left: 0;
+}
+
+.hud-bottom-right {
+  bottom: 0;
+  right: 0;
+  text-align: right;
+}
+
+.hud-sublabel {
+  font-size: 0.85rem;
+  color: #e6e8ec;
+  margin-top: 0.15rem;
+}
+
+.hud-score {
+  font-size: 1.4rem;
+  color: #f2c14e;
+  margin-top: 0.15rem;
+}
+
+.hud-bar {
+  width: 12rem;
+  height: 0.6rem;
+  border: 1px solid #3a3f4a;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.35rem;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.hud-bottom-right .hud-bar {
+  margin-left: auto;
+}
+
+.hud-bar-fill {
+  height: 100%;
+  transition: width 0.08s linear;
+}
+
+.hud-bar-fill.health {
+  background: #4ade80;
+}
+
+.hud-bar-fill.health.critical {
+  background: #ef4444;
+}
+
+.hud-bar-fill.heat {
+  background: #f2c14e;
+}
+
+.hud-bar-fill.heat.critical {
+  background: #ef4444;
+}
+
+/* ---------- results ---------- */
+
+.result-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.result-title {
+  font-size: 2.6rem;
+}
+
+.result-title.success {
+  color: #4ade80;
+}
+
+.result-title.failure {
+  color: #ef4444;
+}
+
+.result-subtitle {
+  color: #9ca3af;
+  max-width: 24rem;
+  margin-bottom: 1.5rem;
+}
+
+.result-stats {
+  display: flex;
+  gap: 2.5rem;
+  margin-bottom: 2rem;
+}
