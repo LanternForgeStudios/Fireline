@@ -1,7 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
-export default defineConfig({
+// Project pages are served from https://<org>.github.io/Fireline/, so
+// asset URLs need the repo name as a base path in production.
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/Fireline/' : '/',
   plugins: [react()],
-})
+}))

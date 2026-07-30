@@ -26,6 +26,10 @@ npm run build     # type-check + production build
 npm run lint       # oxlint
 ```
 
+## Deployment
+
+`.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages via `actions/deploy-pages` on every push to `main`. One manual, one-time step is still required since Actions can't flip it on: **Settings → Pages → Source: "GitHub Actions"**. Once that's set, the site goes live at `https://<org>.github.io/Fireline/`. `vite.config.ts` already sets the `/Fireline/` base path for this.
+
 ## How to play
 
 Move the mouse to aim, hold the left mouse button to fire the door gun. Watch the heat gauge — overheating locks the gun until it cools. Enemies that reach the helicopter, or that shoot back, damage the aircraft; keep it above zero health through all five waves to complete the mission.
