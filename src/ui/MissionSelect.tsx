@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { playUiSound } from '../audio/uiSound'
 import { MISSIONS } from '../game/data/missions'
+import { generateMission } from '../game/generation/generateMission'
 import type { MissionDef } from '../game/types'
 
 interface MissionSelectProps {
@@ -12,6 +14,13 @@ function toCssColor(hex: number): string {
 }
 
 export function MissionSelect({ onSelect, onBack }: MissionSelectProps) {
+  const [randomMission, setRandomMission] = useState<MissionDef>(() => generateMission())
+
+  const reroll = () => {
+    playUiSound('toggle_on')
+    setRandomMission(generateMission())
+  }
+
   return (
     <div className="screen briefing-screen">
       <div className="briefing-content">
@@ -37,6 +46,27 @@ export function MissionSelect({ onSelect, onBack }: MissionSelectProps) {
               <p className="briefing-text mission-list-blurb">{mission.briefing}</p>
             </button>
           ))}
+
+          <div className="mission-list-item mission-list-item-random" style={{ borderLeftColor: toCssColor(randomMission.theme.skyBottom) }}>
+            <button
+              key={randomMission.id}
+              className="mission-list-random-select"
+              onClick={() => {
+                playUiSound('ui_confirm')
+                onSelect(randomMission)
+              }}
+            >
+              <div className="mission-list-header">
+                <span className="briefing-type">Randomly Generated · {randomMission.type}</span>
+                <span className="hud-label">{randomMission.waves.length} waves</span>
+              </div>
+              <div className="briefing-name mission-list-name">{randomMission.name}</div>
+              <p className="briefing-text mission-list-blurb">{randomMission.briefing}</p>
+            </button>
+            <button className="mission-reroll" onClick={reroll}>
+              🎲 Reroll
+            </button>
+          </div>
         </div>
 
         <div className="briefing-actions">

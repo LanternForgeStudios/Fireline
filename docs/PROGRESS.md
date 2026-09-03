@@ -10,7 +10,7 @@ on top.
 | --- | --- | --- |
 | 1 | Core Combat | **Done** — playable shooting prototype |
 | 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 3 missions (Search & Destroy, Escort, Extraction) with a select screen, each with distinct visual theming; loadout selection still doesn't exist (one fixed weapon) |
-| 3 | Procedural Content | **Not started — next up.** Seeded random generation, encounter blocks, threat budgets, weather/time-of-day variety per the GDD. The per-mission visual theming added this session (sky/mountain/ground tint) is hand-authored per mission, not generated — a natural seam to build the real system against |
+| 3 | Procedural Content | **First pass done** — seeded generation, encounter blocks, threat budgets, and weather/time-of-day variety, per the GDD's own list. "Randomly Generated" option in Mission Select alongside the 3 hand-authored missions. Secondary objectives (also GDD Phase 3) and gameplay-affecting weather (currently visual-only) are follow-ups, not attempted this pass |
 | 4 | Backend | **Mostly done** — see below; only App Check enforcement is outstanding |
 | 5 | Release | Not started (web live on GitHub Pages; iOS/Capacitor future) |
 
@@ -29,7 +29,13 @@ on top.
       `settings` field, and blocks `missionResults` writes entirely
 - [x] Local Emulator Suite (`npm run emulators`) — Auth/Firestore/Functions all working locally,
       non-default ports so it coexists with other Firebase projects' emulators on the same machine
-- [x] App Check enforced on both Cloud Functions (`enforceAppCheck: true`)
+- [x] App Check enforced on both Cloud Functions (`enforceAppCheck: !isEmulator` — off when running
+      under the Local Emulator Suite, since there's no local App Check emulator and every dev
+      machine having a working debug token would be needed for zero actual security benefit; on in
+      every deployed function). Verified end-to-end against the emulator: a fake mission-result
+      submission with no App Check header, score 99999999, wavesCleared 999 got through auth fine
+      and was correctly clamped server-side to 43200 (the generous fallback bound for procedurally
+      generated missions — see the Phase 3 log entry below) rather than accepted at face value.
 - [ ] App Check enforcement on Firestore/Auth themselves — requested, but this toggle has **no
       CLI/API path**; it's a Firebase Console-only action (Build → App Check → APIs tab). Handed
       back to the project owner rather than attempted via an improvised authenticated REST call
@@ -38,6 +44,47 @@ on top.
       mission, open Settings) — it's instantly reversible back to Monitor if anything breaks.
 
 ## Log
+
+### 2026-09-03 (4) — Procedural mission generation (GDD Phase 3, first pass)
+- **New `src/game/generation/` module:**
+  - `rng.ts` — seeded PRNG (mulberry32); a given seed always produces the same mission
+  - `threatCost.ts` — per-enemy-type budget cost (derived from scoreValue, kept separate so budget
+    tuning can diverge from score tuning)
+  - `encounterBlocks.ts` — ~10 small composable enemy-group patterns ("Drone Swarm", "Armor Push",
+    "Commander Detail", etc.), each with a threat cost and a `minWaveIndex` gate so heavy blocks
+    only show up in later waves — this is the GDD's "encounter blocks"
+  - `waveGenerator.ts` — assembles blocks into a wave until its threat budget (ramping per wave
+    index, GDD's "threat budgets") is spent; wave *names* only get picked from options that match
+    what's actually in the wave (no more "Commander Sighted" on a wave with no commander)
+  - `weatherThemes.ts` — 5 sky/mountain/ground presets (Clear, Dust Haze, Dusk, Dawn, Overcast),
+    same `MissionTheme` shape the 3 hand-authored missions use. Visual/mood only this pass, not
+    gameplay-affecting — a real "weather affects visibility/spawn rate" system is a follow-up
+  - `briefingTemplates.ts` / `generateMission.ts` — picks a mission type (now actually using
+    Rescue/Base Defense/Reconnaissance, previously unused — only 3 of the GDD's 6 types had
+    hand-authored missions), briefing text, wave count (4-6), and assembles the above into a
+    `MissionDef` with id `random-<seed>`
+- **Tuning note:** first generated batch had a wave with 20 enemies (vs. 7 max in any
+  hand-authored wave) — cheap blocks could stack past any reasonable budget. Added a
+  `MAX_SPAWNS_PER_WAVE` cap (12) and eased the budget growth curve; re-tested, enemy counts landed
+  in the 16-40 total range (hand-authored Firebreak is 28). Only logic-tested via a throwaway
+  script, not actually played — pacing/difficulty will likely want another tuning pass once
+  someone's actually played a few generated missions.
+- **MissionSelect** now has a 4th "Randomly Generated" card alongside the 3 hand-authored missions,
+  with a reroll button. Picking it flows through the exact same `missionState`/briefing/combat path
+  as any other mission — no special-casing needed elsewhere.
+- **Server-side validation gap closed:** `submitMissionResult`'s bounds check only knew about the 3
+  static mission ids — every procedurally generated mission would have been rejected outright as
+  "Unknown mission." Added a fallback in `functions/src/missionCatalog.ts`: for any `random-*` id,
+  a generous-but-finite ceiling derived from the generator's own caps (6 waves × 12 enemies × the
+  highest-value enemy type = 43200), rather than porting the whole seeded generator into the
+  Functions package as a second implementation that could drift from the client's. **Verified
+  end-to-end against the emulator** (see the Cloud Functions log entry above) — a fake submission
+  claiming score 99999999 got clamped to exactly 43200, confirming the math and the wiring both
+  work, not just that they compile.
+- Per user request: made both Cloud Functions skip `enforceAppCheck` specifically when running
+  under the Local Emulator Suite (`FUNCTIONS_EMULATOR` env var, set automatically, never true in a
+  deployed function) — there's no local App Check emulator, so enforcing it locally would only
+  mean every dev machine needs a working, registered debug token for no real security benefit.
 
 ### 2026-09-03 (3) — Trackpad rework, control-side setting, local emulators, functions App Check
 - **Touch aim reworked again**, per direct feedback that the rate-based virtual-stick pad (v1 of

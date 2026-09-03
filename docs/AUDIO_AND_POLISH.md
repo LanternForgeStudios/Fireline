@@ -96,3 +96,10 @@ alongside them — worth double-checking their source/license before a public re
       input is unaffected throughout (still direct absolute positioning). Only tested logically,
       not on a physical device this session — worth a real-device pass; `TOUCH_PAD_SENSITIVITY`
       and the pad's screen position/size may want tuning once tried on an actual phone.
+- [ ] Procedurally generated missions (`src/game/generation/`) are logic-tested only (a throwaway
+      script printing wave compositions) — nobody's actually played one yet. Threat budget/pacing
+      constants (`BASE_BUDGET`, `BUDGET_GROWTH`, `MAX_SPAWNS_PER_WAVE`) will likely want another
+      pass once someone has.
+- [ ] Secondary objectives (GDD Phase 3) — not attempted. Weather in the generator
+      (`weatherThemes.ts`) is visual-mood only; making it gameplay-affecting (visibility, spawn
+      rate) is a separate follow-up.

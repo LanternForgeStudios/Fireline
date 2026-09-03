@@ -6,9 +6,9 @@ An arcade first-person rail shooter: you're the door gunner on an AI-piloted hel
 
 ## Status
 
-**Phase 1 (Core Combat) done, Phase 2 (Mission System) in progress.** Three missions (Search & Destroy, Escort, Extraction), seven enemy types with PixelLab art, machine-gun heat management, aircraft health, and a login → menu → mission select → briefing → combat → results loop. Google/Email accounts with Firestore-backed progression (XP, credits, mission history, settings that hydrate on any device). See [docs/PROGRESS.md](docs/PROGRESS.md) for the detailed status log and [docs/ART_ASSETS.md](docs/ART_ASSETS.md) / [docs/AUDIO_AND_POLISH.md](docs/AUDIO_AND_POLISH.md) for asset and polish tracking.
+**Phases 1-2 done, Phase 3 (Procedural Content) first pass done.** Three hand-authored missions (Search & Destroy, Escort, Extraction) plus a "Randomly Generated" option (seeded generation, encounter blocks, threat budgets, weather/time-of-day variety — see `src/game/generation/`), seven enemy types with PixelLab art, machine-gun heat management, aircraft health, and a login → menu → mission select → briefing → combat → results loop. Google/Email accounts with Firestore-backed progression (XP, credits, mission history, settings that hydrate on any device); reward validation runs server-side via Cloud Functions. See [docs/PROGRESS.md](docs/PROGRESS.md) for the detailed status log and [docs/ART_ASSETS.md](docs/ART_ASSETS.md) / [docs/AUDIO_AND_POLISH.md](docs/AUDIO_AND_POLISH.md) for asset and polish tracking.
 
-See the [Recommended Development Phases](docs/GDD.md#recommended-development-phases) table in the GDD for what's still ahead: procedural mission generation (Phase 3) and server-side reward validation (Phase 4, partially done — auth/Firestore/App Check are live, Cloud Functions anti-cheat isn't).
+See the [Recommended Development Phases](docs/GDD.md#recommended-development-phases) table in the GDD for what's still ahead: secondary objectives and gameplay-affecting weather (both Phase 3, not attempted yet), loadout/weapon variety, and App Check enforcement on Firestore/Auth (Console-only toggle, not something this repo's tooling can flip).
 
 ## Stack
 

@@ -6,6 +6,14 @@ import { getMissionBounds } from './missionCatalog'
 initializeApp()
 const db = getFirestore()
 
+// Firebase sets this automatically when running under `firebase
+// emulators:start` — never set in a deployed function. There's no local
+// App Check emulator (token generation/verification always goes through
+// the real Google backend), so enforcing it locally would just require
+// every dev machine's App Check debug token to be reachable/registered for
+// no security benefit — the emulator isn't the production backend anyway.
+const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true'
+
 interface MissionResultInput {
   missionId: string
   outcome: 'complete' | 'failed'
@@ -30,7 +38,7 @@ function computeRewards(score: number) {
  * server-side catalog expects still gets recorded (just capped), rather than
  * silently dropping a real player's result over an off-by-one in the catalog.
  */
-export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck: true }, async (request) => {
+export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck: !isEmulator }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Must be signed in.')
   }
@@ -93,7 +101,7 @@ export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck:
  * "Functions own rewards, but the client can still directly zero things
  * out." Keeps displayName and settings untouched.
  */
-export const resetProgress = onCall({ enforceAppCheck: true }, async (request) => {
+export const resetProgress = onCall({ enforceAppCheck: !isEmulator }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Must be signed in.')
   }

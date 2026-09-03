@@ -55,18 +55,48 @@ export interface MissionBounds {
   maxEnemies: number
 }
 
+// Procedurally generated missions (src/game/generation/generateMission.ts)
+// use ids like "random-<seed>" — there's no finite catalog to enumerate
+// them against. Rather than porting the whole seeded generator here (a
+// second implementation that could drift out of sync with the client's and
+// either wrongly reject real plays or under-validate), use a generous but
+// finite ceiling derived from the generator's own caps: no more waves or
+// enemies-per-wave than it can ever produce, at the single highest-value
+// enemy type for every slot. Real generated missions score far below this;
+// it just bounds the worst case a tampered submission could claim.
+// Mirrors src/game/generation/generateMission.ts (MAX_WAVES) and
+// waveGenerator.ts (MAX_SPAWNS_PER_WAVE) — update together if those change.
+const RANDOM_MISSION_PREFIX = 'random-'
+const RANDOM_MISSION_MAX_WAVES = 6
+const RANDOM_MISSION_MAX_SPAWNS_PER_WAVE = 12
+
+function randomMissionBounds(): MissionBounds {
+  const highestEnemyScore = Math.max(...Object.values(ENEMY_SCORE_VALUES))
+  const maxEnemies = RANDOM_MISSION_MAX_WAVES * RANDOM_MISSION_MAX_SPAWNS_PER_WAVE
+  return {
+    totalWaves: RANDOM_MISSION_MAX_WAVES,
+    maxEnemies,
+    maxScore: maxEnemies * highestEnemyScore,
+  }
+}
+
 export function getMissionBounds(missionId: string): MissionBounds | null {
   const waves = MISSION_WAVES[missionId]
-  if (!waves) return null
-
-  let maxScore = 0
-  let maxEnemies = 0
-  for (const wave of waves) {
-    for (const enemyType of wave) {
-      maxScore += ENEMY_SCORE_VALUES[enemyType] ?? 0
-      maxEnemies += 1
+  if (waves) {
+    let maxScore = 0
+    let maxEnemies = 0
+    for (const wave of waves) {
+      for (const enemyType of wave) {
+        maxScore += ENEMY_SCORE_VALUES[enemyType] ?? 0
+        maxEnemies += 1
+      }
     }
+    return { totalWaves: waves.length, maxScore, maxEnemies }
   }
 
-  return { totalWaves: waves.length, maxScore, maxEnemies }
+  if (missionId.startsWith(RANDOM_MISSION_PREFIX)) {
+    return randomMissionBounds()
+  }
+
+  return null
 }
