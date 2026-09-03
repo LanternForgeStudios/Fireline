@@ -103,12 +103,14 @@
 }
 
 .upgrade-track-list {
+  /* No max-height/overflow of its own — .screen now scrolls the whole page
+     (see the mobile-layout fix), so a second nested scroll container here
+     just clipped the last track's content with no visual cue there was
+     more below it. One scroll container is enough. */
   display: flex;
   flex-direction: column;
   gap: 1rem;
   margin-bottom: 1.5rem;
-  max-height: 22rem;
-  overflow-y: auto;
 }
 
 .upgrade-track {
@@ -182,6 +184,8 @@
 
 .menu-icon-row {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.75rem;
   margin-top: 0.75rem;
 }
@@ -229,7 +233,11 @@
 }
 
 .title {
-  font-size: 4.5rem;
+  /* "FIRELINE" is one unbreakable letter-spaced word — at a fixed 4.5rem it
+     was wider than a phone screen and dragged the whole menu column into
+     horizontal overflow with it. clamp() keeps it fluid between a phone-safe
+     floor and the original desktop size. */
+  font-size: clamp(2.5rem, 11vw, 4.5rem);
   letter-spacing: 0.15em;
   color: #f2c14e;
   text-shadow: 0 0 30px rgba(242, 193, 78, 0.35);
@@ -404,8 +412,20 @@
 .mission-list-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
+  gap: 0.75rem;
   margin-bottom: 0.35rem;
+}
+
+/* "Randomly Generated · <type>" can be long enough to wrap on narrow
+   screens — let it, rather than fighting the wave-count for the same line. */
+.mission-list-header .briefing-type {
+  flex: 1;
+}
+
+.mission-list-header .hud-label {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .mission-list-name {

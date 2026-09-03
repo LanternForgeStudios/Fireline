@@ -9,10 +9,11 @@ export const MISSION_TYPES: MissionDef['type'][] = [
   'Reconnaissance',
 ]
 
+// Deliberately excludes Firebreak / Steel Convoy / Nightfall — those are the
+// 3 hand-authored missions' names (src/game/data/missions.ts), and reusing
+// them here produced a generated mission literally named "Operation
+// Nightfall" that had nothing to do with the real one, which read as a bug.
 const NAME_WORDS = [
-  'Firebreak',
-  'Steel Convoy',
-  'Nightfall',
   'Dustwind',
   'Redline',
   'Iron Vigil',
