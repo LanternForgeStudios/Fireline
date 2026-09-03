@@ -21,6 +21,7 @@ interface MissionResultInput {
   score: number
   wavesCleared: number
   enemiesDestroyed: number
+  secondaryObjectiveComplete: boolean
 }
 
 // Same formula as the client used to compute directly — now the only place
@@ -58,7 +59,13 @@ export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck:
   const wavesCleared = Math.max(0, Math.min(Math.floor(data.wavesCleared) || 0, bounds.totalWaves))
   const enemiesDestroyed = Math.max(0, Math.min(Math.floor(data.enemiesDestroyed) || 0, bounds.maxEnemies))
   const score = Math.max(0, Math.min(Math.floor(data.score) || 0, bounds.maxScore))
-  const { xpEarned, creditsEarned } = computeRewards(score)
+  const { xpEarned, creditsEarned: baseCreditsEarned } = computeRewards(score)
+
+  // Only ever awarded alongside a 'complete' outcome — same rule the client
+  // enforces in CombatScene.endMission, re-checked here rather than trusted.
+  const secondaryObjectiveAwarded = data.outcome === 'complete' && Boolean(data.secondaryObjectiveComplete)
+  const secondaryObjectiveBonus = secondaryObjectiveAwarded ? bounds.secondaryObjectiveBonus : 0
+  const creditsEarned = baseCreditsEarned + secondaryObjectiveBonus
 
   const playerRef = db.collection('players').doc(uid)
   const missionResultRef = playerRef.collection('missionResults').doc()
@@ -79,6 +86,8 @@ export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck:
       enemiesDestroyed,
       xpEarned,
       creditsEarned,
+      secondaryObjectiveAwarded,
+      secondaryObjectiveBonus,
       playedAt: FieldValue.serverTimestamp(),
     })
 
@@ -92,7 +101,7 @@ export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck:
     })
   })
 
-  return { xpEarned, creditsEarned, score }
+  return { xpEarned, creditsEarned, score, secondaryObjectiveAwarded }
 })
 
 /**

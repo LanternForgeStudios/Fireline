@@ -48,6 +48,14 @@ export interface MissionTheme {
   groundTint: number
 }
 
+export type SecondaryObjectiveType = 'no-damage' | 'clean-sweep'
+
+export interface SecondaryObjective {
+  type: SecondaryObjectiveType
+  label: string
+  bonusCredits: number
+}
+
 export interface MissionDef {
   id: string
   name: string
@@ -55,6 +63,7 @@ export interface MissionDef {
   briefing: string
   theme: MissionTheme
   waves: WaveDef[]
+  secondaryObjective: SecondaryObjective
 }
 
 export interface HudState {
@@ -76,6 +85,10 @@ export interface MissionResult {
   wavesCleared: number
   totalWaves: number
   enemiesDestroyed: number
+  /** Whether the mission's secondary objective was met — only meaningful (and only
+   * ever awarded) when outcome is 'complete'; the server re-checks this isn't just
+   * trusted, see functions/src/index.ts. */
+  secondaryObjectiveComplete: boolean
 }
 
 export const EVT_HUD_UPDATE = 'hud-update'

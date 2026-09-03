@@ -25,6 +25,14 @@ export const ENEMY_SCORE_VALUES: Record<string, number> = {
   commander: 600,
 }
 
+// Mirrors each mission's secondaryObjective.bonusCredits in
+// src/game/data/missions.ts.
+const SECONDARY_OBJECTIVE_BONUS: Record<string, number> = {
+  'operation-firebreak': 100,
+  'operation-steel-convoy': 90,
+  'operation-nightfall': 90,
+}
+
 // Mirrors src/game/data/missions.ts: each mission is an array of waves,
 // each wave an array of the enemy types it spawns (order/count matches the
 // source's `spawns`, delayMs dropped since only totals matter here).
@@ -53,6 +61,7 @@ export interface MissionBounds {
   totalWaves: number
   maxScore: number
   maxEnemies: number
+  secondaryObjectiveBonus: number
 }
 
 // Procedurally generated missions (src/game/generation/generateMission.ts)
@@ -73,10 +82,15 @@ const RANDOM_MISSION_MAX_SPAWNS_PER_WAVE = 12
 function randomMissionBounds(): MissionBounds {
   const highestEnemyScore = Math.max(...Object.values(ENEMY_SCORE_VALUES))
   const maxEnemies = RANDOM_MISSION_MAX_WAVES * RANDOM_MISSION_MAX_SPAWNS_PER_WAVE
+  const maxScore = maxEnemies * highestEnemyScore
   return {
     totalWaves: RANDOM_MISSION_MAX_WAVES,
     maxEnemies,
-    maxScore: maxEnemies * highestEnemyScore,
+    maxScore,
+    // Mirrors generateMission.ts's generateSecondaryObjective formula (~20%
+    // of a hypothetical full-clear's credits), applied to this same
+    // generous ceiling rather than the mission's real (much lower) score.
+    secondaryObjectiveBonus: Math.round((maxScore / 10) * 0.2),
   }
 }
 
@@ -91,7 +105,7 @@ export function getMissionBounds(missionId: string): MissionBounds | null {
         maxEnemies += 1
       }
     }
-    return { totalWaves: waves.length, maxScore, maxEnemies }
+    return { totalWaves: waves.length, maxScore, maxEnemies, secondaryObjectiveBonus: SECONDARY_OBJECTIVE_BONUS[missionId] ?? 0 }
   }
 
   if (missionId.startsWith(RANDOM_MISSION_PREFIX)) {

@@ -359,6 +359,18 @@
   margin-bottom: 2rem;
 }
 
+.briefing-objective {
+  border: 1px dashed #3a3f4a;
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 2rem;
+}
+
+.briefing-objective .mission-list-blurb {
+  margin-top: 0.3rem;
+  color: #d9b45f;
+}
+
 .briefing-actions {
   display: flex;
   gap: 0.75rem;
@@ -595,4 +607,27 @@
   display: flex;
   gap: 2.5rem;
   margin-bottom: 2rem;
+}
+
+.result-objective {
+  border: 1px dashed #3a3f4a;
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.result-objective .mission-list-blurb {
+  margin-top: 0.3rem;
+  color: #9ca3af;
+}
+
+.result-objective-met {
+  border-color: #d9b45f;
+  background: rgba(217, 180, 95, 0.08);
+}
+
+.result-objective-met .hud-label,
+.result-objective-met .mission-list-blurb {
+  color: #d9b45f;
 }

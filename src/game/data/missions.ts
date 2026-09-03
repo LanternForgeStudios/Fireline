@@ -21,6 +21,7 @@ export const MISSIONS: MissionDef[] = [
       mountainAlpha: 0.75,
       groundTint: 0xffffff,
     },
+    secondaryObjective: { type: 'clean-sweep', label: 'Clean Sweep — destroy every contact', bonusCredits: 100 },
     waves: [
       {
         name: 'Contact',
@@ -91,6 +92,7 @@ export const MISSIONS: MissionDef[] = [
       mountainAlpha: 0.55,
       groundTint: 0xe8dcc0,
     },
+    secondaryObjective: { type: 'no-damage', label: 'Untouched — take zero aircraft damage', bonusCredits: 90 },
     waves: [
       {
         name: 'Recon Sweep',
@@ -148,6 +150,7 @@ export const MISSIONS: MissionDef[] = [
       mountainAlpha: 0.9,
       groundTint: 0xa9836e,
     },
+    secondaryObjective: { type: 'clean-sweep', label: 'Clean Sweep — destroy every contact', bonusCredits: 90 },
     waves: [
       {
         name: 'LZ Hot',

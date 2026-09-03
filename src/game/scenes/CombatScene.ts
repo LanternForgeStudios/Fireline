@@ -94,6 +94,9 @@ export class CombatScene extends Phaser.Scene {
   private waveElapsedMs = 0
   private waveSpawnedCount = 0
   private missionEnded = false
+  // Secondary objective tracking (see missionState.current.secondaryObjective).
+  private noDamageTaken = true
+  private totalEnemiesSpawned = 0
 
   constructor() {
     super('combat')
@@ -121,6 +124,8 @@ export class CombatScene extends Phaser.Scene {
     this.waveElapsedMs = 0
     this.waveSpawnedCount = 0
     this.missionEnded = false
+    this.noDamageTaken = true
+    this.totalEnemiesSpawned = 0
     this.enemies = []
     this.weapon = new Weapon(computeWeaponStats(playerLoadout.unlockedUpgrades))
 
@@ -498,6 +503,7 @@ export class CombatScene extends Phaser.Scene {
     }
     const enemy = new Enemy(this, def, this.spawnPoint(), `enemy-${baseDef.id}`, this.time.now)
     this.enemies.push(enemy)
+    this.totalEnemiesSpawned += 1
   }
 
   update(_time: number, delta: number) {
@@ -568,6 +574,7 @@ export class CombatScene extends Phaser.Scene {
   private applyAircraftDamage(amount: number) {
     if (amount <= 0) return
     this.health = Math.max(0, this.health - amount)
+    this.noDamageTaken = false
     this.cameras.main.shake(120, 0.006)
     this.sound.play('sfx-aircraft-damage', { volume: audioSettings.sfxVolume })
 
@@ -621,6 +628,17 @@ export class CombatScene extends Phaser.Scene {
   private endMission(outcome: 'complete' | 'failed') {
     this.missionEnded = true
     this.weapon.setTrigger(false)
+
+    // Secondary objectives only ever pay out on a successful extraction —
+    // no partial credit for "would have kept the streak if the mission
+    // hadn't failed."
+    let secondaryObjectiveComplete = false
+    if (outcome === 'complete') {
+      const objective = missionState.current.secondaryObjective
+      if (objective.type === 'no-damage') secondaryObjectiveComplete = this.noDamageTaken
+      else if (objective.type === 'clean-sweep') secondaryObjectiveComplete = this.enemiesDestroyed >= this.totalEnemiesSpawned
+    }
+
     const result: MissionResult = {
       missionId: missionState.current.id,
       outcome,
@@ -628,6 +646,7 @@ export class CombatScene extends Phaser.Scene {
       wavesCleared: Math.min(this.waveIndex, missionState.current.waves.length),
       totalWaves: missionState.current.waves.length,
       enemiesDestroyed: this.enemiesDestroyed,
+      secondaryObjectiveComplete,
     }
     gameEvents.emit(outcome === 'complete' ? EVT_MISSION_COMPLETE : EVT_MISSION_FAILED, result)
   }

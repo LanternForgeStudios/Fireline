@@ -1,13 +1,14 @@
 import { useEffect } from 'react'
 import { playUiSound } from '../audio/uiSound'
-import type { MissionResult } from '../game/types'
+import type { MissionResult, SecondaryObjective } from '../game/types'
 
 interface ResultScreenProps {
   result: MissionResult
+  objective: SecondaryObjective
   onReturnToBase: () => void
 }
 
-export function ResultScreen({ result, onReturnToBase }: ResultScreenProps) {
+export function ResultScreen({ result, objective, onReturnToBase }: ResultScreenProps) {
   const success = result.outcome === 'complete'
 
   useEffect(() => {
@@ -41,6 +42,14 @@ export function ResultScreen({ result, onReturnToBase }: ResultScreenProps) {
             <span className="hud-label">Contacts Destroyed</span>
             <span className="briefing-value">{result.enemiesDestroyed}</span>
           </div>
+        </div>
+
+        <div className={`result-objective ${result.secondaryObjectiveComplete ? 'result-objective-met' : ''}`}>
+          <span className="hud-label">Bonus Objective {result.secondaryObjectiveComplete ? '— Complete' : success ? '— Missed' : ''}</span>
+          <p className="briefing-text mission-list-blurb">
+            {objective.label}
+            {result.secondaryObjectiveComplete && ` — +${objective.bonusCredits} credits`}
+          </p>
         </div>
 
         <button className="btn btn-primary" onClick={onReturnToBase}>

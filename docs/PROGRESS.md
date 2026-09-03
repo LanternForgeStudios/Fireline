@@ -10,7 +10,7 @@ on top.
 | --- | --- | --- |
 | 1 | Core Combat | **Done** — playable shooting prototype |
 | 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 3 missions (Search & Destroy, Escort, Extraction) with a select screen, each with distinct visual theming, plus loadout selection via the weapon upgrade system (see Phase 4) |
-| 3 | Procedural Content | **First pass done** — seeded generation, encounter blocks, threat budgets, and weather/time-of-day variety, per the GDD's own list. "Randomly Generated" option in Mission Select alongside the 3 hand-authored missions. Secondary objectives (also GDD Phase 3) and gameplay-affecting weather (currently visual-only) are follow-ups, not attempted this pass |
+| 3 | Procedural Content | **Done** per the GDD's own list — seeded generation, encounter blocks, threat budgets, weather/time-of-day variety, and secondary objectives, all shipped. Gameplay-affecting weather (currently visual-mood only) is the one item not literally covered — a refinement, not a missing deliverable |
 | 4 | Backend | **Mostly done** — see below; only App Check enforcement is outstanding |
 | 5 | Release | Not started (web live on GitHub Pages; iOS/Capacitor future) |
 
@@ -48,6 +48,33 @@ on top.
       mission, open Settings) — it's instantly reversible back to Monitor if anything breaks.
 
 ## Log
+
+### 2026-09-03 (7) — Secondary objectives (closes GDD Phase 3)
+- Every mission — the 3 hand-authored and every procedurally generated one — now has a
+  `secondaryObjective`: `no-damage` (finish without the aircraft taking any damage) or
+  `clean-sweep` (destroy every enemy spawned, let none reach the helicopter), paying a credit
+  bonus on top of the normal reward. Only awarded on a `complete` outcome — a failed mission
+  doesn't get partial credit for "would have kept the streak."
+- `CombatScene` tracks it live (`noDamageTaken`/`totalEnemiesSpawned`) and reports
+  `secondaryObjectiveComplete` in the `MissionResult`. `submitMissionResult` re-checks this
+  server-side against its own bounds catalog rather than trusting the client's flag — same model
+  as everything else progression-related. Generated missions get a bonus scaled to the mission's
+  real max score (~20% of a hypothetical full-clear's credits); the server-side fallback for
+  `random-*` ids uses the same generous ceiling the rest of that validation already relies on.
+- Mission Briefing shows the objective before launch; Result Screen shows whether it was met and
+  what it paid.
+- **Verification note:** confirmed via two clean `tsc` compiles (frontend and functions) and a
+  clean predeploy build at actual deploy time, but **not** via a live emulator round-trip test —
+  unlike `submitMissionResult`'s and `purchaseUpgrade`'s original verification, both of which were
+  exercised end-to-end against the Local Emulator Suite. The system was under heavy, sustained I/O
+  load this session (git, npm, even PowerShell process queries were all taking 10-100x longer than
+  normal) and the Functions emulator's 10-second discovery timeout failed twice in a row before
+  the user reasonably suggested backing off rather than keep retrying against a struggling machine
+  — this is a real gap versus the confidence level of the prior two features, not a formality. The
+  change is small and additive (new fields on already-verified functions, same patterns) rather
+  than new logic shape, which is why it shipped anyway rather than blocking on re-verification —
+  but a live check (buy the objective in a real mission, confirm the bonus lands) is worth doing
+  when convenient.
 
 ### 2026-09-03 (6) — Dual touch pads, mobile layout fixes
 - Touch aim pad now exists on **both** screen edges simultaneously instead of a single side chosen

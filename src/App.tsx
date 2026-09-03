@@ -228,7 +228,9 @@ function App() {
           <Hud />
         </div>
       )}
-      {screen === 'result' && result && <ResultScreen result={result} onReturnToBase={goToMenu} />}
+      {screen === 'result' && result && (
+        <ResultScreen result={result} objective={selectedMission.secondaryObjective} onReturnToBase={goToMenu} />
+      )}
     </div>
   )
 }

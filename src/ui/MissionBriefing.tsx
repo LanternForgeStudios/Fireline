@@ -38,6 +38,13 @@ export function MissionBriefing({ mission, unlockedUpgrades, onLaunch, onBack }:
           </div>
         </div>
 
+        <div className="briefing-objective">
+          <span className="hud-label">Bonus Objective</span>
+          <p className="briefing-text mission-list-blurb">
+            {mission.secondaryObjective.label} — +{mission.secondaryObjective.bonusCredits} credits
+          </p>
+        </div>
+
         <div className="briefing-actions">
           <button
             className="btn btn-secondary"
