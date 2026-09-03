@@ -17,20 +17,51 @@ review batch. Style reads as low-oblique (matches the combat camera), not strict
 | Technical Vehicle | `technical.png` | `5fed39be-2735-4002-bb8f-d926040fd85b` | source batch `87b026cb-...` |
 | Armored Vehicle | `armored.png` | `7f7b60c9-9a84-4f37-937d-cfccbee0bf58` | source batch `0900f762-...`; batch mixed wheeled/tank variants, picked wheeled to match the others |
 | Drone | `drone.png` | `32db53cb-90f0-4af3-b490-31596d231354` | source batch `9fe408f1-...` |
-| Commander | `6a101b0e-f2ad-441f-9f02-872d938c359b` | `commander.png` | source batch `cfda23fd-...`; batch had solo + squad-crowd variants, picked solo |
+| Commander | `commander.png` | `6a101b0e-f2ad-441f-9f02-872d938c359b` | source batch `cfda23fd-...`; batch had solo + squad-crowd variants, picked solo |
 
-**Not done:** hit/death animation frames (currently a static sprite scales up as it approaches;
-no impact flash or death frame). `animate_object` on any of the above IDs would add motion.
+**Death animations — done.** All 7 types have a real `animate_object` death animation (v3 mode,
+7 frames each including PixelLab's retained reference frame), registered as `${id}-death` in
+`CombatScene.buildEnemyAnimations` and played via `Enemy.playDeath()` on kill, replacing the old
+placeholder (scale up 1.3x and fade). Frame files: `public/enemies/${id}-death-{0..6}.png`.
 
-## Environment (`public/env/*.png`)
-
-| Asset | File | Notes |
+| Type | Animation group | Notes |
 | --- | --- | --- |
-| Ground tile | `ground.png` | 64×64 seamless tile via `create_tiles_pro` (id `ff5cabdb-8b77-4728-adf9-c50cef4f7fcb`, `tile_0` of 16 candidates), replaces the old procedural pebble pattern, scrolls via `tilePositionX/Y` |
-| Mountain range | `mountains.png` | 400×68 via `create_image_pixflux` (job `2ac273b9-eaa8-47af-b561-ca80502bfd11`), single static image stretched to full width rather than tiled (freeform art can't guarantee seamless edges the way a dedicated tile tool can); bakes in its own sun glow, so the old procedural sun circle was removed |
+| Infantry | `e2e6651d-cfa4-42da-a18f-08ab2d3ac331` | collapses backward |
+| Machine Gunner | `f693871a-6d79-47ec-af9c-04c64eb513e1` | falls back from the gun |
+| Rocket Team | `e2758231-9fdf-4d45-91d5-dc090614e7b6` | collapses, drops launcher |
+| Technical Vehicle | `90eed35c-97a9-436b-9918-1c90a682f760` | explodes into a burning wreck |
+| Armored Vehicle | `9d137643-3107-4011-8487-c71681e1cc1c` | explodes into a burning wreck |
+| Drone | `9f768ff1-3a47-4cb3-9ff2-bf69b2e7d38a` | sparks, spins out, falls |
+| Commander | `e25e2543-9dbd-4977-9ac7-043f52295847` | falls backward |
 
-**Not done:** any weather/time-of-day variation (GDD mentions both as part of procedural missions,
-Phase 3 — no art needed until that's built).
+**Not done:** a separate non-lethal "hit" flinch animation (still-alive reaction to being
+damaged) — scoped out of this pass to keep it to one animation set per type; the existing
+impact-spark VFX (`spawnSpark` in `CombatScene.ts`) still covers non-lethal hit feedback. Worth a
+follow-up if it reads as needed once someone's actually played against it.
+
+## Environment / landscapes (`public/env/*.png`)
+
+Three landscapes now exist — `MissionTheme.landscape` (`types.ts`) picks which one a mission uses,
+independent of the weather/mood tint layered on top (`CombatScene.LANDSCAPE_GROUND_FILE`/
+`LANDSCAPE_MOUNTAIN_FILE` map the id to files; texture keys are landscape-specific, e.g.
+`ground-art-coastal`, since Phaser's texture cache is keyed globally and a fixed key would stick
+to whichever landscape loaded first in a session). Hand-authored missions: Firebreak=desert,
+Steel Convoy=urban, Nightfall=coastal. Procedural missions roll a landscape independently of the
+weather preset (`generateMission.ts`) — the weather tint values were tuned against the desert
+art, so some combinations (a warm sand-toned preset over coastal's blue water, say) read a bit
+muddier than a hand-picked pairing; acceptable first-pass variance, not re-tuned per landscape.
+
+| Landscape | Ground tile | Backdrop | Notes |
+| --- | --- | --- | --- |
+| Desert | `ground.png` | `mountains.png` | 64×64 tile via `create_tiles_pro` (id `ff5cabdb-8b77-4728-adf9-c50cef4f7fcb`, `tile_0` of 16); backdrop 400×68 via `create_image_pixflux` (job `2ac273b9-eaa8-47af-b561-ca80502bfd11`) |
+| Coastal | `coastal-ground.png` | `coastal.png` | tile via `create_tiles_pro` (id `79195108-7ecc-48b0-bdb7-a332d8a56413`, `tile_2` of 16 — picked for the clearest wave-line texture when tiled); backdrop via `create_image_pixflux` (job `af41c91d-fbe0-4a89-8c18-84c9e07ccf6a`), sea horizon with rocky islands and a sun glow |
+| Urban | `urban-ground.png` | `urban.png` | tile via `create_tiles_pro` (id `8617ee1a-6925-4946-85ae-aaed69c3bbce`, `tile_0` of 16 — cracked asphalt/rubble); backdrop via `create_image_pixflux` (job `596a7ca2-a5fb-4fec-a07b-a9d3b31c92b0`), ruined city skyline silhouette |
+
+Both new backdrops replace the old procedural sun circle the same way the desert one did — each
+bakes in its own light source (sun glow / smoke-lit skyline).
+
+**Not done:** gameplay-affecting weather (still visual-mood only, tracked in
+[AUDIO_AND_POLISH.md](AUDIO_AND_POLISH.md)); a 4th+ landscape if more variety is wanted later.
 
 ## UI / Hero art (`public/ui/*.png`)
 

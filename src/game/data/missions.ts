@@ -15,6 +15,7 @@ export const MISSIONS: MissionDef[] = [
       'Hostile forces are massing near the ridge line. Ride shotgun, clear each wave of contacts, and keep the bird in the air until the area is secured.',
     // Clear midday desert — the baseline look.
     theme: {
+      landscape: 'desert',
       skyTop: 0xf7d9a0,
       skyBottom: 0xf2b26b,
       mountainTint: 0xffffff,
@@ -84,8 +85,10 @@ export const MISSIONS: MissionDef[] = [
     type: 'Escort',
     briefing:
       'A supply convoy is running the pass below. Recon drones will spot it long before the technicals reach it — keep the sky over the convoy clear from first contact to the far checkpoint.',
-    // Hazy, dust-choked midday — the pass kicks up a lot of grit.
+    // Hazy, dust-choked midday over the ruined outskirts of a city — the convoy's
+    // route runs through it, not around it.
     theme: {
+      landscape: 'urban',
       skyTop: 0xe4d2a8,
       skyBottom: 0xc9a878,
       mountainTint: 0xd8c39a,
@@ -142,8 +145,10 @@ export const MISSIONS: MissionDef[] = [
     type: 'Extraction',
     briefing:
       "The ground team is exposed and the extraction window is short. This one's fast and ugly — hostiles are already converging by the time you're on station. Clear the LZ and hold it.",
-    // Dusk — the mission's namesake. Darkest, most urgent-feeling of the three.
+    // Dusk over the water — the mission's namesake, and the LZ is a coastal
+    // extraction point. Darkest, most urgent-feeling of the three.
     theme: {
+      landscape: 'coastal',
       skyTop: 0x6b4a6e,
       skyBottom: 0xd9784e,
       mountainTint: 0x8a5a6e,

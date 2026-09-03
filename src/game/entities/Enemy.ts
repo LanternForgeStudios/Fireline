@@ -23,6 +23,7 @@ export class Enemy {
   private readonly spawn: EnemySpawnPoint
   private readonly jitterSeed: number
   private nextFireAt: number
+  private readonly sprite: Phaser.GameObjects.Sprite
   private readonly healthBarBg: Phaser.GameObjects.Rectangle
   private readonly healthBarFill: Phaser.GameObjects.Rectangle
 
@@ -41,13 +42,15 @@ export class Enemy {
 
     const shadow = scene.add.ellipse(0, def.baseRadius * 0.75, def.baseRadius * 1.7, def.baseRadius * 0.7, 0x000000, 0.35)
 
-    const sprite = scene.add.image(0, 0, textureKey)
-    sprite.setDisplaySize(def.baseRadius * 2, def.baseRadius * 2)
+    // A Sprite, not an Image — needs to be able to play the `${id}-death`
+    // animation CombatScene.buildEnemyAnimations registers globally.
+    this.sprite = scene.add.sprite(0, 0, textureKey)
+    this.sprite.setDisplaySize(def.baseRadius * 2, def.baseRadius * 2)
 
     this.healthBarBg = scene.add.rectangle(0, -def.baseRadius - 14, 34, 5, 0x000000, 0.55)
     this.healthBarFill = scene.add.rectangle(0, -def.baseRadius - 14, 34, 5, 0x4ade80, 0.95)
 
-    this.container = scene.add.container(spawn.x, spawn.y, [shadow, sprite, this.healthBarBg, this.healthBarFill])
+    this.container = scene.add.container(spawn.x, spawn.y, [shadow, this.sprite, this.healthBarBg, this.healthBarFill])
     this.container.setScale(0.35)
     this.updateHealthBar()
   }
@@ -101,6 +104,20 @@ export class Enemy {
     }
     this.updateHealthBar()
     return false
+  }
+
+  /**
+   * Plays this enemy type's `${id}-death` animation (real PixelLab frames —
+   * see docs/ART_ASSETS.md — registered globally by CombatScene's
+   * buildEnemyAnimations, not per-instance here) and invokes onComplete once
+   * it finishes. Doesn't destroy the container itself — the caller still
+   * owns that, same as it did for the old placeholder scale-and-fade.
+   */
+  playDeath(onComplete: () => void) {
+    this.healthBarBg.setVisible(false)
+    this.healthBarFill.setVisible(false)
+    this.sprite.play(`${this.def.id}-death`)
+    this.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, onComplete)
   }
 
   destroy() {

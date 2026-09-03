@@ -14,6 +14,7 @@ import {
   EVT_MISSION_FAILED,
   type EnemyDef,
   type HudState,
+  type LandscapeId,
   type MissionResult,
 } from '../types'
 import { gameEvents } from '../events'
@@ -27,6 +28,11 @@ const HORIZON_Y_RANGE: [number, number] = [110, 165]
 const IMPACT_Y_RANGE: [number, number] = [545, 610]
 const SPAWN_X_MARGIN = 90
 const DOOR_SILL_HEIGHT = 56
+// Real PixelLab death-animation frames per enemy type (see docs/ART_ASSETS.md)
+// — 6 generated frames plus PixelLab's own retained reference frame as frame
+// 0 (animate_object's default keep_first_frame behavior).
+const DEATH_FRAME_COUNT = 7
+const DEATH_FRAME_RATE = 12
 // Where tracer fire visually originates from — the M134 mount at the open
 // door, just above the sill silhouette drawn at the bottom of the screen.
 const GUN_ORIGIN = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT - 24 }
@@ -90,12 +96,31 @@ const DIFFICULTY_MULTIPLIERS: Record<Difficulty, { health: number; damage: numbe
   hard: { health: 1.35, damage: 1.3 },
 }
 
+// Texture keys are landscape-specific (not a fixed 'ground-art'/'mountains-art'
+// pair reused every mission) because Phaser's texture manager caches loaded
+// images by key across scene restarts: this.load.image() silently skips
+// re-loading a key that's already present. A fixed key would mean the first
+// landscape played in a session sticks around forever, no matter what the
+// next mission's theme.landscape says.
+const LANDSCAPE_GROUND_FILE: Record<LandscapeId, string> = {
+  desert: 'ground.png',
+  coastal: 'coastal-ground.png',
+  urban: 'urban-ground.png',
+}
+const LANDSCAPE_MOUNTAIN_FILE: Record<LandscapeId, string> = {
+  desert: 'mountains.png',
+  coastal: 'coastal.png',
+  urban: 'urban.png',
+}
+
 export class CombatScene extends Phaser.Scene {
   private weapon!: Weapon
   private enemies: Enemy[] = []
   private crosshair!: Phaser.GameObjects.Image
   private crosshairPos = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }
   private ground!: Phaser.GameObjects.TileSprite
+  private groundTextureKey!: string
+  private mountainTextureKey!: string
   private damageVignette!: Phaser.GameObjects.Rectangle
   private rotorFlicker!: Phaser.GameObjects.Rectangle
   private nextDustAtMs = 0
@@ -127,9 +152,15 @@ export class CombatScene extends Phaser.Scene {
   preload() {
     for (const def of Object.values(ENEMY_DEFS)) {
       this.load.image(`enemy-${def.id}`, `${import.meta.env.BASE_URL}enemies/${def.id}.png`)
+      for (let i = 0; i < DEATH_FRAME_COUNT; i++) {
+        this.load.image(`enemy-${def.id}-death-${i}`, `${import.meta.env.BASE_URL}enemies/${def.id}-death-${i}.png`)
+      }
     }
-    this.load.image('ground-art', `${import.meta.env.BASE_URL}env/ground.png`)
-    this.load.image('mountains-art', `${import.meta.env.BASE_URL}env/mountains.png`)
+    const landscape = missionState.current.theme.landscape
+    this.groundTextureKey = `ground-art-${landscape}`
+    this.mountainTextureKey = `mountains-art-${landscape}`
+    this.load.image(this.groundTextureKey, `${import.meta.env.BASE_URL}env/${LANDSCAPE_GROUND_FILE[landscape]}`)
+    this.load.image(this.mountainTextureKey, `${import.meta.env.BASE_URL}env/${LANDSCAPE_MOUNTAIN_FILE[landscape]}`)
 
     this.load.audio('sfx-shot', `${import.meta.env.BASE_URL}audio/sfx/shot.wav`)
     this.load.audio('sfx-kill', `${import.meta.env.BASE_URL}audio/sfx/kill.wav`)
@@ -153,6 +184,7 @@ export class CombatScene extends Phaser.Scene {
 
     this.buildBackground()
     this.buildEnemyTextures()
+    this.buildEnemyAnimations()
     this.buildHelicopterFrame()
     this.buildVfxTextures()
     this.buildDamageVignette()
@@ -185,7 +217,7 @@ export class CombatScene extends Phaser.Scene {
 
     // The mountain art already bakes in a sun glow, so there's no separate
     // procedural sun layer here.
-    const mountains = this.add.image(WORLD_WIDTH / 2, HORIZON_Y, 'mountains-art')
+    const mountains = this.add.image(WORLD_WIDTH / 2, HORIZON_Y, this.mountainTextureKey)
     mountains.setOrigin(0.5, 1)
     mountains.setDisplaySize(WORLD_WIDTH, 90)
     mountains.setAlpha(theme.mountainAlpha)
@@ -196,7 +228,7 @@ export class CombatScene extends Phaser.Scene {
       HORIZON_Y + (WORLD_HEIGHT - HORIZON_Y) / 2,
       WORLD_WIDTH,
       WORLD_HEIGHT - HORIZON_Y,
-      'ground-art',
+      this.groundTextureKey,
     )
     this.ground.setTint(theme.groundTint)
 
@@ -232,6 +264,25 @@ export class CombatScene extends Phaser.Scene {
   private buildEnemyTextures() {
     for (const def of Object.values(ENEMY_DEFS)) {
       this.buildEnemyTexture(def)
+    }
+  }
+
+  /**
+   * Registers `${id}-death` on the shared Phaser AnimationManager (global
+   * across scenes, like the texture cache — this.anims.create() is a no-op
+   * with a warning if the key's already registered from a prior mission, the
+   * same dedup buildEnemyTexture relies on via textures.exists).
+   */
+  private buildEnemyAnimations() {
+    for (const def of Object.values(ENEMY_DEFS)) {
+      const key = `${def.id}-death`
+      if (this.anims.exists(key)) continue
+      this.anims.create({
+        key,
+        frames: Array.from({ length: DEATH_FRAME_COUNT }, (_, i) => ({ key: `enemy-${def.id}-death-${i}` })),
+        frameRate: DEATH_FRAME_RATE,
+        repeat: 0,
+      })
     }
   }
 
@@ -767,14 +818,17 @@ export class CombatScene extends Phaser.Scene {
       this.enemies = this.enemies.filter((e) => e !== killedTarget)
       this.spawnSpark(killedTarget.container.x, killedTarget.container.y, 0xff6b3d, 1.8, 260)
       this.spawnScorePopup(killedTarget.container.x, killedTarget.container.y, killedTarget.def.scoreValue)
-      this.tweens.add({
-        targets: killedTarget.container,
-        scaleX: killedTarget.container.scaleX * 1.3,
-        scaleY: killedTarget.container.scaleY * 1.3,
-        alpha: 0,
-        duration: 220,
-        ease: 'Cubic.Out',
-        onComplete: () => killedTarget.destroy(),
+      // Real death-animation frames (docs/ART_ASSETS.md) replace the old
+      // placeholder scale-up-and-fade — a short fade after the animation's
+      // last frame avoids an abrupt pop when the container is destroyed.
+      killedTarget.playDeath(() => {
+        this.tweens.add({
+          targets: killedTarget.container,
+          alpha: 0,
+          duration: 200,
+          ease: 'Cubic.Out',
+          onComplete: () => killedTarget.destroy(),
+        })
       })
       this.sound.play('sfx-kill', { volume: audioSettings.sfxVolume })
     }

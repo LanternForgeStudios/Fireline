@@ -1,5 +1,5 @@
 import { ENEMY_DEFS } from '../data/enemyTypes'
-import type { MissionDef, SecondaryObjective, SecondaryObjectiveType, WaveDef } from '../types'
+import type { LandscapeId, MissionDef, SecondaryObjective, SecondaryObjectiveType, WaveDef } from '../types'
 import { generateBriefing, generateMissionName, MISSION_TYPES } from './briefingTemplates'
 import { randomSeed, SeededRandom } from './rng'
 import { generateWave, waveBudget } from './waveGenerator'
@@ -9,6 +9,16 @@ const BASE_BUDGET = 7
 const BUDGET_GROWTH = 1.28
 const MIN_WAVES = 4
 const MAX_WAVES = 6
+
+// Independent of weather mood — a generated mission can land on any
+// landscape/weather combination (e.g. an overcast day at the coast, a dusty
+// haze downtown). Not curated for "sensible" pairings; the tint tuning in
+// WEATHER_PRESETS was done against the desert art, so some combinations
+// (esp. the warmer sand-toned presets over coastal's blue water) will read
+// a bit muddier than a hand-picked pairing — acceptable variance for a
+// first pass, worth a look once there's real art for all three landscapes
+// in front of someone.
+const LANDSCAPES: LandscapeId[] = ['desert', 'coastal', 'urban']
 
 const OBJECTIVE_LABELS: Record<SecondaryObjectiveType, string> = {
   'no-damage': 'Untouched — take zero aircraft damage',
@@ -45,13 +55,14 @@ export function generateMission(seed: number = randomSeed()): MissionDef {
     generateWave(rng, i, waveBudget(i, BASE_BUDGET, BUDGET_GROWTH), usedWaveNames),
   )
   const weather = rng.pick(WEATHER_PRESETS)
+  const landscape = rng.pick(LANDSCAPES)
 
   return {
     id: `${RANDOM_MISSION_ID_PREFIX}${seed}`,
     name: generateMissionName(rng),
     type,
     briefing: generateBriefing(rng, type),
-    theme: weather.theme,
+    theme: { ...weather.theme, landscape },
     secondaryObjective: generateSecondaryObjective(rng, waves),
     waves,
   }

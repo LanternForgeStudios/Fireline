@@ -37,14 +37,19 @@ export interface WaveDef {
   spawns: WaveSpawn[]
 }
 
+/** Which ground/backdrop art set a mission uses — independent of `MissionTheme`'s
+ * mood tinting, which layers on top of whichever landscape is picked. */
+export type LandscapeId = 'desert' | 'coastal' | 'urban'
+
 export interface MissionTheme {
+  landscape: LandscapeId
   /** Sky gradient, top and bottom (hex). */
   skyTop: number
   skyBottom: number
-  /** Tint applied to the (shared) mountain art so each mission reads differently. */
+  /** Tint applied to the mountain/backdrop art so each mission reads differently. */
   mountainTint: number
   mountainAlpha: number
-  /** Subtle tint applied to the (shared) ground tile. */
+  /** Subtle tint applied to the ground tile. */
   groundTint: number
 }
 

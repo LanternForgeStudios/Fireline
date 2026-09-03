@@ -7,10 +7,13 @@ import type { MissionTheme } from '../types'
  * see docs/AUDIO_AND_POLISH.md for gameplay-affecting weather as a
  * follow-up, not attempted here to keep this pass shippable).
  */
+/** Mood tint only — landscape (which ground/backdrop art) is a separate,
+ * independently-rolled axis for procedural missions (see generateMission.ts),
+ * layered on top of whichever preset gets picked. */
 export interface WeatherPreset {
   id: string
   label: string
-  theme: MissionTheme
+  theme: Omit<MissionTheme, 'landscape'>
 }
 
 export const WEATHER_PRESETS: WeatherPreset[] = [
