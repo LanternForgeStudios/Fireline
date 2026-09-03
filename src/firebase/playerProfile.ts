@@ -4,14 +4,11 @@ import type { MissionResult } from '../game/types'
 import { db, functions } from './config'
 
 export type Difficulty = 'easy' | 'normal' | 'hard'
-export type ControlSide = 'left' | 'right'
 
 export interface PlayerSettings {
   musicVolume: number
   sfxVolume: number
   difficulty: Difficulty
-  /** Which side of the screen the mobile touch aim pad appears on. */
-  controlSide: ControlSide
 }
 
 export interface PlayerProfile {
@@ -31,7 +28,6 @@ export const DEFAULT_SETTINGS: PlayerSettings = {
   musicVolume: 0.6,
   sfxVolume: 0.8,
   difficulty: 'normal',
-  controlSide: 'left',
 }
 
 const DEFAULT_PROGRESS: Omit<PlayerProfile, 'displayName' | 'createdAt' | 'lastPlayedAt' | 'settings'> = {

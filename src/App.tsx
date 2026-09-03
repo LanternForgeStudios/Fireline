@@ -86,7 +86,6 @@ function App() {
     audioSettings.musicVolume = settings.musicVolume
     audioSettings.sfxVolume = settings.sfxVolume
     audioSettings.difficulty = settings.difficulty
-    audioSettings.controlSide = settings.controlSide
     setMusicVolume(settings.musicVolume)
   }, [profile?.settings])
 

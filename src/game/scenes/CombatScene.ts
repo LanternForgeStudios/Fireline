@@ -32,11 +32,8 @@ const DOOR_SILL_HEIGHT = 56
 const GUN_ORIGIN = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT - 24 }
 // Touch aim uses a fixed-position virtual trackpad rather than positioning
 // the crosshair directly under the finger — a direct-touch scheme means the
-// finger itself blocks whatever it's aiming at. The pad sits in a screen
-// corner (side configurable, see audioSettings.controlSide), away from
-// where enemies and the crosshair actually are, so the aiming thumb never
-// covers the target. Mouse input is unaffected (still direct absolute
-// positioning).
+// finger itself blocks whatever it's aiming at. Mouse input is unaffected
+// (still direct absolute positioning).
 //
 // Behaves like a laptop trackpad, not an analog stick: crosshair movement
 // tracks the finger's *movement* (delta), scaled by TOUCH_PAD_SENSITIVITY,
@@ -44,6 +41,12 @@ const GUN_ORIGIN = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT - 24 }
 // was tried first and felt imprecise for aiming — it keeps moving the
 // crosshair as long as you hold any offset, which fights fine placement.
 // Delta tracking stops the instant the finger stops, same as a real mouse.
+//
+// Both a left and a right pad exist simultaneously (no handedness setting
+// — the player just uses whichever thumb suits the target) but only one is
+// live at a time: touching one while the other is already engaged is
+// ignored outright, so there's no way to drive both at once. Releasing the
+// active one frees the other up again.
 const TOUCH_PAD_Y = WORLD_HEIGHT - 150
 const TOUCH_PAD_MARGIN_X = 150
 const TOUCH_PAD_RADIUS = 80
@@ -52,6 +55,13 @@ const TOUCH_PAD_RADIUS = 80
 // knob's rendered position, not for how it's interpreted as input).
 const TOUCH_PAD_ACTIVATION_RADIUS = 110
 const TOUCH_PAD_SENSITIVITY = 2.2
+
+type PadSide = 'left' | 'right'
+interface TouchPad {
+  center: { x: number; y: number }
+  ring: Phaser.GameObjects.Arc
+  knob: Phaser.GameObjects.Arc
+}
 
 // Difficulty scales enemy toughness and how hard they hit back; spawn timing
 // and enemy variety stay the same across difficulties for this prototype.
@@ -69,13 +79,12 @@ export class CombatScene extends Phaser.Scene {
   private ground!: Phaser.GameObjects.TileSprite
   private damageVignette!: Phaser.GameObjects.Rectangle
 
-  private padRing!: Phaser.GameObjects.Arc
-  private padKnob!: Phaser.GameObjects.Arc
-  private padCenter = { x: 0, y: 0 }
+  private pads!: Record<PadSide, TouchPad>
+  private activePad: PadSide | null = null
   private padPointerId: number | null = null
   // Last raw touch position for the active pad pointer — the *movement*
   // between this and the current touch each frame is what drives the
-  // crosshair, not the position itself. null while the pad isn't engaged.
+  // crosshair, not the position itself. null while no pad is engaged.
   private padLastPos: { x: number; y: number } | null = null
 
   private health = MAX_HEALTH
@@ -341,22 +350,24 @@ export class CombatScene extends Phaser.Scene {
     this.crosshair.setDepth(2000)
   }
 
-  /**
-   * Always built (harmless, low-opacity for a mouse player who'll never
-   * touch it). Position depends on audioSettings.controlSide, read once
-   * here — changing the setting takes effect next mission, not mid-combat.
-   */
+  /** Always built (harmless, low-opacity for a mouse player who'll never touch it). */
   private buildTouchPad() {
-    const onRight = audioSettings.controlSide === 'right'
-    this.padCenter = { x: onRight ? WORLD_WIDTH - TOUCH_PAD_MARGIN_X : TOUCH_PAD_MARGIN_X, y: TOUCH_PAD_Y }
+    this.pads = {
+      left: this.buildPadSide(TOUCH_PAD_MARGIN_X),
+      right: this.buildPadSide(WORLD_WIDTH - TOUCH_PAD_MARGIN_X),
+    }
+  }
 
-    this.padRing = this.add.circle(this.padCenter.x, this.padCenter.y, TOUCH_PAD_RADIUS, 0xffffff, 0.08)
-    this.padRing.setStrokeStyle(2, 0xffffff, 0.35)
-    this.padRing.setDepth(2100)
-    this.padKnob = this.add.circle(this.padCenter.x, this.padCenter.y, 26, 0xffffff, 0.25)
-    this.padKnob.setDepth(2101)
+  private buildPadSide(x: number): TouchPad {
+    const center = { x, y: TOUCH_PAD_Y }
 
-    const label = this.add.text(this.padCenter.x, this.padCenter.y + TOUCH_PAD_RADIUS + 16, 'AIM', {
+    const ring = this.add.circle(center.x, center.y, TOUCH_PAD_RADIUS, 0xffffff, 0.08)
+    ring.setStrokeStyle(2, 0xffffff, 0.35)
+    ring.setDepth(2100)
+    const knob = this.add.circle(center.x, center.y, 26, 0xffffff, 0.25)
+    knob.setDepth(2101)
+
+    const label = this.add.text(center.x, center.y + TOUCH_PAD_RADIUS + 16, 'AIM', {
       fontFamily: 'monospace',
       fontSize: '13px',
       color: '#ffffff',
@@ -364,6 +375,8 @@ export class CombatScene extends Phaser.Scene {
     label.setOrigin(0.5, 0)
     label.setAlpha(0.35)
     label.setDepth(2100)
+
+    return { center, ring, knob }
   }
 
   private updateCrosshairFromMouse(pointer: Phaser.Input.Pointer) {
@@ -372,15 +385,24 @@ export class CombatScene extends Phaser.Scene {
     this.crosshair.setPosition(this.crosshairPos.x, this.crosshairPos.y)
   }
 
+  /** Only one pad can be live at a time — if either is already engaged, a touch
+   * anywhere (including on the other pad) is ignored until it's released. */
   private engagePad(pointer: Phaser.Input.Pointer) {
-    const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.padCenter.x, this.padCenter.y)
-    if (this.padPointerId !== null || dist > TOUCH_PAD_ACTIVATION_RADIUS) return false
-    this.padPointerId = pointer.id
-    this.padLastPos = { x: pointer.x, y: pointer.y }
-    this.padRing.setStrokeStyle(2, 0xfff3c4, 0.6)
-    this.updatePadKnobVisual(pointer)
-    this.weapon.setTrigger(true)
-    return true
+    if (this.activePad !== null) return false
+
+    for (const side of ['left', 'right'] as const) {
+      const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.pads[side].center.x, this.pads[side].center.y)
+      if (dist > TOUCH_PAD_ACTIVATION_RADIUS) continue
+
+      this.activePad = side
+      this.padPointerId = pointer.id
+      this.padLastPos = { x: pointer.x, y: pointer.y }
+      this.pads[side].ring.setStrokeStyle(2, 0xfff3c4, 0.6)
+      this.updatePadKnobVisual(pointer)
+      this.weapon.setTrigger(true)
+      return true
+    }
+    return false
   }
 
   /** Trackpad-style: crosshair moves by the finger's *movement* since last frame, not its
@@ -400,18 +422,24 @@ export class CombatScene extends Phaser.Scene {
 
   /** Knob just shows "which way is the finger currently offset" — purely visual, doesn't drive aim. */
   private updatePadKnobVisual(pointer: Phaser.Input.Pointer) {
-    const dx = pointer.x - this.padCenter.x
-    const dy = pointer.y - this.padCenter.y
+    if (!this.activePad) return
+    const pad = this.pads[this.activePad]
+    const dx = pointer.x - pad.center.x
+    const dy = pointer.y - pad.center.y
     const dist = Math.max(1, Math.hypot(dx, dy))
     const knobDist = Math.min(dist, TOUCH_PAD_RADIUS)
-    this.padKnob.setPosition(this.padCenter.x + (dx / dist) * knobDist, this.padCenter.y + (dy / dist) * knobDist)
+    pad.knob.setPosition(pad.center.x + (dx / dist) * knobDist, pad.center.y + (dy / dist) * knobDist)
   }
 
   private releasePad() {
+    if (this.activePad) {
+      const pad = this.pads[this.activePad]
+      pad.ring.setStrokeStyle(2, 0xffffff, 0.35)
+      pad.knob.setPosition(pad.center.x, pad.center.y)
+    }
+    this.activePad = null
     this.padPointerId = null
     this.padLastPos = null
-    this.padRing.setStrokeStyle(2, 0xffffff, 0.35)
-    this.padKnob.setPosition(this.padCenter.x, this.padCenter.y)
     this.weapon.setTrigger(false)
   }
 

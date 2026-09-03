@@ -95,18 +95,37 @@ alongside them — worth double-checking their source/license before a public re
       `import()`), cutting the initial bundle from ~2.16MB to ~783KB. Required replacing
       `Phaser.Events.EventEmitter` in `game/events.ts` with a small custom emitter so the React app
       shell doesn't statically pull in Phaser just for pub/sub.
-- [x] **Mobile touch aim — trackpad, delta-based.** Three iterations: (1) lift the crosshair above
-      the touch point — still direct-position aiming, didn't feel right; (2) a fixed-position
-      virtual joystick — drag-to-steer, rate-based (distance from center = speed) — felt imprecise
-      for aiming, since it keeps drifting as long as any offset is held; (3) current: a real
-      trackpad model — crosshair moves by the finger's *movement* each frame
-      (`TOUCH_PAD_SENSITIVITY`), stops the instant the finger stops, same as a laptop trackpad or
-      mouse. Also added `settings.controlSide` ('left'/'right', Firestore-backed) so the pad can
-      sit on whichever side the player's thumb actually is. See `TOUCH_PAD_*` constants and
-      `buildTouchPad`/`engagePad`/`updatePadDrag`/`updatePadKnobVisual` in `CombatScene.ts`. Mouse
-      input is unaffected throughout (still direct absolute positioning). Only tested logically,
-      not on a physical device this session — worth a real-device pass; `TOUCH_PAD_SENSITIVITY`
-      and the pad's screen position/size may want tuning once tried on an actual phone.
+- [x] **Mobile touch aim — trackpad, delta-based, both sides at once.** Four iterations: (1) lift
+      the crosshair above the touch point — still direct-position aiming, didn't feel right; (2) a
+      fixed-position virtual joystick — drag-to-steer, rate-based (distance from center = speed) —
+      felt imprecise for aiming, since it keeps drifting as long as any offset is held; (3) a
+      trackpad model with a `settings.controlSide` ('left'/'right') picker — crosshair moves by the
+      finger's *movement* each frame (`TOUCH_PAD_SENSITIVITY`), stops the instant the finger stops,
+      same as a laptop trackpad or mouse; (4) current: dropped the side setting entirely — **both a
+      left and a right pad exist simultaneously**, so the player just uses whichever thumb suits a
+      given target without a menu trip. Only one is ever live: touching one while the other is
+      already engaged is ignored outright (`this.activePad` gate in `engagePad`), so there's no way
+      to drive both at once; releasing frees the other back up. See `TOUCH_PAD_*` constants,
+      `TouchPad`/`buildPadSide`/`engagePad`/`updatePadDrag`/`updatePadKnobVisual` in
+      `CombatScene.ts`. Mouse input is unaffected throughout (still direct absolute positioning).
+      Only tested logically, not on a physical device this session — worth a real-device pass;
+      `TOUCH_PAD_SENSITIVITY` and the pads' screen position/size may want tuning once tried on an
+      actual phone.
+- [x] **Mobile layout: no scroll, horizontal cutoff.** `body { overflow: hidden }` with no scroll
+      container anywhere meant any screen with content taller than the viewport (Mission Select
+      being the obvious one, with 3 hand-authored missions + a 4th random one) just clipped with no
+      way to reach the rest. Separately, `.app-root` used `100vw`/`100vh` — a known mobile-browser
+      trap where those units can over-report the true visible width/height (address bar chrome,
+      etc.), which was pushing content past the real screen edges. Fixed: `.app-root` now sized in
+      `%` cascaded from `html`/`body` instead of `vw`/`vh`; `.screen` (the shared wrapper every UI
+      screen but gameplay uses) now has `overflow-y: auto` plus `align-items: safe center` (falls
+      back to plain `center` in unsupporting browsers — CSS ignores the second declaration if the
+      value isn't recognized, so this is a safe two-line progressive enhancement, not a fallback
+      hack) so the *start* of overflowing content stays reachable by scrolling instead of centered
+      off both edges unreachably. `.briefing-content`'s `max-width: 90vw` became `max-width: 100%`
+      for the same vw-avoidance reason, relying on `.screen`'s own padding instead. Gameplay
+      (`.play-screen`) doesn't use the `.screen` class, so this doesn't add scroll/rubber-banding
+      during combat. Reasoned through, not verified on a real device.
 - [ ] Procedurally generated missions (`src/game/generation/`) are logic-tested only (a throwaway
       script printing wave compositions) — nobody's actually played one yet. Threat budget/pacing
       constants (`BASE_BUDGET`, `BUDGET_GROWTH`, `MAX_SPAWNS_PER_WAVE`) will likely want another

@@ -1,4 +1,4 @@
-import type { ControlSide, Difficulty } from '../firebase/playerProfile'
+import type { Difficulty } from '../firebase/playerProfile'
 
 /**
  * Live mirror of the player's settings — not just audio despite the name
@@ -12,5 +12,4 @@ export const audioSettings = {
   musicVolume: 0.6,
   sfxVolume: 0.8,
   difficulty: 'normal' as Difficulty,
-  controlSide: 'left' as ControlSide,
 }

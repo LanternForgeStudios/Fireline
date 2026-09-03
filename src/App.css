@@ -1,6 +1,9 @@
 .app-root {
-  width: 100vw;
-  height: 100vh;
+  /* % of html/body, not vw/vh — vw/vh can over-report the true visible
+     width on mobile browsers (address bar chrome, etc.), which was
+     cutting off content on the left/right on phones. */
+  width: 100%;
+  height: 100%;
   position: relative;
   background: #05070a;
 }
@@ -12,7 +15,10 @@
   height: 100%;
   display: flex;
   align-items: center;
+  align-items: safe center; /* keeps the top of overflowing content reachable when scrolled, in browsers that support it — falls back to plain center above otherwise */
   justify-content: center;
+  overflow-y: auto;
+  padding: 2rem 1rem;
   background:
     radial-gradient(ellipse at center, rgba(74, 107, 138, 0.15), transparent 60%),
     #05070a;
@@ -317,7 +323,7 @@
 
 .briefing-content {
   width: 30rem;
-  max-width: 90vw;
+  max-width: 100%; /* .screen already has side padding, so 100% of it (not raw vw) is exactly "fits the screen" */
   padding: 2.5rem;
   border: 1px solid #2e303a;
   border-radius: 8px;

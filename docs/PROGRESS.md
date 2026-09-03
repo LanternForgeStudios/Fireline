@@ -49,6 +49,17 @@ on top.
 
 ## Log
 
+### 2026-09-03 (6) — Dual touch pads, mobile layout fixes
+- Touch aim pad now exists on **both** screen edges simultaneously instead of a single side chosen
+  via a settings toggle — only one is ever live (touching one while the other's engaged is
+  ignored), so the player switches sides just by using the other thumb, no menu trip. Removed
+  `settings.controlSide` entirely (was the previous session's answer to the same underlying need).
+- Fixed two real mobile layout bugs: `body { overflow: hidden }` with no scroll container anywhere
+  meant tall screens (Mission Select, with 4 mission cards) just clipped with no way to reach the
+  rest; and `100vw`/`100vh` on `.app-root` (a known mobile-browser over-reporting trap) was pushing
+  content past the real screen edges. See docs/AUDIO_AND_POLISH.md for the full fix detail — both
+  reasoned through from the CSS, not verified on a physical device this session.
+
 ### 2026-09-03 (5) — Weapon upgrades (loadout system)
 - Closed the gap noted since the first Firebase pass: `unlockedUpgrades` existed in the data model
   from the start but nothing ever wrote to it, and credits earned had nowhere to spend.
