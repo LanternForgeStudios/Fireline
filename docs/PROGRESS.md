@@ -49,6 +49,35 @@ on top.
 
 ## Log
 
+### 2026-09-03 (8) — Playwright self-verification, 4 real mobile bugs found and fixed
+- Added `playwright` as a devDependency and a real test account
+  (`pw-verify@lanternforgestudios.dev`) on the live Firebase project, purpose-built for
+  screenshot-based self-verification instead of relying on hand-checking every change. Running it
+  against the **live GitHub Pages site** (not a local `vite preview`, which turned out to silently
+  mis-serve `/Fireline/`-base-path assets and isn't representative of the real deploy — see the
+  scratch investigation notes in this session if that ever needs revisiting) at a 375×667 mobile
+  viewport immediately paid for itself: found 4 real, previously-unverified UI bugs in one pass:
+  1. `.title` ("FIRELINE") was a fixed `4.5rem` — wider than a phone screen, dragging the whole
+     Main Menu into horizontal overflow. Fixed with `clamp(2.5rem, 11vw, 4.5rem)`.
+  2. `.menu-icon-row` (Upgrades/Settings/Credits buttons) had no wrap, contributing to the same
+     overflow. Added `flex-wrap: wrap; justify-content: center;`.
+  3. `.upgrade-track-list` had its own nested `max-height: 22rem; overflow-y: auto` *inside* the
+     already-scrolling `.screen` — a double-scroll container that clipped the last upgrade card
+     with no visible indicator there was more below. Removed the inner scroll; one is enough.
+  4. Mission Select's "Randomly Generated · <type>" header text was colliding with the wave count
+     on wrap. Changed `.mission-list-header` to `align-items: flex-start` with a dedicated flexible
+     `.briefing-type` and non-shrinking `.hud-label`, and glued the separator dot to "Generated"
+     with a non-breaking space so it doesn't end up alone on its own line.
+  Also found and fixed a 5th, non-CSS bug: the procedural mission name generator's word pool still
+  included `Firebreak`/`Steel Convoy`/`Nightfall` — the exact names of the 3 hand-authored missions
+  — so it could (and did) generate a mission literally called "Operation Nightfall" with unrelated
+  content. Removed those 3 words from `NAME_WORDS` in `briefingTemplates.ts`.
+- **Verified against production** (all screenshots taken against the live site after each deploy,
+  not assumed from reading the CSS): confirmed `document.documentElement.scrollWidth ===
+  clientWidth` (no horizontal overflow) on Main Menu, Upgrades, and Mission Select at 375px width;
+  confirmed the Upgrades list's last card and its scroll-to-bottom content are both fully visible;
+  confirmed generated mission names no longer collide with the hand-authored 3.
+
 ### 2026-09-03 (7) — Secondary objectives (closes GDD Phase 3)
 - Every mission — the 3 hand-authored and every procedurally generated one — now has a
   `secondaryObjective`: `no-damage` (finish without the aircraft taking any damage) or
