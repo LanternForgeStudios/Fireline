@@ -91,6 +91,7 @@ export function watchPlayerProfile(uid: string, onChange: (profile: PlayerProfil
 // numbers. See functions/src/index.ts.
 const submitMissionResultFn = httpsCallable(functions, 'submitMissionResult')
 const resetProgressFn = httpsCallable(functions, 'resetProgress')
+const purchaseUpgradeFn = httpsCallable(functions, 'purchaseUpgrade')
 
 /** Records a finished mission; the Cloud Function derives uid from the caller's auth token. */
 export async function recordMissionResult(result: MissionResult): Promise<void> {
@@ -101,4 +102,11 @@ export async function recordMissionResult(result: MissionResult): Promise<void> 
  * displayName and settings — this is "reset my save," not "delete my account." */
 export async function resetPlayerProgress(): Promise<void> {
   await resetProgressFn()
+}
+
+/** Spends credits on a weapon upgrade. Throws (FirebaseError with a player-readable
+ * .message, e.g. "Not enough credits.") if the purchase isn't valid — the Function
+ * re-validates cost/ordering/ownership against Firestore, not the client's assumptions. */
+export async function purchaseUpgrade(upgradeId: string): Promise<void> {
+  await purchaseUpgradeFn({ upgradeId })
 }

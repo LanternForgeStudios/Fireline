@@ -74,8 +74,19 @@ alongside them — worth double-checking their source/license before a public re
 
 ## General polish
 
-- [ ] Loadout selection screen (GDD mentions "select loadout" in the core loop; currently skipped
-      straight from briefing to combat with a fixed M134)
+- [x] Weapon upgrades — Main Menu → Upgrades. 4 tracks (damage, cooling, heat capacity, fire rate)
+      × 3 levels, bought with credits (previously earned but had nowhere to spend). Server-side
+      (`purchaseUpgrade` Cloud Function) for the same reason mission rewards are — verified
+      end-to-end against the emulator (successful purchase, ordering enforcement, duplicate
+      rejection, insufficient-credits rejection, all correct). `Weapon.ts` now takes its stats from
+      `computeWeaponStats(unlockedUpgrades)` instead of hardcoded constants; Mission Briefing's
+      loadout line reflects what's actually owned. Not a "select between different guns" system —
+      one persistent, upgradeable M134, which fits the GDD's "select loadout" + "upgradeable
+      weapons" language better than adding weapon variety would have.
+- [ ] Upgrade costs/values (150/350/650 credits per level) are a first guess, not balanced against
+      actual play — a generated mission's credits-per-clear varies a lot by luck of the draw, so
+      whether 3-4 tracks maxed out feels like a reasonable arc or takes forever needs real
+      playtesting to know.
 - [x] Settings screen has an autosave note (not a toast per change — simpler, avoids timing/spam
       issues from continuous slider drags; revisit if it doesn't read clearly enough in practice)
 - [x] `resetPlayerProgress` now also deletes the `missionResults` subcollection (batched, loops

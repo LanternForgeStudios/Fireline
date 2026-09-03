@@ -6,6 +6,7 @@ import { signOutUser, watchAuthState } from './firebase/auth'
 import {
   DEFAULT_SETTINGS,
   loadOrCreatePlayerProfile,
+  purchaseUpgrade,
   recordMissionResult,
   resetPlayerProgress,
   updatePlayerSettings,
@@ -16,6 +17,7 @@ import {
 import { DEFAULT_MISSION } from './game/data/missions'
 import { gameEvents } from './game/events'
 import { missionState } from './game/missionState'
+import { playerLoadout } from './game/playerLoadout'
 import { EVT_MISSION_COMPLETE, EVT_MISSION_FAILED, type MissionDef, type MissionResult } from './game/types'
 import { CreditsScreen } from './ui/CreditsScreen'
 import { GameCanvas } from './ui/GameCanvas'
@@ -26,9 +28,10 @@ import { MissionBriefing } from './ui/MissionBriefing'
 import { MissionSelect } from './ui/MissionSelect'
 import { ResultScreen } from './ui/ResultScreen'
 import { SettingsScreen } from './ui/SettingsScreen'
+import { UpgradesScreen } from './ui/UpgradesScreen'
 import './App.css'
 
-type Screen = 'menu' | 'select' | 'briefing' | 'playing' | 'result' | 'settings' | 'credits'
+type Screen = 'menu' | 'select' | 'briefing' | 'playing' | 'result' | 'settings' | 'credits' | 'upgrades'
 
 function App() {
   const [screen, setScreen] = useState<Screen>('menu')
@@ -87,6 +90,12 @@ function App() {
     setMusicVolume(settings.musicVolume)
   }, [profile?.settings])
 
+  // Same live-mirror pattern for the weapon upgrades Phaser needs at
+  // mission start — see game/playerLoadout.ts.
+  useEffect(() => {
+    playerLoadout.unlockedUpgrades = profile?.unlockedUpgrades ?? []
+  }, [profile?.unlockedUpgrades])
+
   useEffect(() => {
     const onComplete = (missionResult: MissionResult) => {
       setResult(missionResult)
@@ -120,6 +129,7 @@ function App() {
   const goToMenu = useCallback(() => setScreen('menu'), [])
   const goToSettings = useCallback(() => setScreen('settings'), [])
   const goToCredits = useCallback(() => setScreen('credits'), [])
+  const goToUpgrades = useCallback(() => setScreen('upgrades'), [])
   const selectMission = useCallback((mission: MissionDef) => {
     missionState.current = mission
     setSelectedMission(mission)
@@ -181,13 +191,27 @@ function App() {
           onStart={goToMissionSelect}
           onSettings={goToSettings}
           onCredits={goToCredits}
+          onUpgrades={goToUpgrades}
           profile={profile}
           onSignOut={signOut}
         />
       )}
       {screen === 'select' && <MissionSelect onSelect={selectMission} onBack={goToMenu} />}
       {screen === 'briefing' && (
-        <MissionBriefing mission={selectedMission} onLaunch={launchMission} onBack={goToMissionSelect} />
+        <MissionBriefing
+          mission={selectedMission}
+          unlockedUpgrades={profile?.unlockedUpgrades ?? []}
+          onLaunch={launchMission}
+          onBack={goToMissionSelect}
+        />
+      )}
+      {screen === 'upgrades' && (
+        <UpgradesScreen
+          credits={profile?.credits ?? 0}
+          unlockedUpgrades={profile?.unlockedUpgrades ?? []}
+          onPurchase={purchaseUpgrade}
+          onBack={goToMenu}
+        />
       )}
       {screen === 'settings' && (
         <SettingsScreen

@@ -9,7 +9,7 @@ on top.
 | Phase | Goal | Status |
 | --- | --- | --- |
 | 1 | Core Combat | **Done** — playable shooting prototype |
-| 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 3 missions (Search & Destroy, Escort, Extraction) with a select screen, each with distinct visual theming; loadout selection still doesn't exist (one fixed weapon) |
+| 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 3 missions (Search & Destroy, Escort, Extraction) with a select screen, each with distinct visual theming, plus loadout selection via the weapon upgrade system (see Phase 4) |
 | 3 | Procedural Content | **First pass done** — seeded generation, encounter blocks, threat budgets, and weather/time-of-day variety, per the GDD's own list. "Randomly Generated" option in Mission Select alongside the 3 hand-authored missions. Secondary objectives (also GDD Phase 3) and gameplay-affecting weather (currently visual-only) are follow-ups, not attempted this pass |
 | 4 | Backend | **Mostly done** — see below; only App Check enforcement is outstanding |
 | 5 | Release | Not started (web live on GitHub Pages; iOS/Capacitor future) |
@@ -29,6 +29,10 @@ on top.
       `settings` field, and blocks `missionResults` writes entirely
 - [x] Local Emulator Suite (`npm run emulators`) — Auth/Firestore/Functions all working locally,
       non-default ports so it coexists with other Firebase projects' emulators on the same machine
+- [x] Weapon upgrade purchases — `purchaseUpgrade` Cloud Function, same server-side-owns-it model
+      as mission rewards (credits/unlockedUpgrades are client-write-blocked). Verified against the
+      emulator: successful purchase, ordering enforcement, duplicate rejection, insufficient-credits
+      rejection all correct
 - [x] App Check enforced on both Cloud Functions (`enforceAppCheck: !isEmulator` — off when running
       under the Local Emulator Suite, since there's no local App Check emulator and every dev
       machine having a working debug token would be needed for zero actual security benefit; on in
@@ -44,6 +48,27 @@ on top.
       mission, open Settings) — it's instantly reversible back to Monitor if anything breaks.
 
 ## Log
+
+### 2026-09-03 (5) — Weapon upgrades (loadout system)
+- Closed the gap noted since the first Firebase pass: `unlockedUpgrades` existed in the data model
+  from the start but nothing ever wrote to it, and credits earned had nowhere to spend.
+- `src/game/data/upgrades.ts` — 4 tracks (damage, cooling, heat capacity, fire rate) × 3 levels,
+  `computeWeaponStats(unlockedUpgrades)` derives the effective weapon stats. `Weapon.ts` now takes
+  a `WeaponStats` constructor arg instead of hardcoded constants.
+- `functions/src/upgradeCatalog.ts` + `purchaseUpgrade` callable — same server-owns-progression
+  model as `submitMissionResult`: validates cost, in-track level ordering, and current credits
+  against the player's actual Firestore state inside a transaction (so a double-click can't spend
+  the same credits twice). **Verified end-to-end against the emulator** with 5 scenarios (buy
+  successfully, skip-ahead rejected, duplicate rejected, afford-check rejected on a second
+  purchase) — all matched expected balances and error messages exactly.
+- New `src/game/playerLoadout.ts` (same live-mirror-for-Phaser pattern as `missionState`/
+  `audioSettings`) and a Main Menu → Upgrades screen. Mission Briefing's loadout line now reflects
+  what's actually owned instead of a static "Door Gun (M134)" string.
+- Deliberately built as permanent account-level upgrades to one persistent M134, not a "choose
+  between different guns" system — matches the GDD's "select loadout" + "upgradeable weapons"
+  language more directly than adding weapon variety would have, and reuses the mission-reward
+  security model instead of inventing a new one.
+- Not balanced against real play — see docs/AUDIO_AND_POLISH.md.
 
 ### 2026-09-03 (4) — Procedural mission generation (GDD Phase 3, first pass)
 - **New `src/game/generation/` module:**

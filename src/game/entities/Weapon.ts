@@ -1,20 +1,35 @@
+import type { WeaponStats } from '../data/upgrades'
+
 /**
  * Door gun heat management. Holding the trigger builds heat; releasing lets
  * it bleed off. Maxing it out force-locks the gun until it cools back down,
  * matching the GDD's "machine gun with heat management" player system.
+ * Stats come from the player's purchased upgrades (src/game/data/upgrades.ts)
+ * — pass BASE_WEAPON_STATS for the stock gun.
  */
 export class Weapon {
-  readonly maxHeat = 100
+  readonly maxHeat: number
+  readonly damagePerShot: number
   heat = 0
   overheated = false
 
   private readonly heatPerShot = 6
-  private readonly coolPerSecond = 42
-  private readonly overheatRecoverAt = 25
-  private readonly fireIntervalMs = 70
+  private readonly coolPerSecond: number
+  private readonly overheatRecoverAt: number
+  private readonly fireIntervalMs: number
   private cooldownSinceLastShotMs = 0
 
   private triggerDown = false
+
+  constructor(stats: WeaponStats) {
+    this.maxHeat = stats.maxHeat
+    this.damagePerShot = stats.damagePerShot
+    this.coolPerSecond = stats.coolPerSecond
+    this.fireIntervalMs = stats.fireIntervalMs
+    // Recovery threshold scales with capacity so a bigger heat pool doesn't
+    // also mean a disproportionately long recovery wait.
+    this.overheatRecoverAt = stats.maxHeat * 0.25
+  }
 
   setTrigger(down: boolean) {
     this.triggerDown = down

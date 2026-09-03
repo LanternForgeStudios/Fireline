@@ -5,11 +5,12 @@ interface MainMenuProps {
   onStart: () => void
   onSettings: () => void
   onCredits: () => void
+  onUpgrades: () => void
   onSignOut: () => void
   profile: PlayerProfile | null
 }
 
-export function MainMenu({ onStart, onSettings, onCredits, onSignOut, profile }: MainMenuProps) {
+export function MainMenu({ onStart, onSettings, onCredits, onUpgrades, onSignOut, profile }: MainMenuProps) {
   return (
     <div className="screen menu-screen">
       <div className="menu-content">
@@ -38,6 +39,15 @@ export function MainMenu({ onStart, onSettings, onCredits, onSignOut, profile }:
             className="btn btn-secondary"
             onClick={() => {
               playUiSound('ui_select')
+              onUpgrades()
+            }}
+          >
+            Upgrades
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              playUiSound('ui_select')
               onSettings()
             }}
           >
@@ -56,7 +66,7 @@ export function MainMenu({ onStart, onSettings, onCredits, onSignOut, profile }:
             Sign out
           </button>
         </div>
-        <p className="menu-footnote">Combat Prototype — MVP Phase 1</p>
+        <p className="menu-footnote">MVP — Core Combat, Mission Variety, Procedural Ops</p>
       </div>
     </div>
   )

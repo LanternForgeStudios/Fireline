@@ -1,10 +1,12 @@
 import Phaser from 'phaser'
 import { audioSettings } from '../../audio/audioSettings'
 import type { Difficulty } from '../../firebase/playerProfile'
+import { computeWeaponStats } from '../data/upgrades'
 import { ENEMY_DEFS } from '../data/enemyTypes'
 import { missionState } from '../missionState'
 import { Enemy, type EnemySpawnPoint } from '../entities/Enemy'
 import { Weapon } from '../entities/Weapon'
+import { playerLoadout } from '../playerLoadout'
 import {
   EVT_HIT_MARKER,
   EVT_HUD_UPDATE,
@@ -20,7 +22,6 @@ export const WORLD_WIDTH = 1280
 export const WORLD_HEIGHT = 720
 
 const MAX_HEALTH = 100
-const DAMAGE_PER_SHOT = 9
 const HORIZON_Y = 130
 const HORIZON_Y_RANGE: [number, number] = [110, 165]
 const IMPACT_Y_RANGE: [number, number] = [545, 610]
@@ -61,7 +62,7 @@ const DIFFICULTY_MULTIPLIERS: Record<Difficulty, { health: number; damage: numbe
 }
 
 export class CombatScene extends Phaser.Scene {
-  private weapon = new Weapon()
+  private weapon!: Weapon
   private enemies: Enemy[] = []
   private crosshair!: Phaser.GameObjects.Image
   private crosshairPos = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }
@@ -112,7 +113,7 @@ export class CombatScene extends Phaser.Scene {
     this.waveSpawnedCount = 0
     this.missionEnded = false
     this.enemies = []
-    this.weapon = new Weapon()
+    this.weapon = new Weapon(computeWeaponStats(playerLoadout.unlockedUpgrades))
 
     this.buildBackground()
     this.buildEnemyTextures()
@@ -568,7 +569,7 @@ export class CombatScene extends Phaser.Scene {
     if (!target) return
     this.spawnSpark(target.container.x, target.container.y, 0xffa64d, 0.8, 140)
 
-    const killed = target.takeDamage(DAMAGE_PER_SHOT)
+    const killed = target.takeDamage(this.weapon.damagePerShot)
     if (killed) {
       const killedTarget = target
       this.score += killedTarget.def.scoreValue

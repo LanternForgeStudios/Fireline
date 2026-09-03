@@ -1,13 +1,25 @@
 import { playUiSound } from '../audio/uiSound'
+import { UPGRADE_TRACKS } from '../game/data/upgrades'
 import type { MissionDef } from '../game/types'
 
 interface MissionBriefingProps {
   mission: MissionDef
+  unlockedUpgrades: string[]
   onLaunch: () => void
   onBack: () => void
 }
 
-export function MissionBriefing({ mission, onLaunch, onBack }: MissionBriefingProps) {
+function loadoutSummary(unlockedUpgrades: string[]): string {
+  const owned = new Set(unlockedUpgrades)
+  const parts = UPGRADE_TRACKS.map((track) => {
+    const level = track.levels.filter((l) => owned.has(l.id)).length
+    return level > 0 ? `${track.label} ${level}` : null
+  }).filter((p): p is string => p !== null)
+
+  return parts.length > 0 ? `Door Gun (M134) · ${parts.join(' · ')}` : 'Door Gun (M134) — Stock'
+}
+
+export function MissionBriefing({ mission, unlockedUpgrades, onLaunch, onBack }: MissionBriefingProps) {
   return (
     <div className="screen briefing-screen">
       <div className="briefing-content">
@@ -22,7 +34,7 @@ export function MissionBriefing({ mission, onLaunch, onBack }: MissionBriefingPr
           </div>
           <div>
             <span className="hud-label">Loadout</span>
-            <span className="briefing-value">Door Gun (M134)</span>
+            <span className="briefing-value">{loadoutSummary(unlockedUpgrades)}</span>
           </div>
         </div>
 

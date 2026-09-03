@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase-admin/app'
 import { FieldValue, getFirestore } from 'firebase-admin/firestore'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { getMissionBounds } from './missionCatalog'
+import { getUpgrade, priorLevelsOf } from './upgradeCatalog'
 
 initializeApp()
 const db = getFirestore()
@@ -126,4 +127,52 @@ export const resetProgress = onCall({ enforceAppCheck: !isEmulator }, async (req
   }
 
   return { ok: true }
+})
+
+/**
+ * Spends credits on a weapon upgrade. Server-side for the same reason
+ * submitMissionResult is: unlockedUpgrades and credits are both
+ * client-write-blocked by firestore.rules, so this is the only path that
+ * can grant an upgrade. Runs in a transaction so a double-click can't
+ * spend the same credits twice, and re-validates everything from the
+ * player's actual current Firestore state rather than trusting the client.
+ */
+export const purchaseUpgrade = onCall<{ upgradeId: string }>({ enforceAppCheck: !isEmulator }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Must be signed in.')
+  }
+  const upgrade = getUpgrade(request.data.upgradeId)
+  if (!upgrade) {
+    throw new HttpsError('invalid-argument', `Unknown upgrade: ${request.data.upgradeId}`)
+  }
+
+  const playerRef = db.collection('players').doc(request.auth.uid)
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(playerRef)
+    if (!snap.exists) {
+      throw new HttpsError('failed-precondition', 'Player profile does not exist yet.')
+    }
+    const data = snap.data()!
+    const owned: string[] = data.unlockedUpgrades ?? []
+
+    if (owned.includes(upgrade.id)) {
+      throw new HttpsError('already-exists', 'Already purchased.')
+    }
+    const missingPrior = priorLevelsOf(upgrade).some((prior) => !owned.includes(prior.id))
+    if (missingPrior) {
+      throw new HttpsError('failed-precondition', 'Purchase earlier levels in this track first.')
+    }
+    const credits = (data.credits as number | undefined) ?? 0
+    if (credits < upgrade.cost) {
+      throw new HttpsError('failed-precondition', 'Not enough credits.')
+    }
+
+    tx.update(playerRef, {
+      credits: FieldValue.increment(-upgrade.cost),
+      unlockedUpgrades: FieldValue.arrayUnion(upgrade.id),
+    })
+  })
+
+  return { ok: true, upgradeId: upgrade.id }
 })
