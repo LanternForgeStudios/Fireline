@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { gameEvents } from '../game/events'
 import { EVT_HIT_MARKER, EVT_HUD_UPDATE, type HudState } from '../game/types'
-import { PROTOTYPE_MISSION } from '../game/data/waves'
+import { missionState } from '../game/missionState'
 
 const INITIAL_STATE: HudState = {
   health: 100,
@@ -11,7 +11,7 @@ const INITIAL_STATE: HudState = {
   overheated: false,
   score: 0,
   waveIndex: 0,
-  waveCount: PROTOTYPE_MISSION.waves.length,
+  waveCount: missionState.current.waves.length,
   enemiesRemaining: 0,
 }
 
@@ -39,7 +39,7 @@ export function Hud() {
 
   const healthPct = Math.round((state.health / state.maxHealth) * 100)
   const heatPct = Math.round((state.heat / state.maxHeat) * 100)
-  const wave = PROTOTYPE_MISSION.waves[state.waveIndex]
+  const wave = missionState.current.waves[state.waveIndex]
 
   return (
     <div className="hud">

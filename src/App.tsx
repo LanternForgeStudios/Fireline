@@ -13,22 +13,27 @@ import {
   type PlayerProfile,
   type PlayerSettings,
 } from './firebase/playerProfile'
+import { DEFAULT_MISSION } from './game/data/missions'
 import { gameEvents } from './game/events'
-import { EVT_MISSION_COMPLETE, EVT_MISSION_FAILED, type MissionResult } from './game/types'
+import { missionState } from './game/missionState'
+import { EVT_MISSION_COMPLETE, EVT_MISSION_FAILED, type MissionDef, type MissionResult } from './game/types'
+import { CreditsScreen } from './ui/CreditsScreen'
 import { GameCanvas } from './ui/GameCanvas'
 import { Hud } from './ui/Hud'
 import { LoginScreen } from './ui/LoginScreen'
 import { MainMenu } from './ui/MainMenu'
 import { MissionBriefing } from './ui/MissionBriefing'
+import { MissionSelect } from './ui/MissionSelect'
 import { ResultScreen } from './ui/ResultScreen'
 import { SettingsScreen } from './ui/SettingsScreen'
 import './App.css'
 
-type Screen = 'menu' | 'briefing' | 'playing' | 'result' | 'settings'
+type Screen = 'menu' | 'select' | 'briefing' | 'playing' | 'result' | 'settings' | 'credits'
 
 function App() {
   const [screen, setScreen] = useState<Screen>('menu')
   const [result, setResult] = useState<MissionResult | null>(null)
+  const [selectedMission, setSelectedMission] = useState<MissionDef>(DEFAULT_MISSION)
   const [authChecked, setAuthChecked] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<PlayerProfile | null>(null)
@@ -100,9 +105,15 @@ function App() {
     }
   }, [screen])
 
-  const goToBriefing = useCallback(() => setScreen('briefing'), [])
+  const goToMissionSelect = useCallback(() => setScreen('select'), [])
   const goToMenu = useCallback(() => setScreen('menu'), [])
   const goToSettings = useCallback(() => setScreen('settings'), [])
+  const goToCredits = useCallback(() => setScreen('credits'), [])
+  const selectMission = useCallback((mission: MissionDef) => {
+    missionState.current = mission
+    setSelectedMission(mission)
+    setScreen('briefing')
+  }, [])
   const launchMission = useCallback(() => setScreen('playing'), [])
   const signOut = useCallback(() => {
     signOutUser().catch((err) => console.error('Sign-out failed', err))
@@ -135,9 +146,18 @@ function App() {
   return (
     <div className="app-root">
       {screen === 'menu' && (
-        <MainMenu onStart={goToBriefing} onSettings={goToSettings} profile={profile} onSignOut={signOut} />
+        <MainMenu
+          onStart={goToMissionSelect}
+          onSettings={goToSettings}
+          onCredits={goToCredits}
+          profile={profile}
+          onSignOut={signOut}
+        />
       )}
-      {screen === 'briefing' && <MissionBriefing onLaunch={launchMission} onBack={goToMenu} />}
+      {screen === 'select' && <MissionSelect onSelect={selectMission} onBack={goToMenu} />}
+      {screen === 'briefing' && (
+        <MissionBriefing mission={selectedMission} onLaunch={launchMission} onBack={goToMissionSelect} />
+      )}
       {screen === 'settings' && (
         <SettingsScreen
           settings={profile?.settings ?? DEFAULT_SETTINGS}
@@ -146,6 +166,7 @@ function App() {
           onBack={goToMenu}
         />
       )}
+      {screen === 'credits' && <CreditsScreen onBack={goToMenu} />}
       {screen === 'playing' && (
         <div className="play-screen">
           <GameCanvas />

@@ -1,23 +1,24 @@
 import { playUiSound } from '../audio/uiSound'
-import { PROTOTYPE_MISSION } from '../game/data/waves'
+import type { MissionDef } from '../game/types'
 
 interface MissionBriefingProps {
+  mission: MissionDef
   onLaunch: () => void
   onBack: () => void
 }
 
-export function MissionBriefing({ onLaunch, onBack }: MissionBriefingProps) {
+export function MissionBriefing({ mission, onLaunch, onBack }: MissionBriefingProps) {
   return (
     <div className="screen briefing-screen">
       <div className="briefing-content">
-        <div className="briefing-type">{PROTOTYPE_MISSION.type}</div>
-        <h2 className="briefing-name">{PROTOTYPE_MISSION.name}</h2>
-        <p className="briefing-text">{PROTOTYPE_MISSION.briefing}</p>
+        <div className="briefing-type">{mission.type}</div>
+        <h2 className="briefing-name">{mission.name}</h2>
+        <p className="briefing-text">{mission.briefing}</p>
 
         <div className="briefing-details">
           <div>
             <span className="hud-label">Waves</span>
-            <span className="briefing-value">{PROTOTYPE_MISSION.waves.length}</span>
+            <span className="briefing-value">{mission.waves.length}</span>
           </div>
           <div>
             <span className="hud-label">Loadout</span>

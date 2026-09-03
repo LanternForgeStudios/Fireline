@@ -41,7 +41,8 @@ alongside them — worth double-checking their source/license before a public re
 
 ### Known follow-ups
 
-- [ ] Add a credits/attribution screen (blocks public release, see above)
+- [x] Add a credits/attribution screen (blocks public release, see above) — Main Menu → Credits,
+      credits Marllon Silva (xDeviruchi) per license terms
 - [ ] Music files are large (menu.ogg ~6.9MB, combat.ogg ~4.2MB) — re-encode at a lower bitrate;
       no `ffmpeg`/re-encoding tool was available in this session to do it inline
 - [ ] Combat music loops from the very start (intro included) rather than at a proper loop point —
@@ -50,25 +51,35 @@ alongside them — worth double-checking their source/license before a public re
 - [ ] A true military-themed SFX pack (actual automatic gunfire, rotor/engine loop, radio chatter)
       would read much better than the fantasy-pack placeholders currently in use
 
-## Visual effects — not started
+## Visual effects
 
-- [ ] Muzzle flash at the crosshair on fire
-- [ ] Hit-spark/impact VFX on a confirmed hit (currently only the enemy's health bar communicates
-      a hit)
-- [ ] Death/destroy VFX on enemy kill (currently the sprite just disappears)
-- [ ] Screen damage vignette or red flash when the aircraft takes a hit (currently just a camera
-      shake, see `applyAircraftDamage` in `CombatScene.ts`)
+- [x] Tracer line from the door gun to the aim point on every shot (`spawnTracer` in
+      `CombatScene.ts`) — no actual travel-time projectile simulation, just a fast-fading streak
+      along the shot's path, which reads fine at the gun's ~14 shots/sec rate
+- [x] Muzzle flash at the crosshair on fire (procedural additive-blend sprite, tweened scale/alpha
+      — `spawnSpark` in `CombatScene.ts`)
+- [x] Hit-spark on a confirmed hit
+- [x] Kill burst + fade-out/scale-up on enemy destroy (the sprite no longer just vanishes)
+- [x] Red damage vignette flash when the aircraft takes a hit, layered with the existing camera
+      shake
 - [ ] Rotor blur / dust kickup around the helicopter frame for motion sell
+- [ ] Enemy hit/death sprite *animation* frames (the VFX above is procedural overlay, not new
+      PixelLab animation frames — still tracked in [ART_ASSETS.md](ART_ASSETS.md))
 
-## General polish — not started
+## General polish
 
 - [ ] Loadout selection screen (GDD mentions "select loadout" in the core loop; currently skipped
       straight from briefing to combat with a fixed M134)
-- [ ] Settings screen has no confirmation toast after saving (writes are fire-and-forget to
-      Firestore; works, but no visible "saved" feedback)
-- [ ] `resetPlayerProgress` resets the `players/{uid}` aggregate fields but does **not** delete the
-      `missionResults` subcollection history (Firestore doesn't cascade-delete; would need a
-      batched delete). Worth deciding if "reset" should wipe history too.
-- [ ] JS bundle is ~2.15MB (591KB gzipped) per the build warning — Phaser + Firebase + React
-      unsplit. Code-splitting (lazy-load Phaser only when entering combat) would help initial
-      load time.
+- [x] Settings screen has an autosave note (not a toast per change — simpler, avoids timing/spam
+      issues from continuous slider drags; revisit if it doesn't read clearly enough in practice)
+- [x] `resetPlayerProgress` now also deletes the `missionResults` subcollection (batched, loops
+      past Firestore's 500-op cap) instead of only resetting the aggregate fields
+- [x] JS bundle code-split — Phaser now loads only when a mission starts (`GameCanvas.tsx` dynamic
+      `import()`), cutting the initial bundle from ~2.16MB to ~783KB. Required replacing
+      `Phaser.Events.EventEmitter` in `game/events.ts` with a small custom emitter so the React app
+      shell doesn't statically pull in Phaser just for pub/sub.
+- [x] **Mobile touch aim** — the finger blocked whatever it was aiming at, since the crosshair sat
+      directly under the touch point. Crosshair now lifts ~110px above the touch point on touch
+      input specifically (`TOUCH_AIM_LIFT_PX` in `CombatScene.ts`); mouse aim is unchanged. Only
+      tested logically, not on a physical device this session — worth a real-device pass, and the
+      lift distance may want tuning per screen size.

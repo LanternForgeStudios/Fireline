@@ -12,7 +12,13 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # false, not true: cancelling an in-flight run can leave the Pages
+  # environment mid-deployment, which has shown up as "build succeeded,
+  # deploy silently didn't happen" on the next automatic run (a manual
+  # workflow_dispatch — a fresh run outside the cancelled chain — then
+  # "fixes" it). Queuing runs back-to-back instead of racing them costs
+  # nothing for a repo this size.
+  cancel-in-progress: false
 
 jobs:
   build:

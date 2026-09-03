@@ -4,11 +4,12 @@ import type { PlayerProfile } from '../firebase/playerProfile'
 interface MainMenuProps {
   onStart: () => void
   onSettings: () => void
+  onCredits: () => void
   onSignOut: () => void
   profile: PlayerProfile | null
 }
 
-export function MainMenu({ onStart, onSettings, onSignOut, profile }: MainMenuProps) {
+export function MainMenu({ onStart, onSettings, onCredits, onSignOut, profile }: MainMenuProps) {
   return (
     <div className="screen menu-screen">
       <div className="menu-content">
@@ -41,6 +42,15 @@ export function MainMenu({ onStart, onSettings, onSignOut, profile }: MainMenuPr
             }}
           >
             Settings
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              playUiSound('ui_select')
+              onCredits()
+            }}
+          >
+            Credits
           </button>
           <button className="login-toggle" onClick={onSignOut}>
             Sign out

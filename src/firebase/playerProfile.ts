@@ -3,11 +3,15 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   increment,
+  limit,
   onSnapshot,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
   type Unsubscribe,
 } from 'firebase/firestore'
 import type { MissionResult } from '../game/types'
@@ -84,6 +88,21 @@ export async function updatePlayerSettings(uid: string, settings: Partial<Player
  * displayName and settings — this is "reset my save," not "delete my account." */
 export async function resetPlayerProgress(uid: string): Promise<void> {
   await updateDoc(playerDocRef(uid), { ...DEFAULT_PROGRESS })
+  await deleteMissionHistory(uid)
+}
+
+// Firestore doesn't cascade-delete subcollections, and a batch write caps
+// at 500 ops — loop until the subcollection is empty rather than assuming
+// one batch covers it.
+async function deleteMissionHistory(uid: string): Promise<void> {
+  const missionResultsQuery = query(collection(db, 'players', uid, 'missionResults'), limit(500))
+  for (;;) {
+    const snap = await getDocs(missionResultsQuery)
+    if (snap.empty) return
+    const batch = writeBatch(db)
+    for (const docSnap of snap.docs) batch.delete(docSnap.ref)
+    await batch.commit()
+  }
 }
 
 /** Subscribes to live profile updates (so the UI reflects Firestore as the source of truth). */

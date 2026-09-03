@@ -72,6 +72,11 @@
   background: rgba(248, 113, 113, 0.1);
 }
 
+.settings-autosave-note {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
 .settings-row {
   display: flex;
   align-items: center;
@@ -266,6 +271,47 @@
 .briefing-actions {
   display: flex;
   gap: 0.75rem;
+}
+
+.mission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.mission-list-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid #2e303a;
+  border-radius: 6px;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.mission-list-item:hover {
+  border-color: #f2c14e;
+  background: rgba(242, 193, 78, 0.06);
+}
+
+.mission-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.35rem;
+}
+
+.mission-list-name {
+  font-size: 1.1rem;
+  margin-bottom: 0.35rem;
+}
+
+.mission-list-blurb {
+  font-size: 0.85rem;
+  margin-bottom: 0;
 }
 
 .briefing-actions .btn {

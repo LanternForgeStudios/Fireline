@@ -19,6 +19,7 @@ export function SettingsScreen({ settings, onChange, onResetProgress, onBack }: 
       <div className="briefing-content">
         <div className="briefing-type">Settings</div>
         <h2 className="briefing-name">Options</h2>
+        <p className="briefing-text settings-autosave-note">Changes save automatically to your account.</p>
 
         <label className="settings-row">
           <span>Music volume</span>

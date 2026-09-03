@@ -1,15 +1,25 @@
 import { useEffect, useRef } from 'react'
-import Phaser from 'phaser'
-import { createGameConfig } from '../game/config'
+import type Phaser from 'phaser'
 
+// Phaser (plus CombatScene and everything it pulls in) is the bulk of the
+// bundle and only matters once a mission actually starts — dynamically
+// importing it here keeps it out of the initial menu/login page load.
 export function GameCanvas() {
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
-    const game = new Phaser.Game(createGameConfig(containerRef.current))
+    let game: Phaser.Game | undefined
+    let cancelled = false
+
+    Promise.all([import('phaser'), import('../game/config')]).then(([{ default: Phaser }, { createGameConfig }]) => {
+      if (cancelled || !containerRef.current) return
+      game = new Phaser.Game(createGameConfig(containerRef.current))
+    })
+
     return () => {
-      game.destroy(true)
+      cancelled = true
+      game?.destroy(true)
     }
   }, [])
 

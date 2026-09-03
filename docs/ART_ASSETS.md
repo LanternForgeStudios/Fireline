@@ -49,7 +49,8 @@ adds more than one mission), achievement/rank badges.
   not a rectangle, so a straight texture swap fights the geometry for little payoff. Revisit if a
   proper door/interior scene ever gets built (would need re-authoring the shape, not just texture).
 - Crosshair — simple procedural reticle, works fine as-is.
-- Hit-marker / muzzle flash VFX — none yet, tracked in the polish backlog below.
+- Hit-marker / muzzle flash / kill-burst VFX — done, but procedural (tweened circle sprites), not
+  PixelLab art. See [AUDIO_AND_POLISH.md](AUDIO_AND_POLISH.md).
 
 ## Known follow-ups
 

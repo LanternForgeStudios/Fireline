@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { audioSettings } from '../../audio/audioSettings'
 import type { Difficulty } from '../../firebase/playerProfile'
 import { ENEMY_DEFS } from '../data/enemyTypes'
-import { PROTOTYPE_MISSION } from '../data/waves'
+import { missionState } from '../missionState'
 import { Enemy, type EnemySpawnPoint } from '../entities/Enemy'
 import { Weapon } from '../entities/Weapon'
 import {
@@ -26,6 +26,14 @@ const HORIZON_Y_RANGE: [number, number] = [110, 165]
 const IMPACT_Y_RANGE: [number, number] = [545, 610]
 const SPAWN_X_MARGIN = 90
 const DOOR_SILL_HEIGHT = 56
+// Where tracer fire visually originates from — the M134 mount at the open
+// door, just above the sill silhouette drawn at the bottom of the screen.
+const GUN_ORIGIN = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT - 24 }
+// A touch that positions the crosshair right under the fingertip means the
+// finger itself blocks the target being aimed at. Lifting the crosshair
+// above the actual touch point keeps the target visible; mouse input is
+// unaffected since a cursor doesn't have this problem.
+const TOUCH_AIM_LIFT_PX = 110
 
 // Difficulty scales enemy toughness and how hard they hit back; spawn timing
 // and enemy variety stay the same across difficulties for this prototype.
@@ -41,6 +49,7 @@ export class CombatScene extends Phaser.Scene {
   private crosshair!: Phaser.GameObjects.Image
   private crosshairPos = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }
   private ground!: Phaser.GameObjects.TileSprite
+  private damageVignette!: Phaser.GameObjects.Rectangle
 
   private health = MAX_HEALTH
   private score = 0
@@ -82,6 +91,8 @@ export class CombatScene extends Phaser.Scene {
     this.buildBackground()
     this.buildEnemyTextures()
     this.buildHelicopterFrame()
+    this.buildVfxTextures()
+    this.buildDamageVignette()
     this.buildCrosshair()
     this.setupInput()
 
@@ -207,6 +218,58 @@ export class CombatScene extends Phaser.Scene {
     g.destroy()
   }
 
+  /** A single soft radial dot, tinted and scaled per-use for muzzle flash / hit / kill sparks. */
+  private buildVfxTextures() {
+    const g = this.add.graphics()
+    g.fillStyle(0xffffff, 1)
+    g.fillCircle(16, 16, 16)
+    g.generateTexture('spark-tex', 32, 32)
+    g.destroy()
+  }
+
+  /** Full-screen red flash on aircraft damage, alpha 0 at rest. */
+  private buildDamageVignette() {
+    this.damageVignette = this.add.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 0xff1a1a, 0)
+    this.damageVignette.setDepth(2500)
+  }
+
+  private spawnSpark(x: number, y: number, tint: number, endScale: number, durationMs: number) {
+    const spark = this.add.image(x, y, 'spark-tex')
+    spark.setTint(tint)
+    spark.setDepth(1800)
+    spark.setScale(0.25)
+    spark.setBlendMode(Phaser.BlendModes.ADD)
+    this.tweens.add({
+      targets: spark,
+      scale: endScale,
+      alpha: 0,
+      duration: durationMs,
+      ease: 'Cubic.Out',
+      onComplete: () => spark.destroy(),
+    })
+  }
+
+  /**
+   * A fast-fading streak from the door gun to the aim point so rapid fire
+   * (~14 shots/sec) reads as a visible line of tracers rather than invisible
+   * hit-scan — there's no travel-time projectile simulation, just a quick
+   * flash along the shot's path, which is legible at this fire rate where
+   * an actually-traveling bullet sprite would just be visual noise.
+   */
+  private spawnTracer(toX: number, toY: number) {
+    const g = this.add.graphics()
+    g.setDepth(1700)
+    g.lineStyle(2, 0xfff3c4, 0.85)
+    g.lineBetween(GUN_ORIGIN.x, GUN_ORIGIN.y, toX, toY)
+    this.tweens.add({
+      targets: g,
+      alpha: 0,
+      duration: 90,
+      ease: 'Cubic.Out',
+      onComplete: () => g.destroy(),
+    })
+  }
+
   private buildCrosshair() {
     const g = this.add.graphics()
     g.lineStyle(3, 0xff3b30, 0.95)
@@ -224,19 +287,25 @@ export class CombatScene extends Phaser.Scene {
     this.crosshair.setDepth(2000)
   }
 
+  private updateCrosshairFromPointer(pointer: Phaser.Input.Pointer) {
+    const liftY = pointer.wasTouch ? TOUCH_AIM_LIFT_PX : 0
+    this.crosshairPos.x = Phaser.Math.Clamp(pointer.x, 0, WORLD_WIDTH)
+    this.crosshairPos.y = Phaser.Math.Clamp(pointer.y - liftY, 0, WORLD_HEIGHT)
+    this.crosshair.setPosition(this.crosshairPos.x, this.crosshairPos.y)
+  }
+
   private setupInput() {
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      this.crosshairPos.x = Phaser.Math.Clamp(pointer.x, 0, WORLD_WIDTH)
-      this.crosshairPos.y = Phaser.Math.Clamp(pointer.y, 0, WORLD_HEIGHT)
-      this.crosshair.setPosition(this.crosshairPos.x, this.crosshairPos.y)
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.updateCrosshairFromPointer(pointer))
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.updateCrosshairFromPointer(pointer)
+      this.weapon.setTrigger(true)
     })
-    this.input.on('pointerdown', () => this.weapon.setTrigger(true))
     this.input.on('pointerup', () => this.weapon.setTrigger(false))
     this.input.on('pointerout', () => this.weapon.setTrigger(false))
   }
 
   private currentWave() {
-    return PROTOTYPE_MISSION.waves[this.waveIndex]
+    return missionState.current.waves[this.waveIndex]
   }
 
   private spawnPoint(): EnemySpawnPoint {
@@ -275,7 +344,7 @@ export class CombatScene extends Phaser.Scene {
       this.health = 0
       this.endMission('failed')
     } else if (
-      this.waveIndex >= PROTOTYPE_MISSION.waves.length &&
+      this.waveIndex >= missionState.current.waves.length &&
       this.enemies.length === 0 &&
       !this.missionEnded
     ) {
@@ -286,7 +355,7 @@ export class CombatScene extends Phaser.Scene {
   }
 
   private updateWaveSpawning(_delta: number) {
-    if (this.waveIndex >= PROTOTYPE_MISSION.waves.length) return
+    if (this.waveIndex >= missionState.current.waves.length) return
 
     const wave = this.currentWave()
     this.waveElapsedMs += _delta
@@ -330,6 +399,10 @@ export class CombatScene extends Phaser.Scene {
     this.health = Math.max(0, this.health - amount)
     this.cameras.main.shake(120, 0.006)
     this.sound.play('sfx-aircraft-damage', { volume: audioSettings.sfxVolume })
+
+    this.tweens.killTweensOf(this.damageVignette)
+    this.damageVignette.setAlpha(0.32)
+    this.tweens.add({ targets: this.damageVignette, alpha: 0, duration: 350, ease: 'Cubic.Out' })
   }
 
   private handleFiring() {
@@ -337,6 +410,8 @@ export class CombatScene extends Phaser.Scene {
     if (!this.weapon.tryFire()) return
 
     this.sound.play('sfx-shot', { volume: audioSettings.sfxVolume * 0.5 })
+    this.spawnTracer(this.crosshairPos.x, this.crosshairPos.y)
+    this.spawnSpark(this.crosshairPos.x, this.crosshairPos.y, 0xfff3c4, 1, 90)
     if (this.weapon.overheated && !wasOverheated) {
       this.sound.play('sfx-overheat', { volume: audioSettings.sfxVolume })
     }
@@ -349,13 +424,24 @@ export class CombatScene extends Phaser.Scene {
     gameEvents.emit(EVT_HIT_MARKER, { hit: Boolean(target), x: this.crosshairPos.x, y: this.crosshairPos.y })
 
     if (!target) return
+    this.spawnSpark(target.container.x, target.container.y, 0xffa64d, 0.8, 140)
 
     const killed = target.takeDamage(DAMAGE_PER_SHOT)
     if (killed) {
-      this.score += target.def.scoreValue
+      const killedTarget = target
+      this.score += killedTarget.def.scoreValue
       this.enemiesDestroyed += 1
-      target.destroy()
-      this.enemies = this.enemies.filter((e) => e !== target)
+      this.enemies = this.enemies.filter((e) => e !== killedTarget)
+      this.spawnSpark(killedTarget.container.x, killedTarget.container.y, 0xff6b3d, 1.8, 260)
+      this.tweens.add({
+        targets: killedTarget.container,
+        scaleX: killedTarget.container.scaleX * 1.3,
+        scaleY: killedTarget.container.scaleY * 1.3,
+        alpha: 0,
+        duration: 220,
+        ease: 'Cubic.Out',
+        onComplete: () => killedTarget.destroy(),
+      })
       this.sound.play('sfx-kill', { volume: audioSettings.sfxVolume })
     }
   }
@@ -366,8 +452,8 @@ export class CombatScene extends Phaser.Scene {
     const result: MissionResult = {
       outcome,
       score: this.score,
-      wavesCleared: Math.min(this.waveIndex, PROTOTYPE_MISSION.waves.length),
-      totalWaves: PROTOTYPE_MISSION.waves.length,
+      wavesCleared: Math.min(this.waveIndex, missionState.current.waves.length),
+      totalWaves: missionState.current.waves.length,
       enemiesDestroyed: this.enemiesDestroyed,
     }
     gameEvents.emit(outcome === 'complete' ? EVT_MISSION_COMPLETE : EVT_MISSION_FAILED, result)
@@ -381,8 +467,8 @@ export class CombatScene extends Phaser.Scene {
       maxHeat: this.weapon.maxHeat,
       overheated: this.weapon.overheated,
       score: this.score,
-      waveIndex: Math.min(this.waveIndex, PROTOTYPE_MISSION.waves.length - 1),
-      waveCount: PROTOTYPE_MISSION.waves.length,
+      waveIndex: Math.min(this.waveIndex, missionState.current.waves.length - 1),
+      waveCount: missionState.current.waves.length,
       enemiesRemaining: this.enemies.length,
     }
     gameEvents.emit(EVT_HUD_UPDATE, state)
