@@ -29,11 +29,19 @@ const DOOR_SILL_HEIGHT = 56
 // Where tracer fire visually originates from — the M134 mount at the open
 // door, just above the sill silhouette drawn at the bottom of the screen.
 const GUN_ORIGIN = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT - 24 }
-// A touch that positions the crosshair right under the fingertip means the
-// finger itself blocks the target being aimed at. Lifting the crosshair
-// above the actual touch point keeps the target visible; mouse input is
-// unaffected since a cursor doesn't have this problem.
-const TOUCH_AIM_LIFT_PX = 110
+// Touch aim uses a fixed-position virtual trackpad (drag-to-steer, like an
+// analog stick) rather than positioning the crosshair directly under the
+// finger — a direct-touch scheme means the finger itself blocks whatever
+// it's aiming at. The pad sits in a bottom corner, away from where enemies
+// and the crosshair actually are, so the aiming thumb never covers the
+// target. Mouse input is unaffected (still direct absolute positioning).
+const TOUCH_PAD_CENTER = { x: 150, y: WORLD_HEIGHT - 150 }
+const TOUCH_PAD_RADIUS = 80
+// Generous vs. the visual radius so a slightly-off first touch still grabs
+// the pad — once engaged, dragging can go beyond the ring (clamped for the
+// knob's rendered position, not for how it's interpreted as input).
+const TOUCH_PAD_ACTIVATION_RADIUS = 110
+const TOUCH_PAD_MAX_SPEED = 1000 // px/sec at full deflection
 
 // Difficulty scales enemy toughness and how hard they hit back; spawn timing
 // and enemy variety stay the same across difficulties for this prototype.
@@ -50,6 +58,13 @@ export class CombatScene extends Phaser.Scene {
   private crosshairPos = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }
   private ground!: Phaser.GameObjects.TileSprite
   private damageVignette!: Phaser.GameObjects.Rectangle
+
+  private padRing!: Phaser.GameObjects.Arc
+  private padKnob!: Phaser.GameObjects.Arc
+  private padPointerId: number | null = null
+  // Unit direction (dirX/dirY) plus 0-1 deflection magnitude — a rate
+  // control (push further = steer faster), not an absolute position.
+  private padDrag: { dirX: number; dirY: number; magnitude01: number } | null = null
 
   private health = MAX_HEALTH
   private score = 0
@@ -94,6 +109,7 @@ export class CombatScene extends Phaser.Scene {
     this.buildVfxTextures()
     this.buildDamageVignette()
     this.buildCrosshair()
+    this.buildTouchPad()
     this.setupInput()
 
     this.sound.play('music-combat', { loop: true, volume: audioSettings.musicVolume })
@@ -287,21 +303,89 @@ export class CombatScene extends Phaser.Scene {
     this.crosshair.setDepth(2000)
   }
 
-  private updateCrosshairFromPointer(pointer: Phaser.Input.Pointer) {
-    const liftY = pointer.wasTouch ? TOUCH_AIM_LIFT_PX : 0
+  /** Always built (harmless, low-opacity for a mouse player who'll never touch it). */
+  private buildTouchPad() {
+    this.padRing = this.add.circle(TOUCH_PAD_CENTER.x, TOUCH_PAD_CENTER.y, TOUCH_PAD_RADIUS, 0xffffff, 0.08)
+    this.padRing.setStrokeStyle(2, 0xffffff, 0.35)
+    this.padRing.setDepth(2100)
+    this.padKnob = this.add.circle(TOUCH_PAD_CENTER.x, TOUCH_PAD_CENTER.y, 26, 0xffffff, 0.25)
+    this.padKnob.setDepth(2101)
+
+    const label = this.add.text(TOUCH_PAD_CENTER.x, TOUCH_PAD_CENTER.y + TOUCH_PAD_RADIUS + 16, 'AIM', {
+      fontFamily: 'monospace',
+      fontSize: '13px',
+      color: '#ffffff',
+    })
+    label.setOrigin(0.5, 0)
+    label.setAlpha(0.35)
+    label.setDepth(2100)
+  }
+
+  private updateCrosshairFromMouse(pointer: Phaser.Input.Pointer) {
     this.crosshairPos.x = Phaser.Math.Clamp(pointer.x, 0, WORLD_WIDTH)
-    this.crosshairPos.y = Phaser.Math.Clamp(pointer.y - liftY, 0, WORLD_HEIGHT)
+    this.crosshairPos.y = Phaser.Math.Clamp(pointer.y, 0, WORLD_HEIGHT)
     this.crosshair.setPosition(this.crosshairPos.x, this.crosshairPos.y)
   }
 
+  private engagePad(pointer: Phaser.Input.Pointer) {
+    const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, TOUCH_PAD_CENTER.x, TOUCH_PAD_CENTER.y)
+    if (this.padPointerId !== null || dist > TOUCH_PAD_ACTIVATION_RADIUS) return false
+    this.padPointerId = pointer.id
+    this.padRing.setStrokeStyle(2, 0xfff3c4, 0.6)
+    this.updatePadDrag(pointer)
+    this.weapon.setTrigger(true)
+    return true
+  }
+
+  private updatePadDrag(pointer: Phaser.Input.Pointer) {
+    const dx = pointer.x - TOUCH_PAD_CENTER.x
+    const dy = pointer.y - TOUCH_PAD_CENTER.y
+    const dist = Math.max(1, Math.hypot(dx, dy))
+    const magnitude01 = Phaser.Math.Clamp(dist / TOUCH_PAD_RADIUS, 0, 1)
+    this.padDrag = { dirX: dx / dist, dirY: dy / dist, magnitude01 }
+
+    const knobDist = Math.min(dist, TOUCH_PAD_RADIUS)
+    this.padKnob.setPosition(TOUCH_PAD_CENTER.x + (dx / dist) * knobDist, TOUCH_PAD_CENTER.y + (dy / dist) * knobDist)
+  }
+
+  private releasePad() {
+    this.padPointerId = null
+    this.padDrag = null
+    this.padRing.setStrokeStyle(2, 0xffffff, 0.35)
+    this.padKnob.setPosition(TOUCH_PAD_CENTER.x, TOUCH_PAD_CENTER.y)
+    this.weapon.setTrigger(false)
+  }
+
   private setupInput() {
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.updateCrosshairFromPointer(pointer))
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      this.updateCrosshairFromPointer(pointer)
+      if (pointer.wasTouch) {
+        this.engagePad(pointer)
+        return
+      }
+      this.updateCrosshairFromMouse(pointer)
       this.weapon.setTrigger(true)
     })
-    this.input.on('pointerup', () => this.weapon.setTrigger(false))
-    this.input.on('pointerout', () => this.weapon.setTrigger(false))
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.wasTouch) {
+        if (pointer.id === this.padPointerId) this.updatePadDrag(pointer)
+        return
+      }
+      this.updateCrosshairFromMouse(pointer)
+    })
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.wasTouch) {
+        if (pointer.id === this.padPointerId) this.releasePad()
+        return
+      }
+      this.weapon.setTrigger(false)
+    })
+    this.input.on('pointerout', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.wasTouch) {
+        if (pointer.id === this.padPointerId) this.releasePad()
+        return
+      }
+      this.weapon.setTrigger(false)
+    })
   }
 
   private currentWave() {
@@ -334,6 +418,13 @@ export class CombatScene extends Phaser.Scene {
 
     this.ground.tilePositionX += delta * 0.06
     this.ground.tilePositionY += delta * 0.03
+
+    if (this.padDrag) {
+      const speed = TOUCH_PAD_MAX_SPEED * this.padDrag.magnitude01 * (delta / 1000)
+      this.crosshairPos.x = Phaser.Math.Clamp(this.crosshairPos.x + this.padDrag.dirX * speed, 0, WORLD_WIDTH)
+      this.crosshairPos.y = Phaser.Math.Clamp(this.crosshairPos.y + this.padDrag.dirY * speed, 0, WORLD_HEIGHT)
+      this.crosshair.setPosition(this.crosshairPos.x, this.crosshairPos.y)
+    }
 
     this.weapon.tick(delta)
     this.updateWaveSpawning(delta)

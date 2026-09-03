@@ -78,8 +78,13 @@ alongside them — worth double-checking their source/license before a public re
       `import()`), cutting the initial bundle from ~2.16MB to ~783KB. Required replacing
       `Phaser.Events.EventEmitter` in `game/events.ts` with a small custom emitter so the React app
       shell doesn't statically pull in Phaser just for pub/sub.
-- [x] **Mobile touch aim** — the finger blocked whatever it was aiming at, since the crosshair sat
-      directly under the touch point. Crosshair now lifts ~110px above the touch point on touch
-      input specifically (`TOUCH_AIM_LIFT_PX` in `CombatScene.ts`); mouse aim is unchanged. Only
-      tested logically, not on a physical device this session — worth a real-device pass, and the
-      lift distance may want tuning per screen size.
+- [x] **Mobile touch aim — virtual trackpad.** Two iterations: first tried lifting the crosshair
+      above the touch point (still direct-position aiming), but the user didn't like it in
+      practice. Replaced with a fixed-position virtual trackpad (bottom-left corner, drag-to-steer
+      like an analog stick — rate-based, not absolute position) that also holds-to-fire while
+      engaged. The pad sits away from where enemies/the crosshair actually appear, so the aiming
+      thumb never covers the target regardless of where the player is currently aiming. Mouse
+      input is unchanged (still direct absolute positioning). See `TOUCH_PAD_*` constants and
+      `buildTouchPad`/`engagePad`/`updatePadDrag` in `CombatScene.ts`. Only tested logically, not
+      on a physical device this session — worth a real-device pass; `TOUCH_PAD_MAX_SPEED` (steering
+      rate) and the pad's screen position/size may want tuning once tried on an actual phone.
