@@ -1,3 +1,4 @@
+import { playUiSound } from '../audio/uiSound'
 import { PROTOTYPE_MISSION } from '../game/data/waves'
 
 interface MissionBriefingProps {
@@ -25,10 +26,22 @@ export function MissionBriefing({ onLaunch, onBack }: MissionBriefingProps) {
         </div>
 
         <div className="briefing-actions">
-          <button className="btn btn-secondary" onClick={onBack}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              playUiSound('ui_select')
+              onBack()
+            }}
+          >
             Back
           </button>
-          <button className="btn btn-primary" onClick={onLaunch}>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              playUiSound('ui_confirm')
+              onLaunch()
+            }}
+          >
             Launch
           </button>
         </div>

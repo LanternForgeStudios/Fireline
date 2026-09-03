@@ -6,6 +6,7 @@ export function createGameConfig(parent: HTMLElement): Phaser.Types.Core.GameCon
     type: Phaser.AUTO,
     parent,
     backgroundColor: '#0a0d12',
+    pixelArt: true,
     width: WORLD_WIDTH,
     height: WORLD_HEIGHT,
     scale: {

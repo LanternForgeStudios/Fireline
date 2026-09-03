@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { playUiSound } from '../audio/uiSound'
 import type { MissionResult } from '../game/types'
 
 interface ResultScreenProps {
@@ -7,6 +9,10 @@ interface ResultScreenProps {
 
 export function ResultScreen({ result, onReturnToBase }: ResultScreenProps) {
   const success = result.outcome === 'complete'
+
+  useEffect(() => {
+    playUiSound(success ? 'mission_complete' : 'mission_failed')
+  }, [success])
 
   return (
     <div className="screen result-screen">

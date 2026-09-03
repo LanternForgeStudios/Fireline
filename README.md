@@ -1,5 +1,7 @@
 # Fireline — Helicopter Gunner
 
+**[▶ Play live](https://lanternforgestudios.github.io/Fireline/)**
+
 An arcade first-person rail shooter: you're the door gunner on an AI-piloted helicopter, clearing waves of hostiles until extraction. Built per the [design doc](docs/GDD.md) ([original .docx](docs/Helicopter_Gunner_GDD_v0.1.docx)) on React + TypeScript + Vite + Phaser 4.
 
 ## Status
@@ -28,7 +30,7 @@ npm run lint       # oxlint
 
 ## Deployment
 
-`.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages via `actions/deploy-pages` on every push to `main`. One manual, one-time step is still required since Actions can't flip it on: **Settings → Pages → Source: "GitHub Actions"**. Once that's set, the site goes live at `https://<org>.github.io/Fireline/`. `vite.config.ts` already sets the `/Fireline/` base path for this.
+`.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages via `actions/deploy-pages` on every push to `main`. Live now at **https://lanternforgestudios.github.io/Fireline/** — this is the primary way to play and share the game while it's in development. `vite.config.ts` sets the `/Fireline/` base path for this. GitHub Pages will remain the host until the game is ready to port to iOS (and possibly Android) via Capacitor, per the GDD.
 
 ## How to play
 

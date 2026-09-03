@@ -1,4 +1,6 @@
 import Phaser from 'phaser'
+import { audioSettings } from '../../audio/audioSettings'
+import type { Difficulty } from '../../firebase/playerProfile'
 import { ENEMY_DEFS } from '../data/enemyTypes'
 import { PROTOTYPE_MISSION } from '../data/waves'
 import { Enemy, type EnemySpawnPoint } from '../entities/Enemy'
@@ -25,6 +27,14 @@ const IMPACT_Y_RANGE: [number, number] = [545, 610]
 const SPAWN_X_MARGIN = 90
 const DOOR_SILL_HEIGHT = 56
 
+// Difficulty scales enemy toughness and how hard they hit back; spawn timing
+// and enemy variety stay the same across difficulties for this prototype.
+const DIFFICULTY_MULTIPLIERS: Record<Difficulty, { health: number; damage: number }> = {
+  easy: { health: 0.75, damage: 0.7 },
+  normal: { health: 1, damage: 1 },
+  hard: { health: 1.35, damage: 1.3 },
+}
+
 export class CombatScene extends Phaser.Scene {
   private weapon = new Weapon()
   private enemies: Enemy[] = []
@@ -44,6 +54,20 @@ export class CombatScene extends Phaser.Scene {
     super('combat')
   }
 
+  preload() {
+    for (const def of Object.values(ENEMY_DEFS)) {
+      this.load.image(`enemy-${def.id}`, `${import.meta.env.BASE_URL}enemies/${def.id}.png`)
+    }
+    this.load.image('ground-art', `${import.meta.env.BASE_URL}env/ground.png`)
+    this.load.image('mountains-art', `${import.meta.env.BASE_URL}env/mountains.png`)
+
+    this.load.audio('sfx-shot', `${import.meta.env.BASE_URL}audio/sfx/shot.wav`)
+    this.load.audio('sfx-kill', `${import.meta.env.BASE_URL}audio/sfx/kill.wav`)
+    this.load.audio('sfx-aircraft-damage', `${import.meta.env.BASE_URL}audio/sfx/aircraft_damage.wav`)
+    this.load.audio('sfx-overheat', `${import.meta.env.BASE_URL}audio/sfx/overheat.wav`)
+    this.load.audio('music-combat', `${import.meta.env.BASE_URL}audio/music/combat.ogg`)
+  }
+
   create() {
     this.health = MAX_HEALTH
     this.score = 0
@@ -61,16 +85,18 @@ export class CombatScene extends Phaser.Scene {
     this.buildCrosshair()
     this.setupInput()
 
+    this.sound.play('music-combat', { loop: true, volume: audioSettings.musicVolume })
+
     this.emitHud()
   }
 
   /**
-   * Oblique 3/4-view desert diorama: a shallow sky/horizon strip up top,
-   * a large sand-colored ground plane filling most of the frame, and a
-   * distance-shading overlay (light near the horizon, dark near the
-   * helicopter) to sell camera height. Placeholder procedural art —
-   * swap the ground/enemy textures for PixelLab sprites without touching
-   * this layout once that's wired up.
+   * Oblique 3/4-view desert diorama: a shallow sky/horizon strip up top, a
+   * mountain silhouette (real PixelLab art, stretched to width — a single
+   * static image rather than a tiled texture avoids seams a freeform-painted
+   * range can't guarantee), a tiled sand ground plane (real seamless PixelLab
+   * tile, scrolls via tilePositionX/Y), and a distance-shading overlay
+   * (light near the horizon, dark near the helicopter) to sell camera height.
    */
   private buildBackground() {
     // Drawn directly (not baked to a texture) because generateTexture uses the
@@ -79,42 +105,19 @@ export class CombatScene extends Phaser.Scene {
     sky.fillGradientStyle(0xf7d9a0, 0xf7d9a0, 0xf2b26b, 0xf2b26b, 1)
     sky.fillRect(0, 0, WORLD_WIDTH, HORIZON_Y)
 
-    const sun = this.add.graphics()
-    sun.fillStyle(0xfff3d6, 0.22)
-    sun.fillCircle(WORLD_WIDTH * 0.78, HORIZON_Y * 0.4, 70)
-    sun.fillStyle(0xfff8e6, 0.9)
-    sun.fillCircle(WORLD_WIDTH * 0.78, HORIZON_Y * 0.4, 40)
+    // The mountain art already bakes in a sun glow, so there's no separate
+    // procedural sun layer here.
+    const mountains = this.add.image(WORLD_WIDTH / 2, HORIZON_Y, 'mountains-art')
+    mountains.setOrigin(0.5, 1)
+    mountains.setDisplaySize(WORLD_WIDTH, 90)
+    mountains.setAlpha(0.75)
 
-    const mountains = this.add.graphics()
-    mountains.fillStyle(0xc98f5e, 0.5)
-    for (let i = 0; i < 9; i++) {
-      const bx = i * 170 - 40
-      mountains.fillTriangle(bx, HORIZON_Y, bx + 90, HORIZON_Y - 50, bx + 180, HORIZON_Y)
-    }
-
-    const groundGfx = this.add.graphics()
-    groundGfx.fillStyle(0xcfa66a, 1)
-    groundGfx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT - HORIZON_Y)
-    groundGfx.fillStyle(0xb98f52, 0.6)
-    for (let i = 0; i < 26; i++) {
-      const rx = (i * 173 + (i % 3) * 61) % WORLD_WIDTH
-      const ry = (i * 97 + (i % 5) * 53) % (WORLD_HEIGHT - HORIZON_Y)
-      groundGfx.fillEllipse(rx, ry, 20 + (i % 4) * 6, 8 + (i % 3) * 4)
-    }
-    groundGfx.fillStyle(0x8a6a3c, 0.5)
-    for (let i = 0; i < 14; i++) {
-      const rx = (i * 233 + (i % 4) * 41) % WORLD_WIDTH
-      const ry = (i * 151 + (i % 6) * 37) % (WORLD_HEIGHT - HORIZON_Y)
-      groundGfx.fillCircle(rx, ry, 3 + (i % 3))
-    }
-    groundGfx.generateTexture('ground-tex', WORLD_WIDTH, WORLD_HEIGHT - HORIZON_Y)
-    groundGfx.destroy()
     this.ground = this.add.tileSprite(
       WORLD_WIDTH / 2,
       HORIZON_Y + (WORLD_HEIGHT - HORIZON_Y) / 2,
       WORLD_WIDTH,
       WORLD_HEIGHT - HORIZON_Y,
-      'ground-tex',
+      'ground-art',
     )
 
     // Distance shading: fades the ground darker near the helicopter to fake
@@ -245,8 +248,15 @@ export class CombatScene extends Phaser.Scene {
   }
 
   private spawnEnemy(typeId: EnemyDef['id']) {
-    const def = ENEMY_DEFS[typeId]
-    const enemy = new Enemy(this, def, this.spawnPoint(), `enemy-${def.id}`, this.time.now)
+    const baseDef = ENEMY_DEFS[typeId]
+    const mult = DIFFICULTY_MULTIPLIERS[audioSettings.difficulty]
+    const def: EnemyDef = {
+      ...baseDef,
+      maxHealth: Math.round(baseDef.maxHealth * mult.health),
+      impactDamage: Math.round(baseDef.impactDamage * mult.damage),
+      fireDamagePerTick: Math.round(baseDef.fireDamagePerTick * mult.damage),
+    }
+    const enemy = new Enemy(this, def, this.spawnPoint(), `enemy-${baseDef.id}`, this.time.now)
     this.enemies.push(enemy)
   }
 
@@ -319,10 +329,17 @@ export class CombatScene extends Phaser.Scene {
     if (amount <= 0) return
     this.health = Math.max(0, this.health - amount)
     this.cameras.main.shake(120, 0.006)
+    this.sound.play('sfx-aircraft-damage', { volume: audioSettings.sfxVolume })
   }
 
   private handleFiring() {
+    const wasOverheated = this.weapon.overheated
     if (!this.weapon.tryFire()) return
+
+    this.sound.play('sfx-shot', { volume: audioSettings.sfxVolume * 0.5 })
+    if (this.weapon.overheated && !wasOverheated) {
+      this.sound.play('sfx-overheat', { volume: audioSettings.sfxVolume })
+    }
 
     let target: Enemy | null = null
     for (const enemy of this.enemies) {
@@ -339,6 +356,7 @@ export class CombatScene extends Phaser.Scene {
       this.enemiesDestroyed += 1
       target.destroy()
       this.enemies = this.enemies.filter((e) => e !== target)
+      this.sound.play('sfx-kill', { volume: audioSettings.sfxVolume })
     }
   }
 
