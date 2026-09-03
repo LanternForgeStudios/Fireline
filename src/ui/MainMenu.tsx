@@ -42,6 +42,7 @@ export function MainMenu({ onStart, onSettings, onCredits, onUpgrades, onSignOut
               onUpgrades()
             }}
           >
+            <img className="menu-icon" src={`${import.meta.env.BASE_URL}ui/icon-upgrades.png`} alt="" />
             Upgrades
           </button>
           <button
@@ -51,6 +52,7 @@ export function MainMenu({ onStart, onSettings, onCredits, onUpgrades, onSignOut
               onSettings()
             }}
           >
+            <img className="menu-icon" src={`${import.meta.env.BASE_URL}ui/icon-settings.png`} alt="" />
             Settings
           </button>
           <button
@@ -60,6 +62,7 @@ export function MainMenu({ onStart, onSettings, onCredits, onUpgrades, onSignOut
               onCredits()
             }}
           >
+            <img className="menu-icon" src={`${import.meta.env.BASE_URL}ui/icon-credits.png`} alt="" />
             Credits
           </button>
           <button className="login-toggle" onClick={onSignOut}>

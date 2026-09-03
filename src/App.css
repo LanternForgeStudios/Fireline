@@ -190,6 +190,19 @@
   margin-top: 0.75rem;
 }
 
+.menu-icon-row .btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.menu-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  image-rendering: pixelated;
+  opacity: 0.85;
+}
+
 .hud-label {
   font-family: 'Courier New', ui-monospace, monospace;
   font-size: 0.72rem;

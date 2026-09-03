@@ -37,9 +37,14 @@ Phase 3 — no art needed until that's built).
 | Asset | File | Notes |
 | --- | --- | --- |
 | Helicopter hero | `helicopter-hero.png` | 256×256 via `create_1_direction_object` (id `a0ae0212-c277-4337-b9c5-328dd42937c3`), shown on the Main Menu. Asked for a side profile with door gunner visible; got a front-on Apache-style gunship instead — kept it, it reads well as hero art even though it doesn't literally match the brief |
+| Upgrades icon | `icon-upgrades.png` | 64×64 via `create_image_pixflux` (job `3c24dd85-ee5b-4afe-bda7-c742c39e17e7`), wrench crossed over a gear, military stencil style |
+| Settings icon | `icon-settings.png` | 64×64 via `create_image_pixflux` (job `97d171b2-e45f-4803-8339-479088e313f4`), plain gear cog |
+| Credits icon | `icon-credits.png` | 64×64 via `create_image_pixflux` (job `cd6a5883-e335-4072-8b48-dfe598ac54da`), rank star/ribbon |
 
-**Not done:** loadout/upgrade icons, mission-type icons (Escort/Rescue/etc. — moot until Phase 2
-adds more than one mission), achievement/rank badges.
+All three shown at 1.1rem inline next to their button label in the Main Menu icon row
+(`.menu-icon` in `App.css`).
+
+**Not done:** mission-type icons (Escort/Rescue/etc.), achievement/rank badges.
 
 ## In-scene elements still procedural (not yet swapped for real art)
 
@@ -57,4 +62,7 @@ adds more than one mission), achievement/rank badges.
 - [ ] Regenerate `helicopter-hero.png` as a true side profile if the front-on look doesn't hold up
       once seen in context.
 - [ ] Enemy hit/death animation frames.
-- [ ] Muzzle flash + hit-spark VFX (currently just the health-bar-appears-on-damage feedback).
+- [ ] Muzzle flash + hit-spark VFX (currently just the health-bar-appears-on-damage feedback) — note
+      this line predates the actual muzzle flash/hit-spark/kill-burst tween VFX shipped 2026-09-02
+      (2), which are procedural, not PixelLab art; a real rotor-dust VFX pass is still open.
+- [x] Menu icons (Upgrades/Settings/Credits) — done 2026-09-03.
