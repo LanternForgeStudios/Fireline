@@ -57,7 +57,7 @@ export function MissionSelect({ onSelect, onBack }: MissionSelectProps) {
               }}
             >
               <div className="mission-list-header">
-                <span className="briefing-type">Randomly Generated · {randomMission.type}</span>
+                <span className="briefing-type">Randomly Generated&nbsp;· {randomMission.type}</span>
                 <span className="hud-label">{randomMission.waves.length} waves</span>
               </div>
               <div className="briefing-name mission-list-name">{randomMission.name}</div>
