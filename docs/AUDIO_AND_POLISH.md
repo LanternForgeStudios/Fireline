@@ -74,8 +74,8 @@ alongside them — worth double-checking their source/license before a public re
       sells "under a spinning rotor" without needing new art of an actual rotor). Separately, small
       tan dust puffs (`spawnDustPuff`/`updateDustKickup`, reusing the shared `spark-tex`, tinted to
       the mission's own `theme.groundTint`) drift up from near the door sill every ~220-420ms.
-      Reasoned through and build-verified, not yet screenshotted mid-combat this session — see
-      PROGRESS.md log for the current verification status.
+      Verified mid-combat against the live site via Playwright — dust puffs visible drifting/fading
+      near the ground line across several frames of an actual mission, no console/page errors.
 - [ ] Enemy hit/death sprite *animation* frames (the VFX above is procedural overlay, not new
       PixelLab animation frames — still tracked in [ART_ASSETS.md](ART_ASSETS.md))
 
