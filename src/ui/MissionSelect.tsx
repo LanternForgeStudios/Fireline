@@ -7,6 +7,10 @@ interface MissionSelectProps {
   onBack: () => void
 }
 
+function toCssColor(hex: number): string {
+  return `#${hex.toString(16).padStart(6, '0')}`
+}
+
 export function MissionSelect({ onSelect, onBack }: MissionSelectProps) {
   return (
     <div className="screen briefing-screen">
@@ -19,6 +23,7 @@ export function MissionSelect({ onSelect, onBack }: MissionSelectProps) {
             <button
               key={mission.id}
               className="mission-list-item"
+              style={{ borderLeftColor: toCssColor(mission.theme.skyBottom) }}
               onClick={() => {
                 playUiSound('ui_confirm')
                 onSelect(mission)

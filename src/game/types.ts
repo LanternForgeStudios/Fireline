@@ -37,11 +37,23 @@ export interface WaveDef {
   spawns: WaveSpawn[]
 }
 
+export interface MissionTheme {
+  /** Sky gradient, top and bottom (hex). */
+  skyTop: number
+  skyBottom: number
+  /** Tint applied to the (shared) mountain art so each mission reads differently. */
+  mountainTint: number
+  mountainAlpha: number
+  /** Subtle tint applied to the (shared) ground tile. */
+  groundTint: number
+}
+
 export interface MissionDef {
   id: string
   name: string
   type: 'Search & Destroy' | 'Escort' | 'Extraction' | 'Rescue' | 'Base Defense' | 'Reconnaissance'
   briefing: string
+  theme: MissionTheme
   waves: WaveDef[]
 }
 

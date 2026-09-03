@@ -1,8 +1,8 @@
 import { initializeApp } from 'firebase/app'
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
-import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
-import { getFunctions } from 'firebase/functions'
+import { connectAuthEmulator, getAuth } from 'firebase/auth'
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
+import { connectFunctionsEmulator, getFunctions } from 'firebase/functions'
 
 // Firebase web config is not a secret — it identifies the project, not an
 // access credential. Actual access control lives in firestore.rules. Safe
@@ -27,11 +27,25 @@ export const auth = getAuth(firebaseApp)
 export const db = getFirestore(firebaseApp)
 export const functions = getFunctions(firebaseApp)
 
+// `npm run dev` talks to the Local Emulator Suite (`firebase emulators:start`,
+// or `npm run emulators`) instead of the live `fireline-lf` project — the
+// production build (import.meta.env.DEV is false) always talks to the real
+// backend. This is what makes it safe to test things like App Check
+// enforcement locally without risking the live app: flip enforcement in
+// prod only after it's been exercised end-to-end against the emulators.
+if (import.meta.env.DEV) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9199', { disableWarnings: true })
+  connectFirestoreEmulator(db, '127.0.0.1', 8180)
+  connectFunctionsEmulator(functions, '127.0.0.1', 5101)
+}
+
 // In dev, App Check would otherwise reject every request from localhost.
 // Setting this before initializeAppCheck makes the SDK log an unregistered
 // debug token to the console on first run — register it once in Firebase
 // Console -> App Check -> Manage debug tokens and local dev keeps working
-// even after enforcement is turned on for Firestore/Auth.
+// even after enforcement is turned on for Firestore/Auth. Needed even
+// against the emulators: App Check token *generation* still goes through
+// the real reCAPTCHA service (there's no local emulator for that part).
 if (import.meta.env.DEV) {
   ;(self as typeof self & { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string }).FIREBASE_APPCHECK_DEBUG_TOKEN = true
 }

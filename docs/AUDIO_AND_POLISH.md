@@ -62,6 +62,12 @@ alongside them — worth double-checking their source/license before a public re
 - [x] Kill burst + fade-out/scale-up on enemy destroy (the sprite no longer just vanishes)
 - [x] Red damage vignette flash when the aircraft takes a hit, layered with the existing camera
       shake
+- [x] Floating "+score" popup on kill (drift-up-and-fade text, `spawnScorePopup` in
+      `CombatScene.ts`) — feedback beyond the HUD counter ticking
+- [x] Per-mission visual theming — sky gradient, mountain tint, ground tint (`MissionDef.theme` in
+      `types.ts`/`missions.ts`, applied in `buildBackground`). Previously all three missions looked
+      identical apart from wave composition; this is hand-authored mood per mission, not generated
+      — a natural seam for the real Phase 3 procedural weather/time-of-day system to build against
 - [ ] Rotor blur / dust kickup around the helicopter frame for motion sell
 - [ ] Enemy hit/death sprite *animation* frames (the VFX above is procedural overlay, not new
       PixelLab animation frames — still tracked in [ART_ASSETS.md](ART_ASSETS.md))
@@ -78,13 +84,15 @@ alongside them — worth double-checking their source/license before a public re
       `import()`), cutting the initial bundle from ~2.16MB to ~783KB. Required replacing
       `Phaser.Events.EventEmitter` in `game/events.ts` with a small custom emitter so the React app
       shell doesn't statically pull in Phaser just for pub/sub.
-- [x] **Mobile touch aim — virtual trackpad.** Two iterations: first tried lifting the crosshair
-      above the touch point (still direct-position aiming), but the user didn't like it in
-      practice. Replaced with a fixed-position virtual trackpad (bottom-left corner, drag-to-steer
-      like an analog stick — rate-based, not absolute position) that also holds-to-fire while
-      engaged. The pad sits away from where enemies/the crosshair actually appear, so the aiming
-      thumb never covers the target regardless of where the player is currently aiming. Mouse
-      input is unchanged (still direct absolute positioning). See `TOUCH_PAD_*` constants and
-      `buildTouchPad`/`engagePad`/`updatePadDrag` in `CombatScene.ts`. Only tested logically, not
-      on a physical device this session — worth a real-device pass; `TOUCH_PAD_MAX_SPEED` (steering
-      rate) and the pad's screen position/size may want tuning once tried on an actual phone.
+- [x] **Mobile touch aim — trackpad, delta-based.** Three iterations: (1) lift the crosshair above
+      the touch point — still direct-position aiming, didn't feel right; (2) a fixed-position
+      virtual joystick — drag-to-steer, rate-based (distance from center = speed) — felt imprecise
+      for aiming, since it keeps drifting as long as any offset is held; (3) current: a real
+      trackpad model — crosshair moves by the finger's *movement* each frame
+      (`TOUCH_PAD_SENSITIVITY`), stops the instant the finger stops, same as a laptop trackpad or
+      mouse. Also added `settings.controlSide` ('left'/'right', Firestore-backed) so the pad can
+      sit on whichever side the player's thumb actually is. See `TOUCH_PAD_*` constants and
+      `buildTouchPad`/`engagePad`/`updatePadDrag`/`updatePadKnobVisual` in `CombatScene.ts`. Mouse
+      input is unaffected throughout (still direct absolute positioning). Only tested logically,
+      not on a physical device this session — worth a real-device pass; `TOUCH_PAD_SENSITIVITY`
+      and the pad's screen position/size may want tuning once tried on an actual phone.

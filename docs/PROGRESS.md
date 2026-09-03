@@ -9,9 +9,9 @@ on top.
 | Phase | Goal | Status |
 | --- | --- | --- |
 | 1 | Core Combat | **Done** — playable shooting prototype |
-| 2 | Mission System | **In progress** — 3 hand-authored missions (Search & Destroy, Escort, Extraction) with a mission-select screen; still one fixed loadout, no procedural variety |
-| 3 | Procedural Content | Not started |
-| 4 | Backend | **In progress** — see below |
+| 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 3 missions (Search & Destroy, Escort, Extraction) with a select screen, each with distinct visual theming; loadout selection still doesn't exist (one fixed weapon) |
+| 3 | Procedural Content | **Not started — next up.** Seeded random generation, encounter blocks, threat budgets, weather/time-of-day variety per the GDD. The per-mission visual theming added this session (sky/mountain/ground tint) is hand-authored per mission, not generated — a natural seam to build the real system against |
+| 4 | Backend | **Mostly done** — see below; only App Check enforcement is outstanding |
 | 5 | Release | Not started (web live on GitHub Pages; iOS/Capacitor future) |
 
 ## Backend (Phase 4) detail
@@ -22,16 +22,68 @@ on top.
       unlockedUpgrades) + `players/{uid}/missionResults/{id}` history, live-synced to the UI
 - [x] Firestore security rules — per-player read/write isolation (`firestore.rules`)
 - [x] App Check (reCAPTCHA v3) on Firestore/Auth, currently in **Monitor** mode
-- [x] Player settings (music/SFX volume, difficulty) stored in Firestore, hydrate on any device
+- [x] Player settings (music/SFX volume, difficulty, mobile control side) stored in Firestore,
+      hydrate on any device
 - [x] Server-side reward validation — Cloud Functions (`functions/`, Blaze plan) now own all
       progression writes; `firestore.rules` restricts client writes on `players/{uid}` to just the
       `settings` field, and blocks `missionResults` writes entirely
-- [ ] Flip App Check to **Enforce** once monitoring shows clean traffic (Cloud Functions calls
-      aren't App Check-enforced yet either — see the log entry below)
+- [x] Local Emulator Suite (`npm run emulators`) — Auth/Firestore/Functions all working locally,
+      non-default ports so it coexists with other Firebase projects' emulators on the same machine
+- [x] App Check enforced on both Cloud Functions (`enforceAppCheck: true`)
+- [ ] App Check enforcement on Firestore/Auth themselves — requested, but this toggle has **no
+      CLI/API path**; it's a Firebase Console-only action (Build → App Check → APIs tab). Handed
+      back to the project owner rather than attempted via an improvised authenticated REST call
+      against a security-sensitive production toggle, especially right after the unexplained
+      black-screen incident below. Test in the app immediately after flipping it (sign in, play a
+      mission, open Settings) — it's instantly reversible back to Monitor if anything breaks.
 
 ## Log
 
-### 2026-09-03 — Server-side reward validation (Cloud Functions)
+### 2026-09-03 (3) — Trackpad rework, control-side setting, local emulators, functions App Check
+- **Touch aim reworked again**, per direct feedback that the rate-based virtual-stick pad (v1 of
+  the pad, previous entry) still felt imprecise/chaotic. Rebuilt to behave like a laptop trackpad
+  instead: crosshair moves by the finger's *movement* (delta) each frame, scaled by
+  `TOUCH_PAD_SENSITIVITY`, not by how far the finger sits from a center point — movement stops the
+  instant the finger stops, and there's no "still deflected so still drifting" fight for precise
+  placement. See `TOUCH_PAD_SENSITIVITY`/`updatePadDrag` in `CombatScene.ts`.
+- Added `settings.controlSide` ('left'/'right') so the pad can sit on whichever side the player's
+  aiming thumb actually is — Settings screen, Firestore-backed like every other setting.
+- **Set up the Firebase Local Emulator Suite** (`npm run emulators`, `firebase.json`
+  `emulators` block, `src/firebase/config.ts` connects to it in `import.meta.env.DEV`). Hit and
+  fixed two real problems getting there, worth remembering:
+  - Default emulator ports (9099/8080/4000/etc.) collided with a **different** project's
+    (`forgotten-wilds`) emulator already running on this machine — moved Fireline's to non-default
+    ports (9199/8180/5101/4100/4410/4510) rather than touching that unrelated process.
+  - The Functions emulator failed to load our functions at all ("Cannot determine backend
+    specification. Timeout after 10000") — `firebase-functions@6.6.0` was too far behind the
+    installed `firebase-tools@15.22.4` CLI's discovery protocol. Upgraded to
+    `firebase-functions@^7.3.2` / `firebase-admin@^13.10.0` (not the very latest `firebase-admin@14`,
+    which requires Node ≥22 — we're targeting Node 20 for the deployed functions runtime).
+    Re-deployed to production afterward to confirm the upgrade didn't break the live functions too.
+- Enforced App Check on `submitMissionResult`/`resetProgress` (`enforceAppCheck: true`, deployed).
+  Firestore/Auth-level enforcement is still Monitor mode — see the backend checklist above.
+- Per-mission theming (previous entry): confirmed it's genuinely GDD Phase 2 polish, not Phase 3 —
+  hand-authored per-mission mood, not generated. Phase 3 (procedural) is still the next real
+  milestone.
+
+### 2026-09-03 (2) — Per-mission visual theming, score popups, boot-hang hardening
+- Each mission now has a `theme` (sky gradient, mountain/ground tint) — previously all three
+  looked identical apart from wave composition. Firebreak stays the baseline midday look, Steel
+  Convoy is hazier/dustier, Nightfall is a dusk palette matching its name. Mission Select shows
+  each mission's mood as a left-border accent color.
+- Added floating "+score" popups on enemy kill (drift-up-and-fade text) — more combat feedback
+  beyond the HUD counter ticking.
+- **Reported a live "black screen" after a successful deploy** — resolved on its own on retry
+  (glad it wasn't stuck), but the underlying UX gap is real: `App.tsx`'s `!authChecked` guard
+  rendered a bare empty `<div>` with zero feedback while waiting on Firebase Auth's initial state
+  resolution, which depends on a network round-trip (and, with App Check involved, a reCAPTCHA
+  token fetch). If that hangs for any reason, the player just sees nothing, indefinitely, with no
+  way to tell "loading" from "broken." Added a visible loading state plus a 10s timeout that shows
+  a reload prompt instead of hanging forever. **Root cause not confirmed** — App Check enforcement
+  was verified still in Monitor mode (never touched via API), most likely a transient CDN/network
+  delay on first load. Worth watching for recurrence.
+
+### 2026-09-03 (1) — Server-side reward validation (Cloud Functions)
 Firebase Blaze plan is set up, unblocking this. Closes the tampering gap noted in every earlier
 entry below: previously a signed-in player could open devtools and call the client SDK directly
 with an inflated `MissionResult`, since rewards were computed and written entirely client-side.

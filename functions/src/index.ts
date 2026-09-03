@@ -30,7 +30,7 @@ function computeRewards(score: number) {
  * server-side catalog expects still gets recorded (just capped), rather than
  * silently dropping a real player's result over an off-by-one in the catalog.
  */
-export const submitMissionResult = onCall<MissionResultInput>(async (request) => {
+export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Must be signed in.')
   }
@@ -93,7 +93,7 @@ export const submitMissionResult = onCall<MissionResultInput>(async (request) =>
  * "Functions own rewards, but the client can still directly zero things
  * out." Keeps displayName and settings untouched.
  */
-export const resetProgress = onCall(async (request) => {
+export const resetProgress = onCall({ enforceAppCheck: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Must be signed in.')
   }

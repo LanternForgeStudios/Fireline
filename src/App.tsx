@@ -35,18 +35,28 @@ function App() {
   const [result, setResult] = useState<MissionResult | null>(null)
   const [selectedMission, setSelectedMission] = useState<MissionDef>(DEFAULT_MISSION)
   const [authChecked, setAuthChecked] = useState(false)
+  const [authTimedOut, setAuthTimedOut] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<PlayerProfile | null>(null)
 
   // Firebase Authentication gates play — no account, no mission. Firestore
   // is the source of truth for progression once signed in, so the UI just
-  // mirrors whatever's there.
+  // mirrors whatever's there. onAuthStateChanged normally fires almost
+  // immediately, but it depends on a network round-trip (and, with App
+  // Check involved, a reCAPTCHA token fetch) — if that hangs, the app
+  // previously just showed an empty dark div forever with zero feedback.
+  // The timeout gives the player a way out instead of a silent "black
+  // screen" if that ever happens.
   useEffect(() => {
     const unsubscribeAuth = watchAuthState((nextUser) => {
       setUser(nextUser)
       setAuthChecked(true)
     })
-    return unsubscribeAuth
+    const timeoutId = window.setTimeout(() => setAuthTimedOut(true), 10000)
+    return () => {
+      unsubscribeAuth()
+      window.clearTimeout(timeoutId)
+    }
   }, [])
 
   useEffect(() => {
@@ -73,6 +83,7 @@ function App() {
     audioSettings.musicVolume = settings.musicVolume
     audioSettings.sfxVolume = settings.sfxVolume
     audioSettings.difficulty = settings.difficulty
+    audioSettings.controlSide = settings.controlSide
     setMusicVolume(settings.musicVolume)
   }, [profile?.settings])
 
@@ -132,7 +143,27 @@ function App() {
   }, [user])
 
   if (!authChecked) {
-    return <div className="app-root" />
+    return (
+      <div className="app-root">
+        <div className="screen boot-screen">
+          <div className="boot-content">
+            <h1 className="title">FIRELINE</h1>
+            {authTimedOut ? (
+              <>
+                <p className="boot-message">
+                  Taking longer than expected to connect. Check your connection and reload.
+                </p>
+                <button className="btn btn-secondary" onClick={() => window.location.reload()}>
+                  Reload
+                </button>
+              </>
+            ) : (
+              <p className="boot-message">Loading...</p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (!user) {

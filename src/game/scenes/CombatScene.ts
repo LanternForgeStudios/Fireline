@@ -29,19 +29,28 @@ const DOOR_SILL_HEIGHT = 56
 // Where tracer fire visually originates from — the M134 mount at the open
 // door, just above the sill silhouette drawn at the bottom of the screen.
 const GUN_ORIGIN = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT - 24 }
-// Touch aim uses a fixed-position virtual trackpad (drag-to-steer, like an
-// analog stick) rather than positioning the crosshair directly under the
-// finger — a direct-touch scheme means the finger itself blocks whatever
-// it's aiming at. The pad sits in a bottom corner, away from where enemies
-// and the crosshair actually are, so the aiming thumb never covers the
-// target. Mouse input is unaffected (still direct absolute positioning).
-const TOUCH_PAD_CENTER = { x: 150, y: WORLD_HEIGHT - 150 }
+// Touch aim uses a fixed-position virtual trackpad rather than positioning
+// the crosshair directly under the finger — a direct-touch scheme means the
+// finger itself blocks whatever it's aiming at. The pad sits in a screen
+// corner (side configurable, see audioSettings.controlSide), away from
+// where enemies and the crosshair actually are, so the aiming thumb never
+// covers the target. Mouse input is unaffected (still direct absolute
+// positioning).
+//
+// Behaves like a laptop trackpad, not an analog stick: crosshair movement
+// tracks the finger's *movement* (delta), scaled by TOUCH_PAD_SENSITIVITY,
+// not its distance from a center point. A rate/deflection-based joystick
+// was tried first and felt imprecise for aiming — it keeps moving the
+// crosshair as long as you hold any offset, which fights fine placement.
+// Delta tracking stops the instant the finger stops, same as a real mouse.
+const TOUCH_PAD_Y = WORLD_HEIGHT - 150
+const TOUCH_PAD_MARGIN_X = 150
 const TOUCH_PAD_RADIUS = 80
 // Generous vs. the visual radius so a slightly-off first touch still grabs
 // the pad — once engaged, dragging can go beyond the ring (clamped for the
 // knob's rendered position, not for how it's interpreted as input).
 const TOUCH_PAD_ACTIVATION_RADIUS = 110
-const TOUCH_PAD_MAX_SPEED = 1000 // px/sec at full deflection
+const TOUCH_PAD_SENSITIVITY = 2.2
 
 // Difficulty scales enemy toughness and how hard they hit back; spawn timing
 // and enemy variety stay the same across difficulties for this prototype.
@@ -61,10 +70,12 @@ export class CombatScene extends Phaser.Scene {
 
   private padRing!: Phaser.GameObjects.Arc
   private padKnob!: Phaser.GameObjects.Arc
+  private padCenter = { x: 0, y: 0 }
   private padPointerId: number | null = null
-  // Unit direction (dirX/dirY) plus 0-1 deflection magnitude — a rate
-  // control (push further = steer faster), not an absolute position.
-  private padDrag: { dirX: number; dirY: number; magnitude01: number } | null = null
+  // Last raw touch position for the active pad pointer — the *movement*
+  // between this and the current touch each frame is what drives the
+  // crosshair, not the position itself. null while the pad isn't engaged.
+  private padLastPos: { x: number; y: number } | null = null
 
   private health = MAX_HEALTH
   private score = 0
@@ -126,10 +137,12 @@ export class CombatScene extends Phaser.Scene {
    * (light near the horizon, dark near the helicopter) to sell camera height.
    */
   private buildBackground() {
+    const theme = missionState.current.theme
+
     // Drawn directly (not baked to a texture) because generateTexture uses the
     // Canvas API under the hood, which can't reproduce fillGradientStyle.
     const sky = this.add.graphics()
-    sky.fillGradientStyle(0xf7d9a0, 0xf7d9a0, 0xf2b26b, 0xf2b26b, 1)
+    sky.fillGradientStyle(theme.skyTop, theme.skyTop, theme.skyBottom, theme.skyBottom, 1)
     sky.fillRect(0, 0, WORLD_WIDTH, HORIZON_Y)
 
     // The mountain art already bakes in a sun glow, so there's no separate
@@ -137,7 +150,8 @@ export class CombatScene extends Phaser.Scene {
     const mountains = this.add.image(WORLD_WIDTH / 2, HORIZON_Y, 'mountains-art')
     mountains.setOrigin(0.5, 1)
     mountains.setDisplaySize(WORLD_WIDTH, 90)
-    mountains.setAlpha(0.75)
+    mountains.setAlpha(theme.mountainAlpha)
+    mountains.setTint(theme.mountainTint)
 
     this.ground = this.add.tileSprite(
       WORLD_WIDTH / 2,
@@ -146,11 +160,12 @@ export class CombatScene extends Phaser.Scene {
       WORLD_HEIGHT - HORIZON_Y,
       'ground-art',
     )
+    this.ground.setTint(theme.groundTint)
 
     // Distance shading: fades the ground darker near the helicopter to fake
     // camera height/perspective without needing a warped mesh.
     const shading = this.add.graphics()
-    shading.fillGradientStyle(0xcfa66a, 0xcfa66a, 0x5a4322, 0x5a4322, 0, 0, 0.55, 0.55)
+    shading.fillGradientStyle(theme.groundTint, theme.groundTint, 0x2a1f18, 0x2a1f18, 0, 0, 0.55, 0.55)
     shading.fillRect(0, HORIZON_Y, WORLD_WIDTH, WORLD_HEIGHT - HORIZON_Y)
   }
 
@@ -286,6 +301,28 @@ export class CombatScene extends Phaser.Scene {
     })
   }
 
+  /** "+150" text that drifts up and fades on a kill — score feedback beyond the HUD counter. */
+  private spawnScorePopup(x: number, y: number, value: number) {
+    const text = this.add.text(x, y, `+${value}`, {
+      fontFamily: 'monospace',
+      fontSize: '18px',
+      fontStyle: 'bold',
+      color: '#ffe08a',
+      stroke: '#2a1a0a',
+      strokeThickness: 3,
+    })
+    text.setOrigin(0.5, 1)
+    text.setDepth(1900)
+    this.tweens.add({
+      targets: text,
+      y: y - 46,
+      alpha: 0,
+      duration: 650,
+      ease: 'Cubic.Out',
+      onComplete: () => text.destroy(),
+    })
+  }
+
   private buildCrosshair() {
     const g = this.add.graphics()
     g.lineStyle(3, 0xff3b30, 0.95)
@@ -303,15 +340,22 @@ export class CombatScene extends Phaser.Scene {
     this.crosshair.setDepth(2000)
   }
 
-  /** Always built (harmless, low-opacity for a mouse player who'll never touch it). */
+  /**
+   * Always built (harmless, low-opacity for a mouse player who'll never
+   * touch it). Position depends on audioSettings.controlSide, read once
+   * here — changing the setting takes effect next mission, not mid-combat.
+   */
   private buildTouchPad() {
-    this.padRing = this.add.circle(TOUCH_PAD_CENTER.x, TOUCH_PAD_CENTER.y, TOUCH_PAD_RADIUS, 0xffffff, 0.08)
+    const onRight = audioSettings.controlSide === 'right'
+    this.padCenter = { x: onRight ? WORLD_WIDTH - TOUCH_PAD_MARGIN_X : TOUCH_PAD_MARGIN_X, y: TOUCH_PAD_Y }
+
+    this.padRing = this.add.circle(this.padCenter.x, this.padCenter.y, TOUCH_PAD_RADIUS, 0xffffff, 0.08)
     this.padRing.setStrokeStyle(2, 0xffffff, 0.35)
     this.padRing.setDepth(2100)
-    this.padKnob = this.add.circle(TOUCH_PAD_CENTER.x, TOUCH_PAD_CENTER.y, 26, 0xffffff, 0.25)
+    this.padKnob = this.add.circle(this.padCenter.x, this.padCenter.y, 26, 0xffffff, 0.25)
     this.padKnob.setDepth(2101)
 
-    const label = this.add.text(TOUCH_PAD_CENTER.x, TOUCH_PAD_CENTER.y + TOUCH_PAD_RADIUS + 16, 'AIM', {
+    const label = this.add.text(this.padCenter.x, this.padCenter.y + TOUCH_PAD_RADIUS + 16, 'AIM', {
       fontFamily: 'monospace',
       fontSize: '13px',
       color: '#ffffff',
@@ -328,31 +372,45 @@ export class CombatScene extends Phaser.Scene {
   }
 
   private engagePad(pointer: Phaser.Input.Pointer) {
-    const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, TOUCH_PAD_CENTER.x, TOUCH_PAD_CENTER.y)
+    const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.padCenter.x, this.padCenter.y)
     if (this.padPointerId !== null || dist > TOUCH_PAD_ACTIVATION_RADIUS) return false
     this.padPointerId = pointer.id
+    this.padLastPos = { x: pointer.x, y: pointer.y }
     this.padRing.setStrokeStyle(2, 0xfff3c4, 0.6)
-    this.updatePadDrag(pointer)
+    this.updatePadKnobVisual(pointer)
     this.weapon.setTrigger(true)
     return true
   }
 
+  /** Trackpad-style: crosshair moves by the finger's *movement* since last frame, not its
+   * absolute position — stops the instant the finger stops, unlike a deflection-based stick. */
   private updatePadDrag(pointer: Phaser.Input.Pointer) {
-    const dx = pointer.x - TOUCH_PAD_CENTER.x
-    const dy = pointer.y - TOUCH_PAD_CENTER.y
-    const dist = Math.max(1, Math.hypot(dx, dy))
-    const magnitude01 = Phaser.Math.Clamp(dist / TOUCH_PAD_RADIUS, 0, 1)
-    this.padDrag = { dirX: dx / dist, dirY: dy / dist, magnitude01 }
+    if (!this.padLastPos) return
+    const deltaX = pointer.x - this.padLastPos.x
+    const deltaY = pointer.y - this.padLastPos.y
+    this.padLastPos = { x: pointer.x, y: pointer.y }
 
+    this.crosshairPos.x = Phaser.Math.Clamp(this.crosshairPos.x + deltaX * TOUCH_PAD_SENSITIVITY, 0, WORLD_WIDTH)
+    this.crosshairPos.y = Phaser.Math.Clamp(this.crosshairPos.y + deltaY * TOUCH_PAD_SENSITIVITY, 0, WORLD_HEIGHT)
+    this.crosshair.setPosition(this.crosshairPos.x, this.crosshairPos.y)
+
+    this.updatePadKnobVisual(pointer)
+  }
+
+  /** Knob just shows "which way is the finger currently offset" — purely visual, doesn't drive aim. */
+  private updatePadKnobVisual(pointer: Phaser.Input.Pointer) {
+    const dx = pointer.x - this.padCenter.x
+    const dy = pointer.y - this.padCenter.y
+    const dist = Math.max(1, Math.hypot(dx, dy))
     const knobDist = Math.min(dist, TOUCH_PAD_RADIUS)
-    this.padKnob.setPosition(TOUCH_PAD_CENTER.x + (dx / dist) * knobDist, TOUCH_PAD_CENTER.y + (dy / dist) * knobDist)
+    this.padKnob.setPosition(this.padCenter.x + (dx / dist) * knobDist, this.padCenter.y + (dy / dist) * knobDist)
   }
 
   private releasePad() {
     this.padPointerId = null
-    this.padDrag = null
+    this.padLastPos = null
     this.padRing.setStrokeStyle(2, 0xffffff, 0.35)
-    this.padKnob.setPosition(TOUCH_PAD_CENTER.x, TOUCH_PAD_CENTER.y)
+    this.padKnob.setPosition(this.padCenter.x, this.padCenter.y)
     this.weapon.setTrigger(false)
   }
 
@@ -418,13 +476,6 @@ export class CombatScene extends Phaser.Scene {
 
     this.ground.tilePositionX += delta * 0.06
     this.ground.tilePositionY += delta * 0.03
-
-    if (this.padDrag) {
-      const speed = TOUCH_PAD_MAX_SPEED * this.padDrag.magnitude01 * (delta / 1000)
-      this.crosshairPos.x = Phaser.Math.Clamp(this.crosshairPos.x + this.padDrag.dirX * speed, 0, WORLD_WIDTH)
-      this.crosshairPos.y = Phaser.Math.Clamp(this.crosshairPos.y + this.padDrag.dirY * speed, 0, WORLD_HEIGHT)
-      this.crosshair.setPosition(this.crosshairPos.x, this.crosshairPos.y)
-    }
 
     this.weapon.tick(delta)
     this.updateWaveSpawning(delta)
@@ -524,6 +575,7 @@ export class CombatScene extends Phaser.Scene {
       this.enemiesDestroyed += 1
       this.enemies = this.enemies.filter((e) => e !== killedTarget)
       this.spawnSpark(killedTarget.container.x, killedTarget.container.y, 0xff6b3d, 1.8, 260)
+      this.spawnScorePopup(killedTarget.container.x, killedTarget.container.y, killedTarget.def.scoreValue)
       this.tweens.add({
         targets: killedTarget.container,
         scaleX: killedTarget.container.scaleX * 1.3,

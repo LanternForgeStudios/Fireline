@@ -27,6 +27,20 @@ npm run build     # type-check + production build
 npm run lint       # oxlint
 ```
 
+`npm run dev` talks to the **Firebase Local Emulator Suite**, not the live backend — start it first in a
+separate terminal:
+
+```bash
+npm run emulators   # Auth :9199, Firestore :8180, Functions :5101, UI at http://127.0.0.1:4100
+```
+
+(Ports are non-default — deliberately offset from Firebase's defaults so this can run alongside
+another Firebase project's emulators on the same machine without colliding.) State persists
+between runs in `.emulator-data/` (gitignored). The emulator reloads functions from
+`functions/lib/`, the compiled output — after editing `functions/src/*.ts`, run
+`cd functions && npm run build` to pick the change up (`firebase deploy`'s `predeploy` build hook
+doesn't apply to `emulators:start`).
+
 ## Deployment
 
 `.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages via `actions/deploy-pages` on every push to `main`. Live now at **https://lanternforgestudios.github.io/Fireline/** — this is the primary way to play and share the game while it's in development. `vite.config.ts` sets the `/Fireline/` base path for this. GitHub Pages will remain the host until the game is ready to port to iOS (and possibly Android) via Capacitor, per the GDD.

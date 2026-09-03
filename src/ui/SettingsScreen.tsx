@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { playUiSound } from '../audio/uiSound'
-import type { Difficulty, PlayerSettings } from '../firebase/playerProfile'
+import type { ControlSide, Difficulty, PlayerSettings } from '../firebase/playerProfile'
 
 interface SettingsScreenProps {
   settings: PlayerSettings
@@ -11,6 +11,7 @@ interface SettingsScreenProps {
 }
 
 const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard']
+const CONTROL_SIDES: ControlSide[] = ['left', 'right']
 
 export function SettingsScreen({ settings, confirmEmail, onChange, onResetProgress, onBack }: SettingsScreenProps) {
   const [confirmingReset, setConfirmingReset] = useState(false)
@@ -70,6 +71,24 @@ export function SettingsScreen({ settings, confirmEmail, onChange, onResetProgre
                 }}
               >
                 {d}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="settings-row">
+          <span>Mobile aim pad side</span>
+          <div className="difficulty-picker">
+            {CONTROL_SIDES.map((side) => (
+              <button
+                key={side}
+                className={`btn btn-secondary ${settings.controlSide === side ? 'btn-active' : ''}`}
+                onClick={() => {
+                  onChange({ controlSide: side })
+                  playUiSound('toggle_on')
+                }}
+              >
+                {side}
               </button>
             ))}
           </div>
