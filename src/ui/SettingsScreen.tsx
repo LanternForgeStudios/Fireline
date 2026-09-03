@@ -4,6 +4,7 @@ import type { Difficulty, PlayerSettings } from '../firebase/playerProfile'
 
 interface SettingsScreenProps {
   settings: PlayerSettings
+  confirmEmail: string | null
   onChange: (settings: Partial<PlayerSettings>) => void
   onResetProgress: () => void
   onBack: () => void
@@ -11,8 +12,16 @@ interface SettingsScreenProps {
 
 const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard']
 
-export function SettingsScreen({ settings, onChange, onResetProgress, onBack }: SettingsScreenProps) {
+export function SettingsScreen({ settings, confirmEmail, onChange, onResetProgress, onBack }: SettingsScreenProps) {
   const [confirmingReset, setConfirmingReset] = useState(false)
+  const [emailInput, setEmailInput] = useState('')
+
+  const emailMatches = confirmEmail !== null && emailInput.trim().toLowerCase() === confirmEmail.trim().toLowerCase()
+
+  const cancelReset = () => {
+    setConfirmingReset(false)
+    setEmailInput('')
+  }
 
   return (
     <div className="screen briefing-screen">
@@ -66,22 +75,44 @@ export function SettingsScreen({ settings, onChange, onResetProgress, onBack }: 
           </div>
         </div>
 
+        {confirmingReset && (
+          <div className="reset-confirm">
+            <p className="briefing-text reset-confirm-text">
+              This permanently deletes your XP, credits, best score, and mission history. Type{' '}
+              <strong>{confirmEmail}</strong> to confirm.
+            </p>
+            <input
+              className="login-input"
+              type="text"
+              placeholder="Type your account email"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+        )}
+
         <div className="briefing-actions">
           <button
             className="btn btn-secondary"
             onClick={() => {
-              onBack()
+              if (confirmingReset) {
+                cancelReset()
+              } else {
+                onBack()
+              }
               playUiSound('ui_select')
             }}
           >
-            Back
+            {confirmingReset ? 'Cancel' : 'Back'}
           </button>
           {confirmingReset ? (
             <button
               className="btn btn-danger"
+              disabled={!emailMatches}
               onClick={() => {
                 onResetProgress()
-                setConfirmingReset(false)
+                cancelReset()
                 playUiSound('ui_confirm')
               }}
             >

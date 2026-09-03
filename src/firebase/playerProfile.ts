@@ -1,21 +1,7 @@
-import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  increment,
-  limit,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  writeBatch,
-  type Unsubscribe,
-} from 'firebase/firestore'
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc, type Unsubscribe } from 'firebase/firestore'
+import { httpsCallable } from 'firebase/functions'
 import type { MissionResult } from '../game/types'
-import { db } from './config'
+import { db, functions } from './config'
 
 export type Difficulty = 'easy' | 'normal' | 'hard'
 
@@ -84,27 +70,6 @@ export async function updatePlayerSettings(uid: string, settings: Partial<Player
   await updateDoc(playerDocRef(uid), updates)
 }
 
-/** Resets progression (XP, credits, mission history, unlocks) back to defaults. Keeps
- * displayName and settings — this is "reset my save," not "delete my account." */
-export async function resetPlayerProgress(uid: string): Promise<void> {
-  await updateDoc(playerDocRef(uid), { ...DEFAULT_PROGRESS })
-  await deleteMissionHistory(uid)
-}
-
-// Firestore doesn't cascade-delete subcollections, and a batch write caps
-// at 500 ops — loop until the subcollection is empty rather than assuming
-// one batch covers it.
-async function deleteMissionHistory(uid: string): Promise<void> {
-  const missionResultsQuery = query(collection(db, 'players', uid, 'missionResults'), limit(500))
-  for (;;) {
-    const snap = await getDocs(missionResultsQuery)
-    if (snap.empty) return
-    const batch = writeBatch(db)
-    for (const docSnap of snap.docs) batch.delete(docSnap.ref)
-    await batch.commit()
-  }
-}
-
 /** Subscribes to live profile updates (so the UI reflects Firestore as the source of truth). */
 export function watchPlayerProfile(uid: string, onChange: (profile: PlayerProfile) => void): Unsubscribe {
   return onSnapshot(playerDocRef(uid), (snap) => {
@@ -112,43 +77,24 @@ export function watchPlayerProfile(uid: string, onChange: (profile: PlayerProfil
   })
 }
 
-// Reward formula is intentionally simple and centralized here for easy
-// tuning; real anti-cheat validation (Cloud Functions re-deriving the
-// reward from the mission definition) is future work per the GDD.
-function computeRewards(result: MissionResult) {
-  const xpEarned = result.score
-  const creditsEarned = Math.round(result.score / 10)
-  return { xpEarned, creditsEarned }
+// Progression writes (rewards, resets) go through Cloud Functions rather
+// than direct Firestore writes — firestore.rules no longer lets the client
+// touch xp/credits/missionsCompleted/missionsFailed/bestScore/unlockedUpgrades
+// or the missionResults subcollection at all. This closes the gap where a
+// signed-in player could previously call the client SDK directly with an
+// inflated MissionResult: the Function re-derives/clamps the reward against
+// the mission's real bounds server-side instead of trusting the client's
+// numbers. See functions/src/index.ts.
+const submitMissionResultFn = httpsCallable(functions, 'submitMissionResult')
+const resetProgressFn = httpsCallable(functions, 'resetProgress')
+
+/** Records a finished mission; the Cloud Function derives uid from the caller's auth token. */
+export async function recordMissionResult(result: MissionResult): Promise<void> {
+  await submitMissionResultFn(result)
 }
 
-/**
- * Records a finished mission and updates the player's aggregate progression.
- * This is the single write path that makes Firestore the source of truth
- * for XP/credits/unlocks — combat itself stays entirely client-side.
- */
-export async function recordMissionResult(uid: string, result: MissionResult): Promise<void> {
-  const { xpEarned, creditsEarned } = computeRewards(result)
-
-  await addDoc(collection(db, 'players', uid, 'missionResults'), {
-    ...result,
-    xpEarned,
-    creditsEarned,
-    playedAt: serverTimestamp(),
-  })
-
-  await updateDoc(playerDocRef(uid), {
-    xp: increment(xpEarned),
-    credits: increment(creditsEarned),
-    missionsCompleted: increment(result.outcome === 'complete' ? 1 : 0),
-    missionsFailed: increment(result.outcome === 'failed' ? 1 : 0),
-    lastPlayedAt: serverTimestamp(),
-  })
-
-  // bestScore needs a max(), which Firestore's increment() can't express —
-  // read-modify-write it separately instead.
-  const snap = await getDoc(playerDocRef(uid))
-  const current = (snap.data() as PlayerProfile | undefined)?.bestScore ?? 0
-  if (result.score > current) {
-    await updateDoc(playerDocRef(uid), { bestScore: result.score })
-  }
+/** Resets progression (XP, credits, mission history, unlocks) back to defaults. Keeps
+ * displayName and settings — this is "reset my save," not "delete my account." */
+export async function resetPlayerProgress(): Promise<void> {
+  await resetProgressFn()
 }

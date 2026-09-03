@@ -450,6 +450,7 @@ export class CombatScene extends Phaser.Scene {
     this.missionEnded = true
     this.weapon.setTrigger(false)
     const result: MissionResult = {
+      missionId: missionState.current.id,
       outcome,
       score: this.score,
       wavesCleared: Math.min(this.waveIndex, missionState.current.waves.length),

@@ -80,12 +80,12 @@ function App() {
     const onComplete = (missionResult: MissionResult) => {
       setResult(missionResult)
       setScreen('result')
-      if (user) recordMissionResult(user.uid, missionResult).catch((err) => console.error('Failed to record mission result', err))
+      if (user) recordMissionResult(missionResult).catch((err) => console.error('Failed to record mission result', err))
     }
     const onFailed = (missionResult: MissionResult) => {
       setResult(missionResult)
       setScreen('result')
-      if (user) recordMissionResult(user.uid, missionResult).catch((err) => console.error('Failed to record mission result', err))
+      if (user) recordMissionResult(missionResult).catch((err) => console.error('Failed to record mission result', err))
     }
     gameEvents.on(EVT_MISSION_COMPLETE, onComplete)
     gameEvents.on(EVT_MISSION_FAILED, onFailed)
@@ -128,7 +128,7 @@ function App() {
   )
   const resetProgress = useCallback(() => {
     if (!user) return
-    resetPlayerProgress(user.uid).catch((err) => console.error('Failed to reset progress', err))
+    resetPlayerProgress().catch((err) => console.error('Failed to reset progress', err))
   }, [user])
 
   if (!authChecked) {
@@ -161,6 +161,7 @@ function App() {
       {screen === 'settings' && (
         <SettingsScreen
           settings={profile?.settings ?? DEFAULT_SETTINGS}
+          confirmEmail={user.email}
           onChange={changeSettings}
           onResetProgress={resetProgress}
           onBack={goToMenu}

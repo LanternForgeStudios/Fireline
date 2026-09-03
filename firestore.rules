@@ -2,15 +2,35 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Each player can only read/write their own profile and mission
-    // history — never another player's. Full anti-cheat (re-deriving
-    // rewards server-side) would need Cloud Functions; this is the
-    // client-writes-directly model appropriate for an arcade MVP.
+    // Each player can only read their own profile and mission history —
+    // never another player's. Progression (xp/credits/bestScore/mission
+    // history) is no longer client-writable: submitMissionResult and
+    // resetProgress (Cloud Functions, functions/src/index.ts) own those
+    // writes via the Admin SDK, which isn't subject to these rules at all.
+    // The client can still create its own profile on first login and
+    // update its own settings — those aren't a reward-tampering vector.
     match /players/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // First-login profile creation (loadOrCreatePlayerProfile) — only
+      // allowed with all progression fields still at their zero defaults,
+      // so this can't be used to plant an inflated starting profile.
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.xp == 0
+        && request.resource.data.credits == 0
+        && request.resource.data.missionsCompleted == 0
+        && request.resource.data.missionsFailed == 0
+        && request.resource.data.bestScore == 0
+        && request.resource.data.unlockedUpgrades.size() == 0;
+
+      // Ongoing client updates are settings only (updatePlayerSettings) —
+      // xp/credits/etc. can only change via the Cloud Functions above.
+      allow update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['settings']);
 
       match /missionResults/{resultId} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false;
       }
     }
   }

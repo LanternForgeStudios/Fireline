@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app'
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
+import { getFunctions } from 'firebase/functions'
 
 // Firebase web config is not a secret — it identifies the project, not an
 // access credential. Actual access control lives in firestore.rules. Safe
@@ -24,6 +25,7 @@ const RECAPTCHA_V3_SITE_KEY = '6Lfa0KUtAAAAACvIBnmtEwdKJqtztXa95LYKMQa0'
 export const firebaseApp = initializeApp(firebaseConfig)
 export const auth = getAuth(firebaseApp)
 export const db = getFirestore(firebaseApp)
+export const functions = getFunctions(firebaseApp)
 
 // In dev, App Check would otherwise reject every request from localhost.
 // Setting this before initializeAppCheck makes the SDK log an unregistered

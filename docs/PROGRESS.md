@@ -23,12 +23,48 @@ on top.
 - [x] Firestore security rules — per-player read/write isolation (`firestore.rules`)
 - [x] App Check (reCAPTCHA v3) on Firestore/Auth, currently in **Monitor** mode
 - [x] Player settings (music/SFX volume, difficulty) stored in Firestore, hydrate on any device
-- [ ] Flip App Check to **Enforce** once monitoring shows clean traffic
-- [ ] Server-side reward validation (Cloud Functions re-deriving XP/credits from the mission
-      definition instead of trusting the client-submitted `MissionResult`) — closes the gap App
-      Check doesn't cover; a signed-in player can still tamper with client-side score today
+- [x] Server-side reward validation — Cloud Functions (`functions/`, Blaze plan) now own all
+      progression writes; `firestore.rules` restricts client writes on `players/{uid}` to just the
+      `settings` field, and blocks `missionResults` writes entirely
+- [ ] Flip App Check to **Enforce** once monitoring shows clean traffic (Cloud Functions calls
+      aren't App Check-enforced yet either — see the log entry below)
 
 ## Log
+
+### 2026-09-03 — Server-side reward validation (Cloud Functions)
+Firebase Blaze plan is set up, unblocking this. Closes the tampering gap noted in every earlier
+entry below: previously a signed-in player could open devtools and call the client SDK directly
+with an inflated `MissionResult`, since rewards were computed and written entirely client-side.
+
+- `functions/` (new Firebase Functions v2 TypeScript project) — `submitMissionResult` and
+  `resetProgress`, both callable, both deriving `uid` from the caller's auth token (never a
+  client-supplied value)
+- `submitMissionResult` validates the submitted mission id against a server-side mission/enemy
+  catalog (`functions/src/missionCatalog.ts` — hand-kept in sync with
+  `src/game/data/missions.ts`/`enemyTypes.ts`, not shared code, since Functions deploy as a
+  separate package from the Vite frontend) and **clamps** (not hard-rejects) score/waves/enemies
+  to that mission's real bounds before computing XP/credits and writing — clamping rather than
+  rejecting so a legitimate run that hits an edge the catalog didn't anticipate still gets
+  recorded, just capped, instead of silently dropping a real player's result
+- `resetProgress` replaces the old client-side reset (zeroes progression + batch-deletes mission
+  history, same as before, just server-side now)
+- `firestore.rules`: `players/{uid}` create is only allowed with all progression fields at zero
+  (can't plant an inflated starting profile), update is restricted to the `settings` field only,
+  and `missionResults` is client-read-only, write blocked entirely — Cloud Functions write via the
+  Admin SDK, which isn't subject to these rules
+- Settings screen: resetting progress now requires typing the account's email to confirm
+  (previously just a two-click confirm) — this is a real "delete my data" action now that it's
+  backed by a Function, not just a client zeroing its own doc
+- Deployed: `firebase deploy --only functions,firestore:rules,firestore:indexes`, plus
+  `firebase functions:artifacts:setpolicy` (1-day image retention, otherwise container images from
+  every future functions deploy accumulate storage cost indefinitely)
+- **Not done yet:** the callable functions aren't App Check-enforced (`enforceAppCheck` unset) —
+  matches the app's current Monitor-mode posture everywhere else, but means this is a good next
+  target once App Check enforcement gets turned on generally
+- **Not done yet:** `functions/src/missionCatalog.ts` is hand-duplicated data, not shared source —
+  it will silently drift if `src/game/data/missions.ts` changes without a matching update here.
+  The `cleanup` skill checks for this, but a real fix (shared package, or a build step that
+  generates the catalog from the frontend source) would remove the drift risk entirely
 
 ### 2026-09-02 (2) — Mission variety, VFX, credits screen, mobile aim fix, perf
 - Added 2 more missions (Escort, Extraction) alongside the original Search & Destroy, plus a
@@ -49,11 +85,19 @@ on top.
   ~2.16MB to ~783KB (the remaining ~1.38MB Phaser chunk now loads on-demand). Required replacing
   `Phaser.Events.EventEmitter` in `game/events.ts` with a tiny custom emitter, since that module
   was imported from the React app shell and was the one thing anchoring Phaser into the main chunk
-- **Ops:** `.github/workflows/deploy.yml` — changed `cancel-in-progress` to `false`. Reported
-  symptom: the Pages workflow shows a successful build but the deploy silently doesn't take effect
-  until manually re-run via `workflow_dispatch`. Likely cause: a new push cancelling an in-flight
-  deploy mid-way leaves the Pages environment in a bad state for the next automatic run. Not fully
-  confirmed (no repro captured with full logs) — flag if it recurs
+- **Ops:** `.github/workflows/deploy.yml` — changed `cancel-in-progress` to `false` as a
+  precaution, but this was **not** the actual cause of the deploy-silently-fails symptom (see
+  below) — leaving the change in since it's still good practice, just don't expect it to fix
+  anything on its own.
+- **Ops (confirmed root cause):** the reported "build succeeds, deploy silently fails, manual
+  rerun fixes it" symptom is a **GitHub repo settings issue**, not a workflow bug — the
+  `github-pages` environment (Settings → Environments → github-pages → Deployment branches and
+  tags) has a branch restriction that doesn't include `main`, so every push-to-main deploy dies in
+  ~2s with "Branch 'main' is not allowed to deploy to github-pages due to environment protection
+  rules." Manual reruns "worked" because they were presumably run against the branch that *is*
+  allowed. **Needs a one-time fix only the repo owner can make**: add `main` to the allowed
+  branches (or remove the restriction) in that environment's settings. Not something `git`/the
+  Firebase CLI/this skill can fix — it's a GitHub repo admin setting.
 
 ### 2026-09-02 (1) — Firebase backend, first art pass, audio, settings
 - Wired Firebase Auth (Google + Email/Password), Firestore progression, security rules, App Check

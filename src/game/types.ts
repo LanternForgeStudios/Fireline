@@ -58,6 +58,7 @@ export interface HudState {
 }
 
 export interface MissionResult {
+  missionId: string
   outcome: 'complete' | 'failed'
   score: number
   wavesCleared: number
