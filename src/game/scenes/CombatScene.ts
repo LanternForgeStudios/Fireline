@@ -78,6 +78,9 @@ export class CombatScene extends Phaser.Scene {
   private crosshairPos = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }
   private ground!: Phaser.GameObjects.TileSprite
   private damageVignette!: Phaser.GameObjects.Rectangle
+  private rotorFlicker!: Phaser.GameObjects.Rectangle
+  private nextDustAtMs = 0
+  private nextFlickerAtMs = 0
 
   private pads!: Record<PadSide, TouchPad>
   private activePad: PadSide | null = null
@@ -134,6 +137,7 @@ export class CombatScene extends Phaser.Scene {
     this.buildHelicopterFrame()
     this.buildVfxTextures()
     this.buildDamageVignette()
+    this.buildRotorFlicker()
     this.buildCrosshair()
     this.buildTouchPad()
     this.setupInput()
@@ -279,6 +283,19 @@ export class CombatScene extends Phaser.Scene {
     this.damageVignette.setDepth(2500)
   }
 
+  /**
+   * Full-screen dark overlay, alpha 0 at rest, briefly pulsed on an uneven
+   * interval to read as an overhead rotor blade sweeping past — the cabin
+   * itself isn't in view from a door-gunner POV, so this is the cheapest way
+   * to sell "we're under a spinning rotor" without new art. Sits below the
+   * damage vignette (2500) so a red hit flash still reads clearly on top.
+   */
+  private buildRotorFlicker() {
+    this.rotorFlicker = this.add.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 0x000000, 0)
+    this.rotorFlicker.setDepth(2400)
+    this.nextFlickerAtMs = Phaser.Math.Between(160, 260)
+  }
+
   private spawnSpark(x: number, y: number, tint: number, endScale: number, durationMs: number) {
     const spark = this.add.image(x, y, 'spark-tex')
     spark.setTint(tint)
@@ -336,6 +353,57 @@ export class CombatScene extends Phaser.Scene {
       ease: 'Cubic.Out',
       onComplete: () => text.destroy(),
     })
+  }
+
+  /**
+   * A soft puff of dust drifting up and sideways from near the door sill,
+   * reusing the same spark-tex the muzzle flash/hit spark share (tinted,
+   * larger, slower, near-ground) — rotor wash kicking up terrain dust right
+   * around the aircraft. Depth 1400 sits above enemies (max depth ~1000) but
+   * below the helicopter frame silhouette (1500), so it reads as outside the
+   * cabin, occluded by the door frame near the very bottom edge.
+   */
+  private spawnDustPuff() {
+    const theme = missionState.current.theme
+    const x = Phaser.Math.Between(WORLD_WIDTH * 0.15, WORLD_WIDTH * 0.85)
+    const y = Phaser.Math.Between(WORLD_HEIGHT - 70, WORLD_HEIGHT - 40)
+    const puff = this.add.image(x, y, 'spark-tex')
+    puff.setTint(theme.groundTint)
+    puff.setDepth(1400)
+    puff.setAlpha(0.22)
+    puff.setScale(0.4)
+    puff.setBlendMode(Phaser.BlendModes.NORMAL)
+    this.tweens.add({
+      targets: puff,
+      x: x + Phaser.Math.Between(-40, 40),
+      y: y - Phaser.Math.Between(30, 60),
+      scale: 1.1,
+      alpha: 0,
+      duration: 1400,
+      ease: 'Sine.Out',
+      onComplete: () => puff.destroy(),
+    })
+  }
+
+  private updateDustKickup(delta: number) {
+    this.nextDustAtMs -= delta
+    if (this.nextDustAtMs > 0) return
+    this.spawnDustPuff()
+    this.nextDustAtMs = Phaser.Math.Between(220, 420)
+  }
+
+  /** Uneven timing (not a metronomic strobe) reads more like a physical blade thump. */
+  private updateRotorFlicker(delta: number) {
+    this.nextFlickerAtMs -= delta
+    if (this.nextFlickerAtMs > 0) return
+    this.tweens.add({
+      targets: this.rotorFlicker,
+      alpha: 0.07,
+      duration: 40,
+      yoyo: true,
+      ease: 'Sine.InOut',
+    })
+    this.nextFlickerAtMs = Phaser.Math.Between(160, 260)
   }
 
   private buildCrosshair() {
@@ -515,6 +583,8 @@ export class CombatScene extends Phaser.Scene {
     this.weapon.tick(delta)
     this.updateWaveSpawning(delta)
     this.updateEnemies(delta)
+    this.updateDustKickup(delta)
+    this.updateRotorFlicker(delta)
     this.handleFiring()
 
     if (this.health <= 0 && !this.missionEnded) {

@@ -68,7 +68,14 @@ alongside them — worth double-checking their source/license before a public re
       `types.ts`/`missions.ts`, applied in `buildBackground`). Previously all three missions looked
       identical apart from wave composition; this is hand-authored mood per mission, not generated
       — a natural seam for the real Phase 3 procedural weather/time-of-day system to build against
-- [ ] Rotor blur / dust kickup around the helicopter frame for motion sell
+- [x] Rotor blur / dust kickup — a full-screen dark overlay (`rotorFlicker`) briefly pulses to
+      ~0.07 alpha on an uneven ~160-260ms interval (`updateRotorFlicker`), reading as an overhead
+      rotor blade sweeping past (the cabin itself isn't in view from a door-gunner POV, so this
+      sells "under a spinning rotor" without needing new art of an actual rotor). Separately, small
+      tan dust puffs (`spawnDustPuff`/`updateDustKickup`, reusing the shared `spark-tex`, tinted to
+      the mission's own `theme.groundTint`) drift up from near the door sill every ~220-420ms.
+      Reasoned through and build-verified, not yet screenshotted mid-combat this session — see
+      PROGRESS.md log for the current verification status.
 - [ ] Enemy hit/death sprite *animation* frames (the VFX above is procedural overlay, not new
       PixelLab animation frames — still tracked in [ART_ASSETS.md](ART_ASSETS.md))
 
