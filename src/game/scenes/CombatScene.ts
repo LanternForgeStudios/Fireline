@@ -55,6 +55,25 @@ const TOUCH_PAD_RADIUS = 80
 // knob's rendered position, not for how it's interpreted as input).
 const TOUCH_PAD_ACTIVATION_RADIUS = 110
 const TOUCH_PAD_SENSITIVITY = 2.2
+// Touch aiming is meaningfully harder than mouse aiming — a phone screen is
+// smaller, fingers are less precise than a cursor, and fast-approaching
+// enemies can close the gap before a trackpad drag lands exactly on them.
+// This nudges the crosshair toward whichever enemy it's already closest to,
+// once within that enemy's own hit radius plus a bit of slack — a soft pull
+// on final approach, not a hard lock (the touch delta each frame can still
+// overpower it and move away freely). Scoped to touch input only: mouse
+// aiming isn't the problem being solved here, and unrequested aim-assist on
+// a precise input device would just feel like it's fighting the player.
+const AIM_ASSIST_RADIUS_BONUS = 34
+const AIM_ASSIST_STRENGTH = 0.16
+// Enemy return fire used to be an instant, invisible damage tick the moment
+// an enemy was in range — no way to see it coming or connect it to its
+// source. Now it's a real traveling bolt (px/sec) from the shooter to the
+// gun mount; damage lands when the bolt arrives, not when it's fired, so
+// there's a real window to kill the shooter before its *next* volley.
+const ENEMY_PROJECTILE_SPEED = 1400
+const ENEMY_PROJECTILE_MIN_MS = 220
+const ENEMY_PROJECTILE_MAX_MS = 650
 
 type PadSide = 'left' | 'right'
 interface TouchPad {
@@ -488,9 +507,34 @@ export class CombatScene extends Phaser.Scene {
 
     this.crosshairPos.x = Phaser.Math.Clamp(this.crosshairPos.x + deltaX * TOUCH_PAD_SENSITIVITY, 0, WORLD_WIDTH)
     this.crosshairPos.y = Phaser.Math.Clamp(this.crosshairPos.y + deltaY * TOUCH_PAD_SENSITIVITY, 0, WORLD_HEIGHT)
+    this.applyTouchAimAssist()
     this.crosshair.setPosition(this.crosshairPos.x, this.crosshairPos.y)
 
     this.updatePadKnobVisual(pointer)
+  }
+
+  /** See AIM_ASSIST_RADIUS_BONUS/AIM_ASSIST_STRENGTH above. */
+  private applyTouchAimAssist() {
+    let nearest: Enemy | null = null
+    let nearestDist = Infinity
+
+    for (const enemy of this.enemies) {
+      const radius = enemy.def.baseRadius * enemy.container.scale + AIM_ASSIST_RADIUS_BONUS
+      const dist = Phaser.Math.Distance.Between(
+        this.crosshairPos.x,
+        this.crosshairPos.y,
+        enemy.container.x,
+        enemy.container.y,
+      )
+      if (dist < radius && dist < nearestDist) {
+        nearest = enemy
+        nearestDist = dist
+      }
+    }
+
+    if (!nearest) return
+    this.crosshairPos.x = Phaser.Math.Linear(this.crosshairPos.x, nearest.container.x, AIM_ASSIST_STRENGTH)
+    this.crosshairPos.y = Phaser.Math.Linear(this.crosshairPos.y, nearest.container.y, AIM_ASSIST_STRENGTH)
   }
 
   /** Knob just shows "which way is the finger currently offset" — purely visual, doesn't drive aim. */
@@ -636,9 +680,50 @@ export class CombatScene extends Phaser.Scene {
       }
 
       if (enemy.shouldFire(now)) {
-        this.applyAircraftDamage(enemy.def.fireDamagePerTick)
+        this.spawnEnemyProjectile(enemy)
       }
     }
+  }
+
+  /**
+   * A visible return-fire bolt from an enemy's current position to the gun
+   * mount, tinted distinctly from the player's own pale-yellow tracer so the
+   * two directions of fire never read as ambiguous. Damage applies on
+   * arrival, not on launch — see ENEMY_PROJECTILE_SPEED above.
+   */
+  private spawnEnemyProjectile(enemy: Enemy) {
+    const fromX = enemy.container.x
+    const fromY = enemy.container.y
+    const damage = enemy.def.fireDamagePerTick
+
+    this.spawnSpark(fromX, fromY, 0xff6644, 0.9, 140)
+
+    const bolt = this.add.image(fromX, fromY, 'spark-tex')
+    bolt.setTint(0xff5533)
+    bolt.setDepth(1750)
+    bolt.setScale(0.3)
+    bolt.setBlendMode(Phaser.BlendModes.ADD)
+
+    const dist = Phaser.Math.Distance.Between(fromX, fromY, GUN_ORIGIN.x, GUN_ORIGIN.y)
+    const travelMs = Phaser.Math.Clamp(
+      (dist / ENEMY_PROJECTILE_SPEED) * 1000,
+      ENEMY_PROJECTILE_MIN_MS,
+      ENEMY_PROJECTILE_MAX_MS,
+    )
+
+    this.tweens.add({
+      targets: bolt,
+      x: GUN_ORIGIN.x,
+      y: GUN_ORIGIN.y,
+      duration: travelMs,
+      ease: 'Linear',
+      onComplete: () => {
+        bolt.destroy()
+        if (this.missionEnded) return
+        this.spawnSpark(GUN_ORIGIN.x, GUN_ORIGIN.y, 0xff5533, 1.1, 160)
+        this.applyAircraftDamage(damage)
+      },
+    })
   }
 
   private applyAircraftDamage(amount: number) {

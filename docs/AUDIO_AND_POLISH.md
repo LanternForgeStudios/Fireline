@@ -78,6 +78,14 @@ alongside them — worth double-checking their source/license before a public re
       near the ground line across several frames of an actual mission, no console/page errors.
 - [ ] Enemy hit/death sprite *animation* frames (the VFX above is procedural overlay, not new
       PixelLab animation frames — still tracked in [ART_ASSETS.md](ART_ASSETS.md))
+- [x] Enemy return fire is now a real traveling bolt (`spawnEnemyProjectile`) from the shooter to
+      the gun mount, tinted distinctly from the player's own tracer (orange-red vs. pale yellow),
+      instead of an instant invisible damage tick. Damage lands on arrival, not on launch — travel
+      time scales with distance (`ENEMY_PROJECTILE_SPEED`, clamped 220-650ms), so there's now a
+      real, visible window to kill a shooter before its *next* volley. Applies automatically to
+      every enemy type with `firesBack: true` (gunner, rocket team, technical vehicle, armored
+      vehicle, commander) — no data model change needed, this was purely a missing visual for
+      behavior the enemies already had.
 
 ## General polish
 
@@ -118,6 +126,18 @@ alongside them — worth double-checking their source/license before a public re
       Only tested logically, not on a physical device this session — worth a real-device pass;
       `TOUCH_PAD_SENSITIVITY` and the pads' screen position/size may want tuning once tried on an
       actual phone.
+- [x] **Touch aim assist.** Direct feedback that touch aiming is meaningfully harder than mouse —
+      a smaller screen, less precise input, and fast/large approaching enemies can close the gap
+      before a drag lands exactly on them. `applyTouchAimAssist` (touch input only, not mouse —
+      mouse aiming wasn't the reported problem, and unrequested assist on an already-precise input
+      device would just feel like it's fighting the player) nudges the crosshair toward whichever
+      enemy it's already nearest, once within that enemy's own hit radius plus `AIM_ASSIST_RADIUS_
+      BONUS` (34px) slack — a soft pull on final approach (`AIM_ASSIST_STRENGTH = 0.16` lerp per
+      drag update), not a hard lock; continuing to drag away still overpowers it. `baseRadius *
+      scale` grows as an enemy gets closer, so the assist radius naturally grows too, right where
+      the "flies by too fast" problem is worst. Untuned against a real device — the strength/radius
+      constants are a first guess and are the first thing to adjust if it either doesn't help enough
+      or feels like it's fighting deliberate aim.
 - [x] **Mobile layout: no scroll, horizontal cutoff.** `body { overflow: hidden }` with no scroll
       container anywhere meant any screen with content taller than the viewport (Mission Select
       being the obvious one, with 3 hand-authored missions + a 4th random one) just clipped with no
