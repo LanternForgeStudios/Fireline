@@ -49,6 +49,18 @@ on top.
 
 ## Log
 
+### 2026-09-04 (24) — Music re-encode, escort vehicle orientation correction
+- Music tracks re-encoded 128kbps (from ~500kbps): `menu.ogg` 6.9MB → 2.0MB, `combat.ogg` 4.2MB →
+  1.1MB, same duration to the millisecond. Used `ffmpeg-static` (npm-installable, scratch-installed
+  and removed after — not a project dependency), verified by loading both through the real dev
+  server into an `<audio>` element rather than trusting ffmpeg's own decode check alone. See
+  [AUDIO_AND_POLISH.md](AUDIO_AND_POLISH.md).
+- Escort vehicle was actually facing backwards after the aerial-angle regeneration — the cab sat
+  toward the bottom of the frame (south/toward the viewer), a misjudgment when reviewing that
+  generation, not the intended fix. Corrected with a deterministic 180° rotation (`sharp`, same
+  scratch-install-and-remove pattern) rather than another AI re-roll, since the needed fix was an
+  exact transform. See [ART_ASSETS.md](ART_ASSETS.md).
+
 ### 2026-09-04 (23) — Mission-end sting respects music volume, bigger enemies again, escort vehicle aerial angle
 - **Real bug found and fixed:** the earlier music-hydration-race fix didn't cover the reported
   "music still plays after an operation finishes" case — traced with debug logging through the

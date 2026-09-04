@@ -148,6 +148,14 @@ overhead enough even with `view="low top-down"` set. Now shows the roof and canv
 bed from above, cab still oriented away (matching "driving into the distance," not toward the
 viewer).
 
+**Orientation correction (2026-09-04, later same day):** the aerial-angle version above actually
+came out with the cab toward the *bottom* of the frame (south/toward the viewer) — a
+misjudgment on my part when reviewing it, not what the "faces away" fix was meant to produce.
+Corrected with a deterministic 180° image rotation (`sharp`, an npm-installable library, installed
+to a scratch dir and removed after — not a project dependency) rather than another AI regeneration,
+since the fix needed was an exact, guaranteed transform, not a re-roll. Cab now sits at the top of
+the frame (north/away) as intended.
+
 ## In-scene elements still procedural (not yet swapped for real art)
 
 - Sky gradient + sun glow strip — left procedural; a flat gradient doesn't gain much from being
