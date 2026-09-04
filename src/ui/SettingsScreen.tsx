@@ -30,32 +30,60 @@ export function SettingsScreen({ settings, confirmEmail, onChange, onResetProgre
         <h2 className="briefing-name">Options</h2>
         <p className="briefing-text settings-autosave-note">Changes save automatically to your account.</p>
 
-        <label className="settings-row">
+        <div className="settings-row">
           <span>Music volume</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={settings.musicVolume}
-            onChange={(e) => onChange({ musicVolume: Number(e.target.value) })}
-          />
-        </label>
+          <div className="settings-row-controls">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={settings.musicVolume}
+              disabled={settings.musicMuted}
+              onChange={(e) => onChange({ musicVolume: Number(e.target.value) })}
+            />
+            <label className="settings-mute-toggle">
+              <input
+                type="checkbox"
+                checked={settings.musicMuted ?? false}
+                onChange={(e) => {
+                  onChange({ musicMuted: e.target.checked })
+                  playUiSound(e.target.checked ? 'toggle_off' : 'toggle_on')
+                }}
+              />
+              Mute
+            </label>
+          </div>
+        </div>
 
-        <label className="settings-row">
+        <div className="settings-row">
           <span>SFX volume</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={settings.sfxVolume}
-            onChange={(e) => {
-              onChange({ sfxVolume: Number(e.target.value) })
-              playUiSound('ui_select')
-            }}
-          />
-        </label>
+          <div className="settings-row-controls">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={settings.sfxVolume}
+              disabled={settings.sfxMuted}
+              onChange={(e) => {
+                onChange({ sfxVolume: Number(e.target.value) })
+                playUiSound('ui_select')
+              }}
+            />
+            <label className="settings-mute-toggle">
+              <input
+                type="checkbox"
+                checked={settings.sfxMuted ?? false}
+                onChange={(e) => {
+                  onChange({ sfxMuted: e.target.checked })
+                  playUiSound(e.target.checked ? 'toggle_off' : 'toggle_on')
+                }}
+              />
+              Mute
+            </label>
+          </div>
+        </div>
 
         <div className="settings-row">
           <span>Difficulty</span>

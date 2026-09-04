@@ -49,6 +49,38 @@ on top.
 
 ## Log
 
+### 2026-09-04 (31) — Music/SFX mute checkboxes, synced across devices
+- Added a "Mute" checkbox next to each volume slider on the Settings screen. Deliberately a
+  separate flag (`PlayerSettings.musicMuted`/`sfxMuted`) rather than just zeroing the volume field
+  — so muting doesn't clobber the player's preferred slider position, and unmuting restores it
+  exactly instead of coming back at 0.
+- Effective volume is computed once, at the single spot that already hydrates every screen/
+  refresh/device (`App.tsx`'s `profile.settings -> audioSettings` effect):
+  `audioSettings.musicVolume = settings.musicMuted ? 0 : settings.musicVolume` (same for sfx).
+  Every consumer (`uiSound.ts`, `musicPlayer.ts`, `CombatScene`'s SFX calls and its own music gain
+  node) already just reads `audioSettings.musicVolume`/`sfxVolume`, so mute is honored everywhere
+  for free — deliberately avoiding a parallel "if muted" check at each call site, which is the
+  exact class of bug the second music-volume fix earlier this session ran into (checking the wrong
+  flag in one call site while the rest were fine).
+- Synced through the existing Firestore-backed settings path (`updatePlayerSettings`, generic
+  dot-path writes) — no new backend/rules work needed, same mechanism as the volume sliders.
+- **Found and fixed a real (if narrow) pre-existing bug while verifying this**: `SettingsScreen` is
+  interactive before the initial profile-creation write finishes (`profile?.settings ??
+  DEFAULT_SETTINGS` lets it render immediately), so a settings change fired in that window could
+  race the account's first Firestore write and get rejected (`PERMISSION_DENIED` — the update rule
+  evaluates against a resource that doesn't fully exist yet). Reproduced reliably by scripting a
+  settings change immediately after signup; a real player is unlikely to hit the exact window but
+  it's a real gap on a slow connection. Fixed by guarding `changeSettings` (`App.tsx`) on `profile`
+  being loaded, not just `user` being signed in — a change fired in that window is now silently
+  dropped instead of erroring against a not-yet-existent document.
+- Verified live via Playwright: checkboxes toggle correctly (first attempt exposed a real markup
+  bug — the outer `<label>` wrapped both the range input and the checkbox, so native label-click-
+  forwarding fought over which control a click should hit; fixed by making the row a plain `<div>`
+  and giving the checkbox its own dedicated `<label>`), muting drives `audioSettings` to exactly 0,
+  the slider visually disables while muted, the muted state survives a full page reload with a
+  proper wait for real profile hydration (not just the screen re-rendering), and unmuting restores
+  the exact pre-mute volume (0.35 in the test) rather than a default.
+
 ### 2026-09-04 (30) — Combat music: play the intro once, loop only the body
 - combat.ogg previously looped the entire 73.37s file from 0, intro included, via Phaser's
   `sound.play({ loop: true })` — every ~73s the player heard the same intro flourish restart.

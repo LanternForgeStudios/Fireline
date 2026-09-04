@@ -93,10 +93,17 @@ function App() {
   // and so settings hydrate the same on any device the player signs into.
   useEffect(() => {
     const settings = profile?.settings ?? DEFAULT_SETTINGS
-    audioSettings.musicVolume = settings.musicVolume
-    audioSettings.sfxVolume = settings.sfxVolume
+    // Fold mute into the effective volume right here, at the single spot
+    // that hydrates every screen/refresh — everything downstream (uiSound,
+    // musicPlayer, CombatScene's SFX and its own music gain node) already
+    // just reads audioSettings.musicVolume/sfxVolume, so muted comes out
+    // silent everywhere for free instead of needing a mute check duplicated
+    // at every call site (the class of bug the "music after mission ends"
+    // fix earlier ran into, from checking the wrong flag in one call site).
+    audioSettings.musicVolume = settings.musicMuted ? 0 : settings.musicVolume
+    audioSettings.sfxVolume = settings.sfxMuted ? 0 : settings.sfxVolume
     audioSettings.difficulty = settings.difficulty
-    setMusicVolume(settings.musicVolume)
+    setMusicVolume(audioSettings.musicVolume)
   }, [profile?.settings])
 
   // Same live-mirror pattern for the weapon upgrades Phaser needs at
@@ -162,10 +169,16 @@ function App() {
   }, [])
   const changeSettings = useCallback(
     (partial: Partial<PlayerSettings>) => {
-      if (!user) return
+      // profile, not just user: SettingsScreen renders (with a
+      // DEFAULT_SETTINGS fallback) before the initial profile-creation
+      // write finishes, so a change fired in that window would otherwise
+      // race the account's first Firestore write and get rejected by
+      // firestore.rules' update check evaluating against a doc that isn't
+      // fully there yet.
+      if (!user || !profile) return
       updatePlayerSettings(user.uid, partial).catch((err) => console.error('Failed to save settings', err))
     },
-    [user],
+    [user, profile],
   )
   const resetProgress = useCallback(() => {
     if (!user) return

@@ -11,6 +11,11 @@ export type { Difficulty }
 export interface PlayerSettings {
   musicVolume: number
   sfxVolume: number
+  // Separate from the volume sliders on purpose: muting shouldn't clobber
+  // the player's preferred volume level, so unmuting restores exactly where
+  // the slider was rather than coming back at 0.
+  musicMuted: boolean
+  sfxMuted: boolean
   difficulty: Difficulty
 }
 
@@ -30,6 +35,8 @@ export interface PlayerProfile {
 export const DEFAULT_SETTINGS: PlayerSettings = {
   musicVolume: 0.6,
   sfxVolume: 0.8,
+  musicMuted: false,
+  sfxMuted: false,
   difficulty: 'normal',
 }
 

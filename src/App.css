@@ -199,6 +199,31 @@
   font-size: 0.9rem;
 }
 
+.settings-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.settings-mute-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settings-mute-toggle input[type='checkbox'] {
+  width: 0.9rem;
+  height: 0.9rem;
+  accent-color: #f2c14e;
+  cursor: pointer;
+}
+
 .settings-row input[type='range'] {
   flex: 1;
   max-width: 12rem;
