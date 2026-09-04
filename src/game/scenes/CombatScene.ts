@@ -1000,7 +1000,11 @@ export class CombatScene extends Phaser.Scene {
     gameEvents.emit(EVT_HIT_MARKER, { hit: Boolean(target), x: this.crosshairPos.x, y: this.crosshairPos.y })
 
     if (!target) return
-    this.spawnSpark(target.container.x, target.container.y, 0xffa64d, 0.8, 140)
+    // Staggered across the hit circle, not always dead-center — at high
+    // Fire Rate upgrade levels, every shot landing on the exact same pixel
+    // reads as a static laser dot rather than a stream of separate hits.
+    const impact = target.randomImpactPoint()
+    this.spawnSpark(impact.x, impact.y, 0xffa64d, 0.8, 140)
 
     const killed = target.takeDamage(this.weapon.damagePerShot)
     if (killed) {

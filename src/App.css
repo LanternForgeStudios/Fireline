@@ -753,6 +753,16 @@
   color: #f2c14e;
 }
 
+.mission-list-item-locked {
+  border-style: dashed;
+  cursor: default;
+  opacity: 0.6;
+}
+
+.mission-list-icon-locked {
+  filter: grayscale(1);
+}
+
 .briefing-actions .btn {
   flex: 1;
 }

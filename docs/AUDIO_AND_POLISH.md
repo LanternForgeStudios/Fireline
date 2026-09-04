@@ -86,7 +86,12 @@ alongside them — worth double-checking their source/license before a public re
       along the shot's path, which reads fine at the gun's ~14 shots/sec rate
 - [x] Muzzle flash at the crosshair on fire (procedural additive-blend sprite, tweened scale/alpha
       — `spawnSpark` in `CombatScene.ts`)
-- [x] Hit-spark on a confirmed hit
+- [x] Hit-spark on a confirmed hit — staggered across the target's hit circle rather than always
+      landing dead-center (`Enemy.randomImpactPoint()`, 2026-09-04). At high Fire Rate upgrade
+      levels every shot landing on the exact same pixel read as a static laser dot instead of a
+      stream of separate hits; now each spark lands at a random point within 65% of the hit
+      radius, staying visually inside the sprite. Only the repeated non-lethal hit-spark needed
+      this — the one-time kill-burst below stays centered as a deliberate "boom" payoff.
 - [x] Kill burst + fade-out/scale-up on enemy destroy (the sprite no longer just vanishes)
 - [x] Red damage vignette flash when the aircraft takes a hit, layered with the existing camera
       shake

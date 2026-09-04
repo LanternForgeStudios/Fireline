@@ -278,6 +278,26 @@ to a scratch dir and removed after — not a project dependency) rather than ano
 since the fix needed was an exact, guaranteed transform, not a re-roll. Cab now sits at the top of
 the frame (north/away) as intended.
 
+**Full regeneration (2026-09-04, owner request):** regenerated from scratch on a fresh owner
+request for a cleaner "top-down 3/4 view from the back, front facing north" base rather than
+continuing to patch the earlier version. First attempt (`create_image_pixflux`, `view="high
+top-down"` + `direction="north"`) came out as a side-profile "hero shot," not overhead at all —
+confirms the earlier-documented lesson that `view`/`direction` are weakly-guiding and the text
+description has to carry the angle. Re-prompted with explicit "bird's eye aerial view straight
+down from directly overhead, as if photographed from a helicopter flying above" language (job
+`7aa0bcdf-5701-4329-a25b-d01e07b11a8a`) — got a clean overhead angle, but the cab landed at the
+bottom of the frame again (front toward viewer/south). Same deterministic 180° rotation fix as
+before (`sharp`, scratch-installed) rather than re-rolling; cab confirmed at the top (north) this
+time by inspecting the *rotated* result directly rather than trusting a single visual read, given
+the two earlier misjudgments on this exact asset. Verified live in Operation Steel Convoy via
+Playwright.
+
+**Boat variant (`public/env/escort-boat.png`, 96×96, 2026-09-04):** same treatment — bird's-eye
+aerial description, same 180° rotation correction after the initial generation put the bow at the
+bottom instead of the top — generated in case a future mission escorts a boat on water instead of
+a land convoy. Not wired into any mission yet (no water-escort mission exists) — banked art only,
+same olive/tan palette as the truck for visual consistency if/when it's used.
+
 ## In-scene elements still procedural (not yet swapped for real art)
 
 - Sky gradient + sun glow strip — left procedural; a flat gradient doesn't gain much from being

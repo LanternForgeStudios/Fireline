@@ -49,6 +49,42 @@ on top.
 
 ## Log
 
+### 2026-09-04 (35) — Escort vehicle regen + boat variant, bullet impact stagger, 1M-XP rank curve, gated procedural missions
+- **Escort vehicle regenerated** — a fresh top-down 3/4 view from the back, front facing north, per
+  owner request rather than continuing to patch the earlier version. Hit the same lesson the
+  earlier fix already documented (view/direction params are weakly-guiding, text has to carry the
+  angle) and the same orientation gotcha (initial generation put the front toward the viewer, not
+  away) — fixed with the same deterministic 180° rotation approach, this time double-checking the
+  *rotated* result directly rather than trusting one visual read. See
+  [ART_ASSETS.md](ART_ASSETS.md) for the full history on this asset.
+- **New boat variant** (`escort-boat.png`) — same treatment, same palette, generated in case a
+  future mission escorts a boat on water instead of a land convoy. Not wired into any mission yet
+  (no water-escort mission exists) — banked art only.
+- **Bullet impact stagger** — player-reported: at high Fire Rate upgrade levels, sustained fire
+  looked like a laser beam rather than individual bullet impacts. Root cause: the hit-spark VFX
+  always spawned at the target's exact container center, so every shot in a burst stacked on the
+  same pixel. Added `Enemy.randomImpactPoint()` — a random point within 65% of the hit radius —
+  and use it for the hit-spark instead. Kill-burst VFX stays centered (one-time payoff, not part of
+  the stacking problem).
+- **Rank curve overhauled** — Colonel now requires 1,000,000 XP (was 60,000), all 7 non-Recruit
+  tiers rebuilt working backwards from that top: Private 5,000 → Corporal 15,000 → Sergeant 40,000
+  → Lieutenant 90,000 → Captain 200,000 → Major 450,000 → Colonel 1,000,000 (each tier roughly
+  2.2-3x the last). Reaching Colonel is now a genuine long-haul milestone (~a few hundred mission
+  clears at best-case scoring) rather than reachable within a normal play session.
+  `src/game/data/ranks.ts` only — no other code needed to change, `getRankProgress()` already
+  worked generically over the tier list.
+- **Procedural missions gated behind clearing every hand-authored operation once** — "Randomly
+  Generated" on Mission Select now shows a locked card (with a list of what's still needed) until
+  `operationStats` shows at least one completion, at any difficulty, for all 4 canned missions.
+  Nudges a new player through each of the game's hand-tuned encounters at least once before the
+  randomizer starts mixing them, rather than letting the procedural option be skipped entirely.
+  `MissionSelect.tsx` only — reuses the `operationStats` prop it already received.
+- Verified live via Playwright: rank modal shows the exact new thresholds; a fresh account sees
+  Random locked with the correct "complete these 4" message; after forcing all 4 missions to
+  complete (debug hook), the locked card is gone and Random is selectable; the escort vehicle
+  renders correctly oriented in an actual Steel Convoy mission; `randomImpactPoint()` called 10
+  times on a live enemy returns 10 distinct points.
+
 ### 2026-09-04 (34) — Cleanup pass on this session's work (`/cleanup`)
 - Scope: everything from this session (entries 21-33 above, ~10 commits). Ran the security-review
   and code-review skills plus 4 parallel simplify-angle reviews (reuse/simplification/efficiency/

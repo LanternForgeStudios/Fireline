@@ -9,15 +9,18 @@ export interface RankTier {
 // (xpEarned === score server-side, see functions/src/index.ts), so these
 // thresholds are spaced to clear a handful of missions per tier early on and
 // many more per tier at the top, rather than a flat XP-per-rank curve.
+// Colonel is a deliberate long-haul milestone at 1,000,000 XP (~a few
+// hundred mission clears at best-case scoring) — everything below it is
+// worked backwards from that top, each tier roughly 2.2-3x the last.
 export const RANK_TIERS: RankTier[] = [
   { id: 'recruit', name: 'Recruit', minXp: 0, icon: 'icon-rank-recruit.png' },
-  { id: 'private', name: 'Private', minXp: 1000, icon: 'icon-rank-private.png' },
-  { id: 'corporal', name: 'Corporal', minXp: 2500, icon: 'icon-rank-corporal.png' },
-  { id: 'sergeant', name: 'Sergeant', minXp: 5000, icon: 'icon-rank-sergeant.png' },
-  { id: 'lieutenant', name: 'Lieutenant', minXp: 10000, icon: 'icon-rank-lieutenant.png' },
-  { id: 'captain', name: 'Captain', minXp: 20000, icon: 'icon-rank-captain.png' },
-  { id: 'major', name: 'Major', minXp: 35000, icon: 'icon-rank-major.png' },
-  { id: 'colonel', name: 'Colonel', minXp: 60000, icon: 'icon-rank-colonel.png' },
+  { id: 'private', name: 'Private', minXp: 5_000, icon: 'icon-rank-private.png' },
+  { id: 'corporal', name: 'Corporal', minXp: 15_000, icon: 'icon-rank-corporal.png' },
+  { id: 'sergeant', name: 'Sergeant', minXp: 40_000, icon: 'icon-rank-sergeant.png' },
+  { id: 'lieutenant', name: 'Lieutenant', minXp: 90_000, icon: 'icon-rank-lieutenant.png' },
+  { id: 'captain', name: 'Captain', minXp: 200_000, icon: 'icon-rank-captain.png' },
+  { id: 'major', name: 'Major', minXp: 450_000, icon: 'icon-rank-major.png' },
+  { id: 'colonel', name: 'Colonel', minXp: 1_000_000, icon: 'icon-rank-colonel.png' },
 ]
 
 export interface RankProgress {

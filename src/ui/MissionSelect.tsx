@@ -44,6 +44,13 @@ export function MissionSelect({ onSelect, onBack, operationStats }: MissionSelec
     setRandomMission(generateMission())
   }
 
+  // Procedural missions unlock only once every hand-authored operation has
+  // been cleared at least once, at any difficulty — a floor under how a
+  // new player first meets each of the game's hand-tuned encounters before
+  // the randomizer starts mixing them, rather than skippable content.
+  const uncompletedMissions = MISSIONS.filter((m) => (operationStats[m.id]?.completions ?? 0) === 0)
+  const randomUnlocked = uncompletedMissions.length === 0
+
   return (
     <div className="screen briefing-screen">
       <div className="briefing-content">
@@ -74,29 +81,45 @@ export function MissionSelect({ onSelect, onBack, operationStats }: MissionSelec
             </button>
           ))}
 
-          <div className="mission-list-item mission-list-item-random" style={{ borderLeftColor: toCssColor(randomMission.theme.skyBottom) }}>
-            <img className="mission-list-icon" src={`${import.meta.env.BASE_URL}ui/${RANDOM_MISSION_ICON}`} alt="" />
-            <div className="mission-list-random-body">
-              <button
-                key={randomMission.id}
-                className="mission-list-random-select"
-                onClick={() => {
-                  playUiSound('ui_confirm')
-                  onSelect(randomMission)
-                }}
-              >
-                <div className="mission-list-header">
-                  <span className="briefing-type">Randomly Generated&nbsp;· {randomMission.type}</span>
-                  <span className="hud-label">{randomMission.waves.length} waves</span>
-                </div>
-                <div className="briefing-name mission-list-name">{randomMission.name}</div>
-                <p className="briefing-text mission-list-blurb">{randomMission.briefing}</p>
-              </button>
-              <button className="mission-reroll" onClick={reroll}>
-                🎲 Reroll
-              </button>
+          {randomUnlocked ? (
+            <div className="mission-list-item mission-list-item-random" style={{ borderLeftColor: toCssColor(randomMission.theme.skyBottom) }}>
+              <img className="mission-list-icon" src={`${import.meta.env.BASE_URL}ui/${RANDOM_MISSION_ICON}`} alt="" />
+              <div className="mission-list-random-body">
+                <button
+                  key={randomMission.id}
+                  className="mission-list-random-select"
+                  onClick={() => {
+                    playUiSound('ui_confirm')
+                    onSelect(randomMission)
+                  }}
+                >
+                  <div className="mission-list-header">
+                    <span className="briefing-type">Randomly Generated&nbsp;· {randomMission.type}</span>
+                    <span className="hud-label">{randomMission.waves.length} waves</span>
+                  </div>
+                  <div className="briefing-name mission-list-name">{randomMission.name}</div>
+                  <p className="briefing-text mission-list-blurb">{randomMission.briefing}</p>
+                </button>
+                <button className="mission-reroll" onClick={reroll}>
+                  🎲 Reroll
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mission-list-item mission-list-item-locked">
+              <img className="mission-list-icon mission-list-icon-locked" src={`${import.meta.env.BASE_URL}ui/${RANDOM_MISSION_ICON}`} alt="" />
+              <div className="mission-list-body">
+                <div className="mission-list-header">
+                  <span className="briefing-type">Randomly Generated&nbsp;· Locked</span>
+                </div>
+                <div className="briefing-name mission-list-name">🔒 Clear every operation to unlock</div>
+                <p className="briefing-text mission-list-blurb">
+                  Complete {uncompletedMissions.map((m) => m.name).join(', ')} at least once (any difficulty) to
+                  unlock procedurally generated operations.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="briefing-actions">

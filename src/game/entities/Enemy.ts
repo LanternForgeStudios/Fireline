@@ -129,6 +129,24 @@ export class Enemy {
     return Phaser.Math.Distance.Between(x, y, this.container.x, this.container.y) <= radius
   }
 
+  /**
+   * A random point within the contact's hit circle, for the impact-spark
+   * VFX to land at — always the exact container center previously, which
+   * at high fire-rate upgrade levels stacked every spark on one pixel and
+   * read as a static laser dot instead of a stream of separate hits.
+   * Clamped to 65% of the hit radius so it stays visually inside the
+   * sprite's silhouette rather than grazing the fuzzy edge of the hitbox.
+   */
+  randomImpactPoint(): { x: number; y: number } {
+    const maxOffset = this.def.baseRadius * this.container.scale * 0.65
+    const angle = Math.random() * Math.PI * 2
+    const dist = Math.random() * maxOffset
+    return {
+      x: this.container.x + Math.cos(angle) * dist,
+      y: this.container.y + Math.sin(angle) * dist,
+    }
+  }
+
   /** Applies damage; returns true if this shot killed the contact. */
   takeDamage(amount: number): boolean {
     this.health -= amount
