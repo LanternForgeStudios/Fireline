@@ -49,6 +49,25 @@ on top.
 
 ## Log
 
+### 2026-09-04 (33) — Regenerated desert and urban ground tiles too
+- Follow-up to entry (32): once the jungle/coastal regeneration proved there was a genuinely
+  better option available from `create_tiles_pro`'s independent-tile mode, regenerated desert and
+  urban the same way rather than leaving them on the old transition-set tiles that just happened
+  to hide the seam problem well (sand/asphalt are noise-like enough that the interlock artifacts
+  were less obvious, not actually absent).
+- Owner picked desert `tile_0` (diagonal wind-ripple sand) and urban `tile_8` (dark cracked
+  asphalt with red debris) from contact sheets of 16 candidates each — see
+  [ART_ASSETS.md](ART_ASSETS.md) for job IDs and the full candidate breakdown. Urban's batch had
+  more visible-seam candidates than the other three terrains (concrete/asphalt cracks read more
+  geometric than sand, foliage, or waves).
+- No tint changes needed here — desert's `groundTint` was already neutral, and urban's warm tint
+  reads fine against the new dark asphalt tile (unlike coastal's mismatch in entry 32).
+- Verified live: launched Operation Firebreak (desert) and Operation Steel Convoy (urban),
+  confirmed both scroll with zero visible tiling seams. Hit an intermittent variant of the
+  headless-Chromium black-screenshot quirk from entry (32) — same forced-Canvas2D workaround
+  resolved it, though one screenshot needed a re-check since an initial black result turned out to
+  be a stale cached read of a prior failed attempt, not a real render failure.
+
 ### 2026-09-04 (32) — Regenerated jungle/coastal ground tiles for real seamless tiling
 - Player-reported: jungle and water ground tiles didn't blend seamlessly when scrolled — looked
   like pieces of a tileset meant for paths/interlocks, not a uniform repeating texture. Root cause

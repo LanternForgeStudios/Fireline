@@ -109,44 +109,59 @@ hand-picked pairing; acceptable first-pass variance, not re-tuned per landscape.
 
 | Landscape | Ground tile | Backdrop | Notes |
 | --- | --- | --- | --- |
-| Desert | `ground.png` | `mountains.png` | 64×64 tile via `create_tiles_pro` (id `ff5cabdb-8b77-4728-adf9-c50cef4f7fcb`, `tile_0` of 16); backdrop 400×68 via `create_image_pixflux` (job `2ac273b9-eaa8-47af-b561-ca80502bfd11`) |
+| Desert | `ground.png` | `mountains.png` | ground tile regenerated 2026-09-04, see below; backdrop 400×68 via `create_image_pixflux` (job `2ac273b9-eaa8-47af-b561-ca80502bfd11`) |
 | Coastal | `coastal-ground.png` | `coastal.png` | ground tile regenerated 2026-09-04, see below; backdrop via `create_image_pixflux` (job `af41c91d-fbe0-4a89-8c18-84c9e07ccf6a`), sea horizon with rocky islands and a sun glow |
-| Urban | `urban-ground.png` | `urban.png` | tile via `create_tiles_pro` (id `8617ee1a-6925-4946-85ae-aaed69c3bbce`, `tile_0` of 16 — cracked asphalt/rubble); backdrop via `create_image_pixflux` (job `596a7ca2-a5fb-4fec-a07b-a9d3b31c92b0`), ruined city skyline silhouette |
+| Urban | `urban-ground.png` | `urban.png` | ground tile regenerated 2026-09-04, see below; backdrop via `create_image_pixflux` (job `596a7ca2-a5fb-4fec-a07b-a9d3b31c92b0`), ruined city skyline silhouette |
 | Jungle | `jungle-ground.png` | `jungle.png` | ground tile regenerated 2026-09-04, see below; backdrop via `create_image_pixflux` (job `6b6e28d5-953d-4d03-b251-b19ff95251a6`), palm tree silhouette skyline with a sunset glow and birds |
 
 All four backdrops replace the old procedural sun circle the same way the desert one did — each
 bakes in its own light source (sun glow / smoke-lit skyline / jungle sunset).
 
-### Ground tile regeneration — jungle and coastal (2026-09-04)
+### Ground tile regeneration — all four landscapes (2026-09-04)
 
-The original jungle/coastal ground tiles (like desert/urban above) came from `create_tiles_pro`
-with `tile_feature: 'tileset'` — a 16-tile **corner/transition set** meant for tiles that connect
-to *different* neighboring terrain (a path through grass, a shoreline meeting a jungle), not for
-repeating one tile uniformly. Desert sand and cracked urban asphalt are low-detail/noise-like
-enough that an edge-oriented tile still reads fine when repeated; jungle foliage clumps and water
+The original ground tiles for all four landscapes came from `create_tiles_pro` with
+`tile_feature: 'tileset'` — a 16-tile **corner/transition set** meant for tiles that connect to
+*different* neighboring terrain (a path through grass, a shoreline meeting a jungle), not for
+repeating one tile uniformly. Reported first against jungle/water, whose foliage clumps and
 wave-lines are directional/asymmetric enough that the interlock seams were clearly visible —
-exactly the "part of a tile set that wants to make a path" issue reported.
+"part of a tile set that wants to make a path." Desert sand and cracked urban asphalt are more
+noise-like, which hid the same underlying problem well enough that they weren't flagged in the
+first pass, but a side-by-side contact-sheet comparison showed the same seam artifacts once
+regenerating jungle/coastal proved there was a real, better option available — so all four got
+redone the same way, not just the two originally reported.
 
-Regenerated both via `create_tiles_pro` *without* `tile_feature` (independent single-terrain tile
+Regenerated via `create_tiles_pro` *without* `tile_feature` (independent single-terrain tile
 variations, not a transition set), `square_topdown`/`top-down` view, 64×64, `outline_mode:
-'segmentation'`. Verified the fix by tiling each of the 16 candidates 3×3 into a contact sheet and
-inspecting for visible repeats before presenting options — most candidates in both batches were
-genuinely seamless (a real difference from the old tileset-mode tiles, not just a style change).
+'segmentation'`. Verified the fix by tiling each of the 16 candidates 3×3 into a contact sheet per
+terrain and inspecting for visible repeats before presenting options — most candidates in each
+batch were genuinely seamless (a real difference from the old tileset-mode tiles, not just a style
+change), though the urban batch had more visible-seam candidates than the other three (asphalt/
+concrete cracks read as more geometric than sand, foliage, or waves).
 
-- **Jungle**: job `c72eff3e-1149-4eb6-85c2-c038099311f0` → `tile_0` (dense leafy canopy, chosen by
-  the owner from the seamless candidates).
-- **Coastal**: job `eefa9c86-17ce-4e6d-9f8a-f60637e48675` → `tile_11` (deep-blue wave texture,
-  chosen by the owner). Came out in a lavender/purple tone rather than blue; `operation-nightfall`'s
-  `groundTint` (`missions.ts`) was `0xa9836e` (a warm tan multiply tuned for the *old* texture),
-  which read oddly against this tile — changed to `0xffffff` (neutral, same as Firebreak's) per
-  the owner's call: keep the tile's actual color, don't fight it with a tint built for different
-  art. `coastal` is only used by this one mission, so this is a fully-contained change.
+| Landscape | Job | Picked | Notes |
+| --- | --- | --- | --- |
+| Jungle | `c72eff3e-1149-4eb6-85c2-c038099311f0` | `tile_0` | dense leafy canopy |
+| Coastal | `eefa9c86-17ce-4e6d-9f8a-f60637e48675` | `tile_11` | deep-blue wave texture — came out lavender/purple rather than blue; see the tint note below |
+| Desert | `d3f0fcea-f682-4ecb-a805-d4e023712f7d` | `tile_0` | diagonal wind-ripple sand |
+| Urban | `74f751f3-5e13-4942-89a5-6583d253c67a` | `tile_8` | dark cracked asphalt with red debris |
 
-Verified live: launched both missions and confirmed the ground scrolls with no visible seams in
-either direction (screenshots taken via canvas capture — Playwright's page-level `screenshot()`
-and `canvas.toDataURL()` both returned solid black for the WebGL-rendered canvas in this headless
-environment, a known headless-Chromium/WebGL quirk, not a real rendering bug; forcing Phaser's
-Canvas2D renderer for the verification pass, then reverting, got a real screenshot).
+All four picked by the owner from each terrain's contact sheet of candidates, not chosen
+unilaterally.
+
+**Coastal tint note**: `operation-nightfall`'s `groundTint` (`missions.ts`) was `0xa9836e` (a warm
+tan multiply tuned for the *old* coastal texture), which read oddly against the new lavender-blue
+tile — changed to `0xffffff` (neutral, same as Firebreak's) per the owner's call: keep the tile's
+actual color rather than fight it with a tint built for different art. `coastal` is only used by
+this one mission, so this was a fully-contained change; desert's and urban's own `groundTint`
+values weren't touched (desert was already neutral, urban's warm tint reads fine against the new
+dark asphalt tile).
+
+Verified live: launched all four missions and confirmed the ground scrolls with no visible seams
+in any of them (screenshots taken via canvas capture — Playwright's page-level `screenshot()` and
+`canvas.toDataURL()` both intermittently returned solid black for the WebGL-rendered canvas in
+this headless environment, a known headless-Chromium/WebGL timing quirk rather than a real
+rendering bug; forcing Phaser's Canvas2D renderer for the verification pass, then reverting, got
+reliable real screenshots).
 
 **Not done:** gameplay-affecting weather (still visual-mood only, tracked in
 [AUDIO_AND_POLISH.md](AUDIO_AND_POLISH.md)); a 5th+ landscape if more variety is wanted later.
