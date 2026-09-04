@@ -49,6 +49,20 @@ on top.
 
 ## Log
 
+### 2026-09-04 (29) — Fixed laggy UI click sounds
+- Player-reported: UI SFX (button clicks etc.) sometimes played noticeably late relative to the
+  click. Root cause: `playUiSound()` (`src/audio/uiSound.ts`) called `new Audio(src)` followed
+  immediately by `.play()` on *every single call* — building a fresh `HTMLAudioElement` forces the
+  browser to fetch and decode the file from scratch before playback can start, paying that latency
+  on every click, not just the first.
+- Fixed by pre-creating and preloading one cached `Audio` element per sound file at module load
+  (`preload = 'auto'`), so the fetch/decode happens up front during idle time; `playUiSound()` now
+  just resets `currentTime` to 0 on the cached element and plays.
+- Verified live via Playwright: instrumented the real `Audio` constructor to time from `.play()`
+  call to the `playing` event actually firing (audible-frame latency, not just call overhead) —
+  every play, including the first "cold" one, now fires within ~1ms, down from paying a full
+  fetch+decode on each click before.
+
 ### 2026-09-04 (28) — Clickable rank list modal, weapon upgrades expanded to 10 levels/track
 - The rank badge on the Main Menu is now clickable, opening a modal listing all 8 rank tiers
   (icon, name, XP threshold) with the player's current tier highlighted and marked "YOU" — a
