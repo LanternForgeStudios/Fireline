@@ -230,6 +230,20 @@
   opacity: 0.85;
 }
 
+.menu-signout-btn {
+  margin-top: 1rem;
+}
+
+.menu-signout-confirm {
+  width: 100%;
+  max-width: 24rem;
+  margin-top: 1rem;
+}
+
+.menu-signout-confirm .reset-confirm-text {
+  margin-bottom: 0.75rem;
+}
+
 .hud-label {
   font-family: 'Courier New', ui-monospace, monospace;
   font-size: 0.72rem;

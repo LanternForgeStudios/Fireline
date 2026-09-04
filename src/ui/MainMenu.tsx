@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { playUiSound } from '../audio/uiSound'
 import type { PlayerProfile } from '../firebase/playerProfile'
 
@@ -11,6 +12,8 @@ interface MainMenuProps {
 }
 
 export function MainMenu({ onStart, onSettings, onCredits, onUpgrades, onSignOut, profile }: MainMenuProps) {
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false)
+
   return (
     <div className="screen menu-screen">
       <div className="menu-content">
@@ -55,20 +58,54 @@ export function MainMenu({ onStart, onSettings, onCredits, onUpgrades, onSignOut
             <img className="menu-icon" src={`${import.meta.env.BASE_URL}ui/icon-settings.png`} alt="" />
             Settings
           </button>
+        </div>
+
+        {confirmingSignOut ? (
+          <div className="menu-signout-confirm">
+            <p className="briefing-text reset-confirm-text">Sign out of your account?</p>
+            <div className="briefing-actions">
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setConfirmingSignOut(false)
+                  playUiSound('ui_select')
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => {
+                  playUiSound('ui_confirm')
+                  onSignOut()
+                }}
+              >
+                Confirm sign out
+              </button>
+            </div>
+          </div>
+        ) : (
           <button
-            className="btn btn-secondary"
+            className="btn btn-danger menu-signout-btn"
             onClick={() => {
-              playUiSound('ui_select')
-              onCredits()
+              setConfirmingSignOut(true)
+              playUiSound('toggle_off')
             }}
           >
-            <img className="menu-icon" src={`${import.meta.env.BASE_URL}ui/icon-credits.png`} alt="" />
-            Credits
-          </button>
-          <button className="login-toggle" onClick={onSignOut}>
             Sign out
           </button>
-        </div>
+        )}
+
+        <button
+          className="login-toggle"
+          onClick={() => {
+            playUiSound('ui_select')
+            onCredits()
+          }}
+        >
+          Credits
+        </button>
+
         <p className="menu-footnote">MVP — Core Combat, Mission Variety, Procedural Ops</p>
       </div>
     </div>

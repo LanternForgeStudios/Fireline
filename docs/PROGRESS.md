@@ -49,6 +49,16 @@ on top.
 
 ## Log
 
+### 2026-09-04 (22) — Main Menu: sign-out confirmation, subtler Credits link
+- Sign out is now a `.btn-danger` (red-outlined) button that requires confirmation — click shows
+  "Sign out of your account?" with Cancel/Confirm, matching the existing confirm-before-destructive-
+  action pattern already used for Settings' "Reset progress." Previously a single click signed out
+  immediately with no confirmation.
+- Credits (the attribution screen, not the player's in-game currency shown in the stats line) is
+  now a small underlined text link below the Sign Out button instead of a full icon+button in the
+  Upgrades/Settings row — de-emphasized since it's a low-priority, legally-required-but-not-primary
+  nav item.
+
 ### 2026-09-04 (21) — Fourth hand-authored mission (jungle), Mission Select icons
 - **Operation Green Hell** — a Rescue-type mission using the jungle landscape, closing the gap
   where jungle only existed for procedural missions. 4 waves (Undergrowth Contact → Flanking
