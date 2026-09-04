@@ -257,6 +257,76 @@ export const MISSIONS: MissionDef[] = [
       },
     ],
   },
+  {
+    id: 'operation-riverine-shield',
+    name: 'Operation Riverine Shield',
+    type: 'Escort',
+    briefing:
+      "A supply boat is running upriver in broad daylight — no cover, no surprises for either side. Stay over the water from the first contact to the far bank and don't let a single hit through.",
+    // Bright open-water daylight — the second Escort mission also lands on
+    // 'coastal' (like Nightfall), sharing that landscape's water ground
+    // tile and mountain backdrop image (the backdrop's own sun-glow is
+    // baked into the art, not theme-driven, so a tint alone can't turn it
+    // into a convincing midday sky — mountainAlpha here is dropped low to
+    // mute it rather than fight it). groundTint shifts the water tile's
+    // neutral lavender-blue (Nightfall's look) toward a green-teal "river"
+    // color instead, which is the more visually dominant differentiator
+    // between the two missions since it fills most of the screen. Escort's
+    // own vehicle prop swaps to the boat variant automatically on this
+    // landscape (see escortVehicleAsset in CombatScene.ts), same mechanism
+    // as the existing coastal enemy-boat reskins.
+    theme: {
+      landscape: 'coastal',
+      skyTop: 0x9ed8f2,
+      skyBottom: 0xd8f0f5,
+      mountainTint: 0xc9e8f2,
+      mountainAlpha: 0.35,
+      groundTint: 0xa8e8c8,
+    },
+    secondaryObjective: { type: 'no-damage', label: 'Untouched — take zero aircraft damage', bonusCredits: 95 },
+    waves: [
+      {
+        name: 'Patrol Contact',
+        spawns: [
+          { enemyType: 'drone', delayMs: 0 },
+          { enemyType: 'drone', delayMs: 1800 },
+          { enemyType: 'infantry', delayMs: 3000 },
+        ],
+      },
+      {
+        name: 'Gunboats',
+        spawns: [
+          { enemyType: 'technical', delayMs: 0 },
+          { enemyType: 'gunner', delayMs: 1200 },
+          { enemyType: 'technical', delayMs: 2600 },
+          { enemyType: 'infantry', delayMs: 3800 },
+          { enemyType: 'infantry', delayMs: 4400 },
+        ],
+      },
+      {
+        name: 'Ambush Cove',
+        spawns: [
+          { enemyType: 'rocket', delayMs: 0 },
+          { enemyType: 'gunner', delayMs: 900 },
+          { enemyType: 'rocket', delayMs: 2200 },
+          { enemyType: 'technical', delayMs: 3400 },
+          { enemyType: 'drone', delayMs: 4200 },
+          { enemyType: 'drone', delayMs: 4800 },
+        ],
+      },
+      {
+        name: 'Final Approach',
+        spawns: [
+          { enemyType: 'armored', delayMs: 0 },
+          { enemyType: 'technical', delayMs: 1400 },
+          { enemyType: 'rocket', delayMs: 2600 },
+          { enemyType: 'gunner', delayMs: 3600 },
+          { enemyType: 'gunner', delayMs: 4200 },
+          { enemyType: 'commander', delayMs: 5600 },
+        ],
+      },
+    ],
+  },
 ]
 
 export const DEFAULT_MISSION = MISSIONS[0]

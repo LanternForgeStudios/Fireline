@@ -44,6 +44,11 @@ export class Enemy {
   // during the first hit's tween would ratchet the scale away permanently.
   private readonly spriteBaseScaleX: number
   private readonly spriteBaseScaleY: number
+  // Boat reskins have their own death animation (real sinking/exploding
+  // frames per boat type) instead of the land type's — resolved once here
+  // from the actual texture in use, not just def.id, so a boat never plays
+  // a soldier/vehicle death animation on top of itself.
+  private readonly deathAnimKey: string
   private readonly healthBarBg: Phaser.GameObjects.Rectangle
   private readonly healthBarFill: Phaser.GameObjects.Rectangle
 
@@ -59,6 +64,7 @@ export class Enemy {
     this.health = def.maxHealth
     this.jitterSeed = Math.random() * Math.PI * 2
     this.nextFireAt = spawnTime + def.fireIntervalMs * (0.4 + Math.random() * 0.6)
+    this.deathAnimKey = textureKey === `boat-${def.id}` ? `boat-${def.id}-death` : `${def.id}-death`
 
     const shadow = scene.add.ellipse(0, def.baseRadius * 0.75, def.baseRadius * 1.7, def.baseRadius * 0.7, 0x000000, 0.35)
 
@@ -201,7 +207,7 @@ export class Enemy {
     this.sprite.scene.tweens.killTweensOf(this.sprite)
     this.sprite.setScale(this.spriteBaseScaleX, this.spriteBaseScaleY)
     this.sprite.clearTint()
-    this.sprite.play(`${this.def.id}-death`)
+    this.sprite.play(this.deathAnimKey)
     this.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, onComplete)
   }
 

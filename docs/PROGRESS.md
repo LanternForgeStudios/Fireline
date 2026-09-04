@@ -9,7 +9,7 @@ on top.
 | Phase | Goal | Status |
 | --- | --- | --- |
 | 1 | Core Combat | **Done** — playable shooting prototype |
-| 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 4 missions (Search & Destroy, Escort, Extraction, Rescue) with a select screen, each with distinct visual theming, plus loadout selection via the weapon upgrade system (see Phase 4) |
+| 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 5 missions (Search & Destroy, two Escorts, Extraction, Rescue) with a select screen, each with distinct visual theming, plus loadout selection via the weapon upgrade system (see Phase 4) |
 | 3 | Procedural Content | **Done** per the GDD's own list — seeded generation, encounter blocks, threat budgets, weather/time-of-day variety, and secondary objectives, all shipped. Weather stays visual-mood only, not gameplay-affecting — a deliberate scope call, not a gap |
 | 4 | Backend | **Done** — see below |
 | 5 | Release | Not started (web live on GitHub Pages; iOS/Capacitor future) |
@@ -48,6 +48,39 @@ on top.
       Read-only to the client, same model as `missionResults`.
 
 ## Log
+
+### 2026-09-04 (36) — 5th mission (boat escort) wired up, boat death animations fixed
+- **Operation Riverine Shield** — a 5th hand-authored mission, the second `type: 'Escort'` one, on
+  a bright-daylight `'coastal'` landscape (Nightfall's landscape too, but a distinct sky palette
+  and — the more visually dominant differentiator, since it fills most of the screen — a
+  green-teal `groundTint` on the shared water tile instead of Nightfall's neutral lavender). New
+  icon (`icon-mission-riverineshield.png`). Server-side catalog mirror
+  (`functions/src/missionCatalog.ts`) updated and deployed for reward validation, same as every
+  other hand-authored mission.
+  - `CombatScene.escortVehicleAsset(landscape)` picks the boat texture (`escort-boat.png`) instead
+    of the truck automatically whenever an Escort mission's landscape is `'coastal'` — fixed keys
+    per asset (not per-landscape) since there are only ever the two variants, loaded once and
+    cached forever like everything else here.
+  - Being the 5th canned mission, this also became the 5th thing the "complete all canned
+    operations once" gate (entry 35) requires before Randomly Generated unlocks — no code change
+    needed there, `MissionSelect.tsx` already generalized over the full `MISSIONS` array.
+- **Player-reported, fixed same day: boat deaths played the land type's death animation** — a
+  soldier collapsing or a truck exploding rendered on top of a sunk boat, since the original
+  coastal-boat-reskin pass explicitly scoped out new death animations (documented at the time,
+  now stale). Generated a real one per boat type via `animate_image` (works directly off an image
+  URL, unlike `animate_object` which needs a proper PixelLab object — these boats were raw
+  `create_image_pixflux` images) — see [ART_ASSETS.md](ART_ASSETS.md) for job IDs and a real
+  failure mode hit along the way (inline base64 silently truncated in transit; switched to the
+  live GitHub Pages URL for each source image instead).
+  - `Enemy.ts` now resolves which death animation to play from the actual texture in use at
+    construction time (`deathAnimKey`), not just the enemy type — a boat-reskinned instance plays
+    `boat-${id}-death`, everything else still plays `${id}-death` exactly as before.
+    `CombatScene.buildEnemyAnimations`/`preload` mirror the same branch so the right frames are
+    fetched and registered per mission, same pattern already established for the walk-cycle gate.
+  - Verified live via Playwright: forced a boat-reskinned enemy's death mid-mission and confirmed
+    `boat-${id}-death` is what actually starts playing (not the land animation), with a screenshot
+    showing the explosion VFX rendering on the correct boat sprite; re-checked a land mission
+    afterward to confirm `${id}-death` still plays unaffected (no regression).
 
 ### 2026-09-04 (35) — Escort vehicle regen + boat variant, bullet impact stagger, 1M-XP rank curve, gated procedural missions
 - **Escort vehicle regenerated** — a fresh top-down 3/4 view from the back, front facing north, per

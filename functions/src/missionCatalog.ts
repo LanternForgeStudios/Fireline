@@ -32,6 +32,7 @@ const SECONDARY_OBJECTIVE_BONUS: Record<string, number> = {
   'operation-steel-convoy': 90,
   'operation-green-hell': 95,
   'operation-nightfall': 90,
+  'operation-riverine-shield': 95,
 }
 
 // Mirrors src/game/data/missions.ts: each mission is an array of waves,
@@ -61,6 +62,12 @@ const MISSION_WAVES: Record<string, string[][]> = {
     ['infantry', 'gunner', 'infantry', 'drone'],
     ['technical', 'rocket', 'gunner', 'drone', 'drone', 'technical'],
     ['commander', 'armored', 'rocket', 'rocket', 'gunner', 'gunner', 'armored'],
+  ],
+  'operation-riverine-shield': [
+    ['drone', 'drone', 'infantry'],
+    ['technical', 'gunner', 'technical', 'infantry', 'infantry'],
+    ['rocket', 'gunner', 'rocket', 'technical', 'drone', 'drone'],
+    ['armored', 'technical', 'rocket', 'gunner', 'gunner', 'commander'],
   ],
 }
 

@@ -44,6 +44,14 @@ const DOOR_SILL_HEIGHT = 56
 // 0 (animate_object's default keep_first_frame behavior).
 const DEATH_FRAME_COUNT = 7
 const DEATH_FRAME_RATE = 12
+// Boat reskins previously had no death animation of their own and fell back
+// to silently reusing the land type's ${id}-death frames — a soldier or
+// vehicle explosion playing on top of a sunk boat. Generated real ones via
+// animate_image (frame_count=8 -> 9 stored frames: the boat's own idle art
+// unchanged as frame 0, then 8 generated sinking/exploding frames), a
+// different pipeline from the land types' animate_object-based 7, hence the
+// separate frame count.
+const BOAT_DEATH_FRAME_COUNT = 9
 // A looping walk cycle for the approach itself (previously a single static
 // frame the whole way in) — only the humanoid/soldier enemy types, since
 // the PixelLab Character API this comes from doesn't support vehicles or
@@ -172,6 +180,15 @@ function enemyTextureKey(id: EnemyTypeId, landscape: LandscapeId): string {
   return landscape === 'coastal' && COASTAL_BOAT_TYPES.has(id) ? `boat-${id}` : `enemy-${id}`
 }
 
+/** Escort missions show a friendly boat instead of a truck on a coastal
+ * landscape (e.g. Operation Riverine Shield) — same reskin idea as
+ * COASTAL_BOAT_TYPES above, just for the one non-enemy ground prop. Fixed
+ * keys per asset (not per-landscape) since there are only ever these two
+ * variants — loaded once, cached forever, same as everything else here. */
+function escortVehicleAsset(landscape: LandscapeId): { key: string; file: string } {
+  return landscape === 'coastal' ? { key: 'escort-boat', file: 'escort-boat.png' } : { key: 'escort-vehicle', file: 'escort-vehicle.png' }
+}
+
 export const COMBAT_SCENE_KEY = 'combat'
 
 export class CombatScene extends Phaser.Scene {
@@ -182,6 +199,7 @@ export class CombatScene extends Phaser.Scene {
   private ground!: Phaser.GameObjects.TileSprite
   private groundTextureKey!: string
   private mountainTextureKey!: string
+  private escortVehicleTextureKey!: string
   private damageVignette!: Phaser.GameObjects.Rectangle
   private rotorFlicker!: Phaser.GameObjects.Rectangle
   private nextDustAtMs = 0
@@ -218,8 +236,14 @@ export class CombatScene extends Phaser.Scene {
       const key = enemyTextureKey(def.id, landscape)
       const file = key.startsWith('boat-') ? `boat-${def.id}.png` : `${def.id}.png`
       this.load.image(key, `${import.meta.env.BASE_URL}enemies/${file}`)
-      for (let i = 0; i < DEATH_FRAME_COUNT; i++) {
-        this.load.image(`enemy-${def.id}-death-${i}`, `${import.meta.env.BASE_URL}enemies/${def.id}-death-${i}.png`)
+      if (key.startsWith('boat-')) {
+        for (let i = 0; i < BOAT_DEATH_FRAME_COUNT; i++) {
+          this.load.image(`boat-${def.id}-death-${i}`, `${import.meta.env.BASE_URL}enemies/boat-${def.id}-death-${i}.png`)
+        }
+      } else {
+        for (let i = 0; i < DEATH_FRAME_COUNT; i++) {
+          this.load.image(`enemy-${def.id}-death-${i}`, `${import.meta.env.BASE_URL}enemies/${def.id}-death-${i}.png`)
+        }
       }
       // Skip fetching walk frames a coastal boat reskin can never play (see
       // Enemy.ts's own textureKey guard) — key === the plain enemy-${id}
@@ -238,7 +262,9 @@ export class CombatScene extends Phaser.Scene {
     this.load.image(this.mountainTextureKey, `${import.meta.env.BASE_URL}env/${LANDSCAPE_MOUNTAIN_FILE[landscape]}`)
 
     if (missionState.current.type === 'Escort') {
-      this.load.image('escort-vehicle', `${import.meta.env.BASE_URL}env/escort-vehicle.png`)
+      const { key, file } = escortVehicleAsset(landscape)
+      this.escortVehicleTextureKey = key
+      this.load.image(key, `${import.meta.env.BASE_URL}env/${file}`)
     }
 
     this.load.audio('sfx-shot', `${import.meta.env.BASE_URL}audio/sfx/shot.wav`)
@@ -381,7 +407,7 @@ export class CombatScene extends Phaser.Scene {
    * on screen, only the ground scrolls under both of them.
    */
   private buildEscortVehicle() {
-    const vehicle = this.add.image(WORLD_WIDTH / 2, ESCORT_VEHICLE_Y, 'escort-vehicle')
+    const vehicle = this.add.image(WORLD_WIDTH / 2, ESCORT_VEHICLE_Y, this.escortVehicleTextureKey)
     vehicle.setDisplaySize(96, 96)
     vehicle.setDepth(60)
     this.tweens.add({
@@ -443,14 +469,32 @@ export class CombatScene extends Phaser.Scene {
   private buildEnemyAnimations() {
     const landscape = missionState.current.theme.landscape
     for (const def of Object.values(ENEMY_DEFS)) {
-      const deathKey = `${def.id}-death`
-      if (!this.anims.exists(deathKey)) {
-        this.anims.create({
-          key: deathKey,
-          frames: Array.from({ length: DEATH_FRAME_COUNT }, (_, i) => ({ key: `enemy-${def.id}-death-${i}` })),
-          frameRate: DEATH_FRAME_RATE,
-          repeat: 0,
-        })
+      const key = enemyTextureKey(def.id, landscape)
+
+      // Boat reskins get their own death animation (real sinking/exploding
+      // frames, generated per boat type via animate_image) instead of
+      // silently falling back to the land type's ${id}-death — that used to
+      // play a soldier collapsing or a truck exploding on top of a boat.
+      if (key.startsWith('boat-')) {
+        const boatDeathKey = `boat-${def.id}-death`
+        if (!this.anims.exists(boatDeathKey)) {
+          this.anims.create({
+            key: boatDeathKey,
+            frames: Array.from({ length: BOAT_DEATH_FRAME_COUNT }, (_, i) => ({ key: `boat-${def.id}-death-${i}` })),
+            frameRate: DEATH_FRAME_RATE,
+            repeat: 0,
+          })
+        }
+      } else {
+        const deathKey = `${def.id}-death`
+        if (!this.anims.exists(deathKey)) {
+          this.anims.create({
+            key: deathKey,
+            frames: Array.from({ length: DEATH_FRAME_COUNT }, (_, i) => ({ key: `enemy-${def.id}-death-${i}` })),
+            frameRate: DEATH_FRAME_RATE,
+            repeat: 0,
+          })
+        }
       }
 
       // Same gate preload() uses to decide whether it fetched walk frames
@@ -459,7 +503,7 @@ export class CombatScene extends Phaser.Scene {
       // (boat reskin), the first time a humanoid type happens to spawn
       // coastal before spawning anywhere else this session.
       const walkKey = `${def.id}-walk`
-      if (def.hasWalkCycle && enemyTextureKey(def.id, landscape) === `enemy-${def.id}` && !this.anims.exists(walkKey)) {
+      if (def.hasWalkCycle && key === `enemy-${def.id}` && !this.anims.exists(walkKey)) {
         this.anims.create({
           key: walkKey,
           frames: Array.from({ length: WALK_FRAME_COUNT }, (_, i) => ({ key: `enemy-${def.id}-walk-${i}` })),

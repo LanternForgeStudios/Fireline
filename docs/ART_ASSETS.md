@@ -83,8 +83,7 @@ all for boat-textured enemies on a coastal mission (Operation Nightfall).
 Ground vehicles/infantry standing on open water read wrong, so every non-aerial type gets a
 boat/watercraft reskin swapped in when `theme.landscape === 'coastal'` (drones fly regardless of
 landscape, so they're untouched). Purely a base-texture swap done in `CombatScene.ts`
-(`COASTAL_BOAT_TYPES`/`enemyTextureKey`) — same stats, same `${id}-death` animation as the land
-version; no new animations were generated for this pass.
+(`COASTAL_BOAT_TYPES`/`enemyTextureKey`) — same stats as the land version.
 
 | Type | File | Job ID | Notes |
 | --- | --- | --- | --- |
@@ -94,6 +93,38 @@ version; no new animations were generated for this pass.
 | Technical Vehicle | `boat-technical.png` | `a077995d-485e-40d8-8dee-ef6530b33aa5` | rust-orange fast-attack/"go-fast" boat, bow-mounted gun |
 | Armored Vehicle | `boat-armored.png` | `fe30d6a3-fc34-45c6-9564-9a47cc9f4030` | olive-green armored patrol gunboat with a turret |
 | Commander | `boat-commander.png` | `363e434e-6fa1-4e80-833b-254eb4345d58` | larger gray/purple command boat with a radio mast |
+
+**Boat death animations (`public/enemies/boat-${id}-death-{0..8}.png`, 64×64, 2026-09-04):**
+player-reported: boat deaths played the *land* type's death animation — a soldier collapsing or a
+truck exploding rendered on top of a sunk boat, since the original boat-reskin pass explicitly
+didn't generate new animations (see the note this replaces, above). Generated a real one per boat
+type via `animate_image` (not `animate_object` — these boats were raw `create_image_pixflux`
+images, not wrapped PixelLab objects with an `object_id`, and `animate_image` works directly off
+any image URL/base64 without that wrapping step). Used the live GitHub Pages URL for each
+`boat-*.png` as `first_frame_url` after an inline-base64 attempt got silently truncated in
+transit — a real, reproducible failure mode worth remembering: prefer the URL form for anything
+non-trivial in size. `frame_count=8` → 9 stored frames (index 0 is the boat's own unedited art,
+frames 1-8 are the generated sinking/exploding sequence) — a different frame count from the land
+types' animate_object-based 7, tracked as `BOAT_DEATH_FRAME_COUNT` in `CombatScene.ts` alongside
+the existing `DEATH_FRAME_COUNT`.
+
+| Type | Job ID | Notes |
+| --- | --- | --- |
+| Infantry | `5bcf50ce-f59c-4ce6-bfb3-b82772cfdd5c` | capsizes and sinks |
+| Machine Gunner | `f258c657-fdac-498b-8203-ae57bfc0a549` | capsizes and sinks |
+| Rocket Team | `e8c83500-9c09-4957-aded-00c27cf22187` | explodes |
+| Technical Vehicle | `12df8dcf-9bcf-4d6f-b3d3-44f9a9d98ddf` | explodes into a burning wreck |
+| Armored Vehicle | `5e3cdfdb-41a0-4799-80f7-2b098dfa5015` | explodes into a burning wreck |
+| Commander | `ae9309e4-cc5e-4286-b840-2f3fae6735df` | explodes into a burning wreck |
+
+`Enemy.ts` resolves which death animation to play (`deathAnimKey`) from the actual texture in use
+at construction time, not just `def.id` — a boat-reskinned instance plays `boat-${id}-death`, a
+land instance plays `${id}-death`. `CombatScene.buildEnemyAnimations`/`preload` mirror the same
+`key.startsWith('boat-')` branch so the right frames are fetched and registered per mission.
+Verified live via Playwright: forced a boat-reskinned enemy's death mid-mission and confirmed
+`boat-${id}-death` is what actually starts playing (not the land animation), plus a screenshot
+showing the explosion VFX on the correct boat sprite; re-checked a land mission afterward to
+confirm `${id}-death` still plays unaffected.
 
 ## Environment / landscapes (`public/env/*.png`)
 
@@ -195,6 +226,7 @@ gold border/tint replaces the accent once a track is maxed out.
 | Operation Steel Convoy | `icon-mission-steelconvoy.png` | 64×64 via `create_image_pixflux` (job `34eaf4bc-e539-4ca2-8805-416ab40eadca`), shield protecting a convoy truck |
 | Operation Green Hell | `icon-mission-greenhell.png` | 64×64 via `create_image_pixflux` (job `6bdc4410-aa1c-4f70-95ad-fc5ebb5b062d`), handheld distress beacon with a signal wave — first attempt (job `a0f86126-...`) came back as just a plain leaf, no beacon element, regenerated with the signal emphasized |
 | Operation Nightfall | `icon-mission-nightfall.png` | 64×64 via `create_image_pixflux` (job `5caaea5f-c94e-473c-99dc-3571b8b1b123`), crescent moon with a rope ladder |
+| Operation Riverine Shield | `icon-mission-riverineshield.png` | 64×64 via `create_image_pixflux` (job `64b986c6-b9fe-46af-b29c-331cfeb14335`), boat silhouette with a protective shield behind it |
 | Randomly Generated (procedural) | `icon-mission-random.png` | 64×64 via `create_image_pixflux` (job `d653ce51-270c-415c-9821-f809deb15800`), die with a question mark — one fixed icon regardless of the rolled mission type, since procedural missions have no fixed identity to hang a specific icon on |
 
 Shown at 2.4rem on each Mission Select card (`.mission-list-icon`), same treatment as the
@@ -294,9 +326,10 @@ Playwright.
 
 **Boat variant (`public/env/escort-boat.png`, 96×96, 2026-09-04):** same treatment — bird's-eye
 aerial description, same 180° rotation correction after the initial generation put the bow at the
-bottom instead of the top — generated in case a future mission escorts a boat on water instead of
-a land convoy. Not wired into any mission yet (no water-escort mission exists) — banked art only,
-same olive/tan palette as the truck for visual consistency if/when it's used.
+bottom instead of the top. **Wired up the same day** into a new mission, Operation Riverine Shield
+(`missions.ts`) — `CombatScene.escortVehicleAsset(landscape)` picks the boat texture automatically
+whenever an Escort mission's landscape is `'coastal'`, the same per-landscape-swap idea as the
+enemy boat reskins above, just for the one non-enemy ground prop.
 
 ## In-scene elements still procedural (not yet swapped for real art)
 
