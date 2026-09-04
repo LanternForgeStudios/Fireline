@@ -155,7 +155,40 @@ Shown at 2.4rem on each Mission Select card (`.mission-list-icon`), same treatme
 Upgrades screen's track icons.
 
 **Not done:** mission-type icons for types with no hand-authored mission yet (Base Defense,
-Reconnaissance), achievement/rank badges.
+Reconnaissance).
+
+### Rank badges (`public/ui/icon-rank-*.png`, 64×64)
+
+An 8-tier XP-based rank system, shown on the Main Menu next to the player's stats
+(`RankBadge` in `MainMenu.tsx`, thresholds/lookup in `src/game/data/ranks.ts`). Follows real
+military insignia progression — enlisted chevrons escalating to officer bars, an oak leaf, then
+an eagle — so each tier reads as a step up from the last at a glance:
+
+| Tier | XP threshold | File | Notes |
+| --- | --- | --- | --- |
+| Recruit | 0 | `icon-rank-recruit.png` | job `d47c9af4-700a-4a67-86da-1cc907da656b`, blank patch, no insignia |
+| Private | 1,000 | `icon-rank-private.png` | job `646f4284-7b64-41b7-bffd-2af0a1e48eab`, single chevron |
+| Corporal | 2,500 | `icon-rank-corporal.png` | job `a5e8906a-c1a5-4273-93d2-79bf5762aa44`, two chevrons |
+| Sergeant | 5,000 | `icon-rank-sergeant.png` | job `3b48eabe-294b-4532-b6dd-2e28b6e5ac58`, three chevrons with rocker |
+| Lieutenant | 10,000 | `icon-rank-lieutenant.png` | job `597b80a8-ebbb-4237-b320-13d9efc464f8`, single gold bar |
+| Captain | 20,000 | `icon-rank-captain.png` | job `bfd3ae6e-d2c1-404e-8fc1-340da279260b`, two gold bars |
+| Major | 35,000 | `icon-rank-major.png` | job `25409f93-d633-41bf-9f2f-442baeb129fd`, gold oak leaf |
+| Colonel | 60,000 | `icon-rank-colonel.png` | job `02124ec8-d781-4dfb-b1c0-10b8fad39698`, silver eagle |
+
+Thresholds are spaced against the actual reward math (`xpEarned === score` server-side, see
+`functions/src/index.ts`) — a full mission clear nets roughly 1,000-4,500 XP depending on the
+operation, so early tiers clear in a handful of missions and later tiers take many more, rather
+than a flat per-rank XP curve. `getRankProgress(xp)` in `ranks.ts` returns the current tier, the
+next tier, and a 0-1 progress fraction; the Main Menu renders that as a small bar with "N XP to
+[next rank]" under the badge, or just the badge with no bar once Colonel (max) is reached.
+
+Verified: rank/progress math checked at every tier boundary (999/1000, 2499/2500, ... 59999/60000,
+plus 250,000 well past Colonel) via a scratch script — all thresholds and progress percentages
+came back correct. All 8 icon files confirmed as valid 64×64 RGBA PNGs and load-tested (200s)
+through the dev server. Layout/visual placement on the Main Menu itself was **not** verified live
+against a signed-in account in this pass (the project's `pw-verify@lanternforgestudios.dev` test
+account's credentials weren't available in this session) — worth a glance next time the site's
+open.
 
 ## Escort/support ground element (`public/env/escort-vehicle.png`)
 

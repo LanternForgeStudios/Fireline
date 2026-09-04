@@ -49,6 +49,23 @@ on top.
 
 ## Log
 
+### 2026-09-04 (26) — Rank badge system (8 tiers, XP-based)
+- Added an 8-tier military rank system (Recruit → Private → Corporal → Sergeant → Lieutenant →
+  Captain → Major → Colonel), driven by the `xp` field already tracked on `PlayerProfile` — no
+  backend changes needed, this is purely a new client-side display over existing data.
+- Thresholds (`src/game/data/ranks.ts`) are spaced against the real reward math (`xpEarned ===
+  score` server-side): a full mission clear nets roughly 1,000-4,500 XP depending on the
+  operation, so early tiers clear in a handful of missions and later tiers take many more.
+- Generated 8 PixelLab insignia icons following real military rank progression (blank patch →
+  chevrons → bars → oak leaf → eagle) so each tier reads as a clear step up from the last — see
+  [ART_ASSETS.md](ART_ASSETS.md) for the full table and job IDs.
+- Shown on the Main Menu (`RankBadge` in `MainMenu.tsx`): icon, rank name, and a progress bar with
+  "N XP to [next rank]", or just the badge once Colonel (max tier) is reached.
+- Verified the threshold/progress math at every tier boundary via a scratch script (all correct)
+  and confirmed all 8 icons are valid 64×64 PNGs that load through the dev server. Did **not**
+  verify the live on-screen layout against a signed-in account — this session didn't have the
+  `pw-verify` test account's credentials on hand. Worth a quick look next time the site's open.
+
 ### 2026-09-04 (25) — Character API walk-cycle prototype, rolled out to 4 humanoid enemy types
 - Prototyped the PixelLab **Character API** (`create_character` v3 mode, using each enemy's
   existing sprite as a reference image) on infantry first, to evaluate quality/cost before

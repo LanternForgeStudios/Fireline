@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { playUiSound } from '../audio/uiSound'
+import { getRankProgress } from '../game/data/ranks'
 import type { PlayerProfile } from '../firebase/playerProfile'
 
 interface MainMenuProps {
@@ -24,9 +25,12 @@ export function MainMenu({ onStart, onSettings, onCredits, onUpgrades, onSignOut
           Ride the door gun. Hold the line until extraction.
         </p>
         {profile && (
-          <p className="menu-stats">
-            {profile.displayName} · XP: {profile.xp} · Credits: {profile.credits} · Best score: {profile.bestScore}
-          </p>
+          <>
+            <RankBadge xp={profile.xp} />
+            <p className="menu-stats">
+              {profile.displayName} · XP: {profile.xp} · Credits: {profile.credits} · Best score: {profile.bestScore}
+            </p>
+          </>
         )}
         <button
           className="btn btn-primary"
@@ -107,6 +111,26 @@ export function MainMenu({ onStart, onSettings, onCredits, onUpgrades, onSignOut
         </button>
 
         <p className="menu-footnote">MVP — Core Combat, Mission Variety, Procedural Ops</p>
+      </div>
+    </div>
+  )
+}
+
+function RankBadge({ xp }: { xp: number }) {
+  const { rank, next, progress } = getRankProgress(xp)
+  return (
+    <div className="menu-rank">
+      <img className="menu-rank-icon" src={`${import.meta.env.BASE_URL}ui/${rank.icon}`} alt="" />
+      <div className="menu-rank-info">
+        <span className="menu-rank-name">{rank.name}</span>
+        {next && (
+          <>
+            <div className="menu-rank-bar">
+              <div className="menu-rank-bar-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
+            </div>
+            <span className="menu-rank-next">{next.minXp - xp} XP to {next.name}</span>
+          </>
+        )}
       </div>
     </div>
   )

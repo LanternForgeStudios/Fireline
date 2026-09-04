@@ -319,6 +319,57 @@
   margin-bottom: 1.5rem;
 }
 
+.menu-rank {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.menu-rank-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+
+.menu-rank-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
+
+.menu-rank-name {
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 0.95rem;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f2c14e;
+}
+
+.menu-rank-bar {
+  width: 9rem;
+  height: 0.35rem;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.menu-rank-bar-fill {
+  height: 100%;
+  background: #f2c14e;
+  border-radius: 999px;
+}
+
+.menu-rank-next {
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+}
+
 .menu-hero {
   width: 160px;
   height: 160px;
