@@ -8,6 +8,16 @@ export interface EnemySpawnPoint {
   targetY: number
 }
 
+// Spawn-time scale, and how much scale grows on top of that by the time an
+// enemy reaches impact (added to SPAWN_SCALE, not multiplied by it) — bumped
+// 50% larger at spawn (was 0.35) per player feedback that targets were hard
+// to track/hit, especially on mobile; the growth-as-it-approaches curve
+// itself is unchanged. containsPoint()'s hit radius (Enemy) and the touch
+// aim-assist radius (CombatScene) both read container.scale directly, so
+// both grow in step with this automatically — no separate tuning needed.
+const SPAWN_SCALE = 0.525
+const APPROACH_SCALE_GROWTH = 1.55
+
 /**
  * A single hostile contact closing on the helicopter. Owns its Phaser
  * display objects and its own approach/health/fire-back state; CombatScene
@@ -51,7 +61,7 @@ export class Enemy {
     this.healthBarFill = scene.add.rectangle(0, -def.baseRadius - 14, 34, 5, 0x4ade80, 0.95)
 
     this.container = scene.add.container(spawn.x, spawn.y, [shadow, this.sprite, this.healthBarBg, this.healthBarFill])
-    this.container.setScale(0.35)
+    this.container.setScale(SPAWN_SCALE)
     this.updateHealthBar()
   }
 
@@ -69,7 +79,7 @@ export class Enemy {
   update(deltaMs: number): boolean {
     this.progress = Phaser.Math.Clamp(this.progress + deltaMs / this.def.approachMs, 0, 1)
     const eased = Math.pow(this.progress, 1.4)
-    const scale = 0.35 + eased * 1.55
+    const scale = SPAWN_SCALE + eased * APPROACH_SCALE_GROWTH
     const jitterX =
       this.def.jitter > 0 ? Math.sin(this.jitterSeed + this.progress * 14) * this.def.jitter : 0
 

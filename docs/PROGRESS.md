@@ -49,6 +49,14 @@ on top.
 
 ## Log
 
+### 2026-09-04 (18) — Larger enemy targets (mobile + desktop)
+- Enemies now spawn 50% larger (`SPAWN_SCALE` 0.35 → 0.525 in `Enemy.ts`) and still grow the same
+  amount on top of that as they approach (`APPROACH_SCALE_GROWTH` unchanged at 1.55) — player
+  feedback that targets were hard to track/hit, especially on mobile. Hit-detection radius
+  (`Enemy.containsPoint`) and the touch aim-assist radius (`CombatScene.applyTouchAimAssist`) both
+  read `container.scale` directly rather than a hardcoded constant, so both grew in step
+  automatically — no separate tuning needed there.
+
 ### 2026-09-04 (17) — Fourth landscape: jungle
 - Added `jungle` as a 4th `LandscapeId` — ground tile + backdrop via PixelLab (dense foliage tile,
   palm-silhouette sunset skyline with birds), wired into `CombatScene`'s
