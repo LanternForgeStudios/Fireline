@@ -126,6 +126,8 @@ const LANDSCAPE_MOUNTAIN_FILE: Record<LandscapeId, string> = {
   urban: 'urban.png',
 }
 
+export const COMBAT_SCENE_KEY = 'combat'
+
 export class CombatScene extends Phaser.Scene {
   private weapon!: Weapon
   private enemies: Enemy[] = []
@@ -160,7 +162,7 @@ export class CombatScene extends Phaser.Scene {
   private totalEnemiesSpawned = 0
 
   constructor() {
-    super('combat')
+    super(COMBAT_SCENE_KEY)
   }
 
   preload() {

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check'
 import { connectAuthEmulator, getAuth } from 'firebase/auth'
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions'
@@ -18,9 +18,15 @@ const firebaseConfig = {
   measurementId: 'G-CQN30RRKXG',
 }
 
-// reCAPTCHA v3 site keys are public by design (same trust level as the
-// Firebase config above) — the secret half lives server-side in Firebase.
-const RECAPTCHA_V3_SITE_KEY = '6Lfa0KUtAAAAACvIBnmtEwdKJqtztXa95LYKMQa0'
+// reCAPTCHA Enterprise site keys are public by design (same trust level as
+// the Firebase config above) — the secret half lives server-side in Firebase.
+// This must be the key registered against this app under Firebase Console ->
+// App Check -> Apps (reCAPTCHA Enterprise, not the deprecated v3 provider) —
+// a mismatch between the provider class and what's registered in Console
+// fails App Check token exchange with "App not registered", which silently
+// breaks every App-Check-enforced Cloud Function call (submitMissionResult,
+// resetProgress, purchaseUpgrade).
+const RECAPTCHA_ENTERPRISE_SITE_KEY = '6Lfa0KUtAAAAACvIBnmtEwdKJqtztXa95LYKMQa0'
 
 export const firebaseApp = initializeApp(firebaseConfig)
 export const auth = getAuth(firebaseApp)
@@ -51,6 +57,6 @@ if (import.meta.env.DEV) {
 }
 
 initializeAppCheck(firebaseApp, {
-  provider: new ReCaptchaV3Provider(RECAPTCHA_V3_SITE_KEY),
+  provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_ENTERPRISE_SITE_KEY),
   isTokenAutoRefreshEnabled: true,
 })

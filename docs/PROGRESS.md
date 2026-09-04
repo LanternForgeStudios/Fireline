@@ -49,6 +49,65 @@ on top.
 
 ## Log
 
+### 2026-09-03 (13) — Fix App Check provider mismatch breaking all progression on the live site
+- **Real, live-site-breaking bug found and fixed.** Reported symptom: "completed a mission,
+  earned no credits" — investigation showed it was much bigger than credits: App Check's
+  reCAPTCHA token exchange was failing on the live site
+  (`content-firebaseappcheck.googleapis.com/.../exchangeRecaptchaV3Token` → 400 `"App not
+  registered: 1:643236089836:web:81b5e92d625b0096c53ac9."`), and since deployed Cloud Functions
+  enforce App Check (`enforceAppCheck: !isEmulator` — see the Backend detail table above), that
+  meant **every** call to `submitMissionResult`, `resetProgress`, and `purchaseUpgrade` was being
+  silently rejected in production, for every player, since Functions started enforcing it. The
+  client swallows the failure with `.catch(console.error)` (`App.tsx`), so nothing ever surfaced
+  it — no error toast, nothing. Not new from this session's changes; this had already been
+  live-broken.
+- **Root cause:** the client was initializing App Check with `ReCaptchaV3Provider`, but the app
+  is registered in Firebase Console -> App Check -> Apps under **reCAPTCHA Enterprise**, not the
+  (now-deprecated) v3 provider — a provider/registration mismatch fails token exchange outright.
+  Firebase requires the client SDK provider to match what's registered for the app: v3 talks to
+  `exchangeRecaptchaV3Token`, Enterprise to `exchangeRecaptchaEnterpriseToken`, and Console only
+  accepts tokens from the one actually registered.
+- **Fix:** `src/firebase/config.ts` now uses `ReCaptchaEnterpriseProvider` in place of
+  `ReCaptchaV3Provider` (same site key — `firebase/app-check`'s Enterprise provider takes an
+  Enterprise score-based site key with the same `6L...` shape, and Console confirmed this one is
+  registered as Enterprise). Couldn't fully reproduce the fix locally (dev mode routes through the
+  App Check *debug*-token exchange instead of the real reCAPTCHA flow, and the Enterprise site
+  key's domain allowlist likely only covers the production domain anyway) — verify live after
+  deploy: sign in on the live site, complete or fail a mission, confirm credits/XP actually land
+  in the player profile.
+
+### 2026-09-03 (12) — Easy-mode difficulty tuning, desktop touch-pad visibility, mobile portrait fix
+- Easy mode now also boosts aircraft max health (130 instead of 100) and slows enemy return fire
+  (`fireIntervalMult`) — previously only enemy health/damage were softened, and player feedback
+  was that even easy felt punishing. `DIFFICULTY_MULTIPLIERS` gained `fireIntervalMult` and
+  `aircraftHealthMult` alongside the existing `health`/`damage` factors.
+- Touch pads are functionally touch-only already (`engagePad` only fires for touch pointers) —
+  they're now also visually hidden on devices with no touch support (`supportsTouch()` check in
+  `CombatScene.buildPadSide`), instead of sitting idle over a mouse player's view.
+- **Mobile portrait fix:** the combat view is a fixed 1280×720 (16:9) world with `Scale.FIT` —
+  on a tall/narrow phone held in portrait, FIT's scale is capped by the *width*, so the canvas
+  shrank to a small strip with huge empty space above/below (exactly the reported "battle screen
+  much smaller in portrait" symptom). Rather than re-tuning every gameplay position constant
+  (`HORIZON_Y`, `IMPACT_Y_RANGE`, `GUN_ORIGIN`, `TOUCH_PAD_Y`, etc.) to a dynamic aspect ratio,
+  touch devices held in portrait during combat now get a "Rotate your device to landscape to fly"
+  overlay (`GameCanvas.tsx`), with the Phaser scene paused underneath (`game.scene.pause`) until
+  they rotate back — matches the genre convention for landscape-only mobile games, and avoids
+  touching the many already-tuned position constants. Verified via Playwright with iPhone 13
+  device emulation: prompt shows in portrait, scene pauses; rotating to landscape resumes and the
+  canvas fills the viewport properly (thin top/bottom bars from the aspect mismatch, not the
+  previous large empty strip).
+- **Local dev note (not a shipped bug):** while investigating a "no credits earned" report, found
+  the Local Emulator Suite's Cloud Functions emulator can fail to load function definitions on
+  boot (`Cannot determine backend specification. Timeout after 10000ms` — an intermittent
+  discovery-timeout flake, not a code issue; the compiled `functions/lib/index.js` loads fine
+  standalone). When that happens, `submitMissionResult` never registers, so every mission-complete
+  call to it fails — silently, since `App.tsx`'s `recordMissionResult(...).catch(console.error)`
+  has no user-facing surface for that failure. Restarting the emulator suite clears it. Doesn't
+  affect the deployed production Functions. Worth revisiting whether that catch should surface
+  something to the player (a toast, a retry) rather than failing invisibly, even for the rarer
+  real-world case (e.g. a dropped connection) — not done here since it's speculative UX scope
+  beyond this session's reported bug.
+
 ### 2026-09-03 (11) — Enemy death animations + landscape variety (coastal, urban)
 - Replaced the placeholder scale-up-and-fade death effect with real PixelLab animations for all 7
   enemy types (`animate_object`, 7 frames each — see [ART_ASSETS.md](ART_ASSETS.md)). Required
