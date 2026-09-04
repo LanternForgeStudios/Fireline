@@ -61,8 +61,13 @@ alongside them — worth double-checking their source/license before a public re
 
 - [x] Add a credits/attribution screen (blocks public release, see above) — Main Menu → Credits,
       credits Marllon Silva (xDeviruchi) per license terms
-- [ ] Music files are large (menu.ogg ~6.9MB, combat.ogg ~4.2MB) — re-encode at a lower bitrate;
-      no `ffmpeg`/re-encoding tool was available in this session to do it inline
+- [x] Music files are large — re-encoded 2026-09-04. Both were Vorbis at ~500kbps (way more than
+      needed for this style of track); re-encoded to 128kbps Vorbis (`ffmpeg-static`, an npm-
+      installable portable binary, installed to a scratch dir and removed after — not a project
+      dependency). `menu.ogg` 6.9MB → 2.0MB, `combat.ogg` 4.2MB → 1.1MB (~70-74% smaller), same
+      duration to the millisecond. Verified by loading both through the real dev server into an
+      `<audio>` element and confirming `loadedmetadata` fires with the correct duration (not just
+      an ffmpeg-side decode check) before committing.
 - [ ] Combat music loops from the very start (intro included) rather than at a proper loop point —
       the source pack's license PDF documents loop start/length in seconds for a "Loopable" file
       set, but that folder wasn't present in the copy pulled from; full tracks were used as-is
