@@ -49,6 +49,21 @@ on top.
 
 ## Log
 
+### 2026-09-04 (39) — Tracer now lands where the bullet actually lands
+- Player-reported: bullet spread still looked like a solid laser line despite the impact-spark
+  stagger from entry (35). Root cause: `spawnTracer()` (the visible gun-to-target line — the more
+  visually dominant element of the two) still always drew to the raw crosshair position, which
+  barely moves shot-to-shot during sustained fire on a mostly-stationary target. Only the small
+  impact *spark* was using the randomized point; the line itself never moved.
+- Fixed by computing `target.randomImpactPoint()` once per shot and using it for both the tracer's
+  endpoint and the impact spark, so the line and the spark agree — bullets still originate from the
+  gun every time, they just don't all terminate on the same pixel anymore.
+- Verified live via Playwright: patched `spawnTracer` to record every endpoint, locked onto one
+  non-dying enemy (zeroed damage for the test — the first attempt used a real 15-HP infantry that
+  died 2 shots in, silently swapping to a different, differently-positioned enemy and producing
+  misleading "spread" data), and confirmed endpoints vary meaningfully shot-to-shot instead of
+  being frozen at one point, landing on/near the actual target each time.
+
 ### 2026-09-04 (38) — Rebalanced upgrade costs against the rank curve
 - Owner asked for a rank-vs-gear balance check: since XP and credits both derive from the same
   per-mission score (`xpEarned = score`, `creditsEarned ≈ score/10 + bonus` in

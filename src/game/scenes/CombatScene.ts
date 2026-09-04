@@ -1038,7 +1038,6 @@ export class CombatScene extends Phaser.Scene {
     if (!this.weapon.tryFire()) return
 
     this.sound.play('sfx-shot', { volume: audioSettings.sfxVolume * 0.5 })
-    this.spawnTracer(this.crosshairPos.x, this.crosshairPos.y)
     this.spawnSpark(this.crosshairPos.x, this.crosshairPos.y, 0xfff3c4, 1, 90)
     if (this.weapon.overheated && !wasOverheated) {
       this.sound.play('sfx-overheat', { volume: audioSettings.sfxVolume })
@@ -1051,11 +1050,17 @@ export class CombatScene extends Phaser.Scene {
     }
     gameEvents.emit(EVT_HIT_MARKER, { hit: Boolean(target), x: this.crosshairPos.x, y: this.crosshairPos.y })
 
-    if (!target) return
     // Staggered across the hit circle, not always dead-center — at high
     // Fire Rate upgrade levels, every shot landing on the exact same pixel
-    // reads as a static laser dot rather than a stream of separate hits.
-    const impact = target.randomImpactPoint()
+    // (both the spark AND, previously, the tracer's own endpoint) read as a
+    // static laser line rather than a stream of separate hits. The tracer
+    // now terminates at this same point so the line and the spark agree —
+    // it still starts every shot from the gun, it just doesn't all land on
+    // one pixel anymore.
+    const impact = target ? target.randomImpactPoint() : this.crosshairPos
+    this.spawnTracer(impact.x, impact.y)
+
+    if (!target) return
     this.spawnSpark(impact.x, impact.y, 0xffa64d, 0.8, 140)
 
     const killed = target.takeDamage(this.weapon.damagePerShot)
