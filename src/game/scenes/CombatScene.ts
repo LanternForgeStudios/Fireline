@@ -13,6 +13,7 @@ import {
   EVT_MISSION_COMPLETE,
   EVT_MISSION_FAILED,
   type EnemyDef,
+  type EnemyTypeId,
   type HudState,
   type LandscapeId,
   type MissionResult,
@@ -33,6 +34,9 @@ const MAX_HEALTH = 100
 const HORIZON_Y = 130
 const HORIZON_Y_RANGE: [number, number] = [110, 165]
 const IMPACT_Y_RANGE: [number, number] = [545, 610]
+// Sits in the mid-ground, above where enemies grow largest/most visually busy
+// (IMPACT_Y_RANGE) so it doesn't fight with them for attention.
+const ESCORT_VEHICLE_Y = 460
 const SPAWN_X_MARGIN = 90
 const DOOR_SILL_HEIGHT = 56
 // Real PixelLab death-animation frames per enemy type (see docs/ART_ASSETS.md)
@@ -126,6 +130,24 @@ const LANDSCAPE_MOUNTAIN_FILE: Record<LandscapeId, string> = {
   urban: 'urban.png',
 }
 
+// Foot soldiers and wheeled/tracked vehicles don't make sense standing on
+// open water — these get a boat/watercraft reskin (public/enemies/boat-*.png)
+// for coastal missions instead of their normal land sprite. Drones fly
+// regardless of landscape, so they're untouched. Purely a base-texture swap
+// — same stats, same death animation (see docs/ART_ASSETS.md).
+const COASTAL_BOAT_TYPES: ReadonlySet<EnemyTypeId> = new Set([
+  'infantry',
+  'gunner',
+  'rocket',
+  'technical',
+  'armored',
+  'commander',
+])
+
+function enemyTextureKey(id: EnemyTypeId, landscape: LandscapeId): string {
+  return landscape === 'coastal' && COASTAL_BOAT_TYPES.has(id) ? `boat-${id}` : `enemy-${id}`
+}
+
 export const COMBAT_SCENE_KEY = 'combat'
 
 export class CombatScene extends Phaser.Scene {
@@ -166,17 +188,23 @@ export class CombatScene extends Phaser.Scene {
   }
 
   preload() {
+    const landscape = missionState.current.theme.landscape
     for (const def of Object.values(ENEMY_DEFS)) {
-      this.load.image(`enemy-${def.id}`, `${import.meta.env.BASE_URL}enemies/${def.id}.png`)
+      const key = enemyTextureKey(def.id, landscape)
+      const file = key.startsWith('boat-') ? `boat-${def.id}.png` : `${def.id}.png`
+      this.load.image(key, `${import.meta.env.BASE_URL}enemies/${file}`)
       for (let i = 0; i < DEATH_FRAME_COUNT; i++) {
         this.load.image(`enemy-${def.id}-death-${i}`, `${import.meta.env.BASE_URL}enemies/${def.id}-death-${i}.png`)
       }
     }
-    const landscape = missionState.current.theme.landscape
     this.groundTextureKey = `ground-art-${landscape}`
     this.mountainTextureKey = `mountains-art-${landscape}`
     this.load.image(this.groundTextureKey, `${import.meta.env.BASE_URL}env/${LANDSCAPE_GROUND_FILE[landscape]}`)
     this.load.image(this.mountainTextureKey, `${import.meta.env.BASE_URL}env/${LANDSCAPE_MOUNTAIN_FILE[landscape]}`)
+
+    if (missionState.current.type === 'Escort') {
+      this.load.image('escort-vehicle', `${import.meta.env.BASE_URL}env/escort-vehicle.png`)
+    }
 
     this.load.audio('sfx-shot', `${import.meta.env.BASE_URL}audio/sfx/shot.wav`)
     this.load.audio('sfx-kill', `${import.meta.env.BASE_URL}audio/sfx/kill.wav`)
@@ -202,6 +230,7 @@ export class CombatScene extends Phaser.Scene {
     this.buildBackground()
     this.buildEnemyTextures()
     this.buildEnemyAnimations()
+    if (missionState.current.type === 'Escort') this.buildEscortVehicle()
     this.buildHelicopterFrame()
     this.buildVfxTextures()
     this.buildDamageVignette()
@@ -254,6 +283,30 @@ export class CombatScene extends Phaser.Scene {
     const shading = this.add.graphics()
     shading.fillGradientStyle(theme.groundTint, theme.groundTint, 0x2a1f18, 0x2a1f18, 0, 0, 0.55, 0.55)
     shading.fillRect(0, HORIZON_Y, WORLD_WIDTH, WORLD_HEIGHT - HORIZON_Y)
+  }
+
+  /**
+   * A friendly ground vehicle sitting in the mid-ground for Escort-type
+   * missions ("Operation Steel Convoy" today) — sells the "you're escorting
+   * this convoy" premise instead of the ground just being empty terrain.
+   * Purely decorative: never added to `this.enemies`, so containsPoint/
+   * handleFiring can never target or damage it. Held roughly fixed on
+   * screen (a gentle bob, not a scroll) since it travels at the same pace
+   * as the helicopter — same reasoning the helicopter itself never moves
+   * on screen, only the ground scrolls under both of them.
+   */
+  private buildEscortVehicle() {
+    const vehicle = this.add.image(WORLD_WIDTH / 2, ESCORT_VEHICLE_Y, 'escort-vehicle')
+    vehicle.setDisplaySize(96, 96)
+    vehicle.setDepth(60)
+    this.tweens.add({
+      targets: vehicle,
+      y: ESCORT_VEHICLE_Y + 6,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    })
   }
 
   /**
@@ -688,7 +741,8 @@ export class CombatScene extends Phaser.Scene {
       fireDamagePerTick: Math.round(baseDef.fireDamagePerTick * mult.damage),
       fireIntervalMs: Math.round(baseDef.fireIntervalMs * mult.fireIntervalMult),
     }
-    const enemy = new Enemy(this, def, this.spawnPoint(), `enemy-${baseDef.id}`, this.time.now)
+    const textureKey = enemyTextureKey(baseDef.id, missionState.current.theme.landscape)
+    const enemy = new Enemy(this, def, this.spawnPoint(), textureKey, this.time.now)
     this.enemies.push(enemy)
     this.totalEnemiesSpawned += 1
   }

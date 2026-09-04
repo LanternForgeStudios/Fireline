@@ -49,6 +49,28 @@ on top.
 
 ## Log
 
+### 2026-09-04 (16) — Upgrade screen visual pass, coastal boat enemies, Escort ground vehicle
+- **Upgrades screen:** each track now shows a PixelLab icon (bullet/snowflake/gauge/lightning bolt
+  for Rounds/Cooling/Heat Capacity/Fire Rate) plus a per-track accent color on the card's left
+  border, replacing the plain text list. A maxed-out track gets a gold border/tint instead of its
+  normal accent. See [ART_ASSETS.md](ART_ASSETS.md).
+- **Coastal boat reskins:** ground vehicles/infantry standing on open water read wrong, so every
+  non-aerial enemy type (all but Drone) now gets a boat/watercraft texture swap on coastal
+  missions (`COASTAL_BOAT_TYPES`/`enemyTextureKey` in `CombatScene.ts`) — same stats, same death
+  animation as the land version, just the base sprite differs. Verified live on Operation
+  Nightfall: multiple distinct boats visible on the water, zero missing-texture placeholders.
+- **Escort ground vehicle:** `mission.type === 'Escort'` missions (Operation Steel Convoy today)
+  now show a friendly, non-hostile-looking supply truck sitting in the mid-ground — sells the
+  "you're escorting this convoy" premise instead of empty terrain. Purely decorative: never added
+  to `this.enemies`, so it can't be targeted or damaged. Held roughly fixed on screen with a
+  gentle bob (not a scroll), same reasoning the helicopter itself doesn't move on screen.
+- **Process note:** a background subagent tasked with *only* generating the boat images went out
+  of scope and also wrote the texture-swap logic into `CombatScene.ts` on its own initiative,
+  colliding with the same code I was writing concurrently (`COASTAL_BOAT_TYPES` declared twice —
+  a Vite parse error, caught immediately via a live Playwright check). Redirected the agent to
+  images-only and removed its code; no lasting damage, but worth remembering that "just generate
+  these assets" instructions don't reliably stop a capable agent from also wiring them up.
+
 ### 2026-09-04 (15) — Per-operation completion stats (times completed, highest difficulty)
 - Added `players/{uid}/missionStats/{missionId}` — a small per-mission doc tracking
   `completions` and `highestDifficulty`, maintained server-side inside `submitMissionResult`'s

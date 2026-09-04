@@ -39,6 +39,23 @@ damaged) — scoped out of this pass to keep it to one animation set per type; t
 impact-spark VFX (`spawnSpark` in `CombatScene.ts`) still covers non-lethal hit feedback. Worth a
 follow-up if it reads as needed once someone's actually played against it.
 
+### Coastal boat reskins (`public/enemies/boat-*.png`, 64×64)
+
+Ground vehicles/infantry standing on open water read wrong, so every non-aerial type gets a
+boat/watercraft reskin swapped in when `theme.landscape === 'coastal'` (drones fly regardless of
+landscape, so they're untouched). Purely a base-texture swap done in `CombatScene.ts`
+(`COASTAL_BOAT_TYPES`/`enemyTextureKey`) — same stats, same `${id}-death` animation as the land
+version; no new animations were generated for this pass.
+
+| Type | File | Job ID | Notes |
+| --- | --- | --- | --- |
+| Infantry | `boat-infantry.png` | `65df629e-c250-43f7-ba77-bc2c6f177b73` | soldier on a tan inflatable skiff, rifle visible |
+| Machine Gunner | `boat-gunner.png` | `48d9aede-87aa-4b60-94f1-31e6144504f5` | wooden boat with a mounted machine gun |
+| Rocket Team | `boat-rocket.png` | `81275691-ca82-4ab3-aa22-1070c43460d5` | soldier aiming a launcher, high-contrast silhouette — first attempt (job `ad215bca-232d-4588-a60d-f41189b9efb6`) was too muddy to read at 64×64, regenerated |
+| Technical Vehicle | `boat-technical.png` | `a077995d-485e-40d8-8dee-ef6530b33aa5` | rust-orange fast-attack/"go-fast" boat, bow-mounted gun |
+| Armored Vehicle | `boat-armored.png` | `fe30d6a3-fc34-45c6-9564-9a47cc9f4030` | olive-green armored patrol gunboat with a turret |
+| Commander | `boat-commander.png` | `363e434e-6fa1-4e80-833b-254eb4345d58` | larger gray/purple command boat with a radio mast |
+
 ## Environment / landscapes (`public/env/*.png`)
 
 Three landscapes now exist — `MissionTheme.landscape` (`types.ts`) picks which one a mission uses,
@@ -75,7 +92,30 @@ bakes in its own light source (sun glow / smoke-lit skyline).
 All three shown at 1.1rem inline next to their button label in the Main Menu icon row
 (`.menu-icon` in `App.css`).
 
-**Not done:** mission-type icons (Escort/Rescue/etc.), achievement/rank badges.
+| Upgrade track icon | File | Notes |
+| --- | --- | --- |
+| Rounds (damage) | `icon-upgrade-damage.png` | 64×64 via `create_image_pixflux` (job `d981b515-d507-4337-b124-3d48a73506c4`), AP bullet round |
+| Cooling | `icon-upgrade-cooling.png` | 64×64 via `create_image_pixflux` (job `262bf889-f4e8-430c-a572-44474191f7fa`), snowflake |
+| Heat Capacity | `icon-upgrade-heatcapacity.png` | 64×64 via `create_image_pixflux` (job `51aaa0f4-5d16-47e4-86c5-ce29d98bf48c`), gauge dial on a shield plate |
+| Fire Rate | `icon-upgrade-firerate.png` | 64×64 via `create_image_pixflux` (job `71d13ef7-fd39-496a-9a56-c0a32044b067`), lightning bolt — first attempt (crossed ammo rounds, job `ba32aacb-0b55-40cf-8434-665ccb3d10f7`) didn't read clearly as "rate", regenerated |
+
+Shown at 2.6rem in each track's card on the Upgrades screen (`.upgrade-track-icon`), alongside a
+per-track accent color on the card's left border (`TRACK_ACCENT` in `UpgradesScreen.tsx`) — a
+gold border/tint replaces the accent once a track is maxed out.
+
+**Not done:** mission-type icons (Rescue/Base Defense/etc. — only Escort has bespoke ground art,
+see below), achievement/rank badges.
+
+## Escort/support ground element (`public/env/escort-vehicle.png`)
+
+96×96 via `create_image_pixflux` (job `54001409-7a7e-43b7-91b7-ace22afc7bb7`) — a friendly
+canvas-covered supply truck, sandy tan/olive colors, deliberately non-hostile-looking (no visible
+weapons) so it doesn't read as another enemy. Shown for `mission.type === 'Escort'` missions only
+(currently just Operation Steel Convoy) — sits in the mid-ground (`ESCORT_VEHICLE_Y = 460` in
+`CombatScene.ts`, above the enemy impact zone so it doesn't visually compete with approaching
+contacts) with a gentle vertical bob tween, not a scroll — it travels at the same pace as the
+helicopter, so it stays roughly fixed on screen the same way the helicopter itself does. Never
+added to `this.enemies`, so it's not targetable/damageable by design.
 
 ## In-scene elements still procedural (not yet swapped for real art)
 

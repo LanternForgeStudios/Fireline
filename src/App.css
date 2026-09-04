@@ -114,9 +114,36 @@
 }
 
 .upgrade-track {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
   border: 1px solid #2e303a;
+  border-left: 3px solid #4b5563;
   border-radius: 6px;
   padding: 0.9rem 1rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), transparent 60%);
+  transition: border-color 0.2s ease;
+}
+
+.upgrade-track-maxed {
+  background: linear-gradient(135deg, rgba(217, 180, 95, 0.08), transparent 60%);
+}
+
+.upgrade-track-icon {
+  width: 2.6rem;
+  height: 2.6rem;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
+.upgrade-track-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.upgrade-track-maxed-label {
+  color: #d9b45f;
 }
 
 .upgrade-track-header {
