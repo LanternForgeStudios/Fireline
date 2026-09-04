@@ -102,6 +102,62 @@
   font-size: 0.85rem;
 }
 
+.gun-tab-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.gun-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #2e303a;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #e6e8ec;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.gun-tab:hover {
+  border-color: #4b5563;
+}
+
+.gun-tab-active {
+  border-color: #f2c14e;
+  background: linear-gradient(135deg, rgba(242, 193, 78, 0.1), transparent 60%);
+}
+
+.gun-tab-locked {
+  opacity: 0.65;
+}
+
+.gun-tab-icon {
+  width: 2.2rem;
+  height: 2.2rem;
+  image-rendering: pixelated;
+}
+
+.gun-tab-name {
+  white-space: nowrap;
+}
+
+.gun-tab-tag {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: #f2c14e;
+}
+
+.gun-tab-tag-locked {
+  color: #9aa0aa;
+}
+
 .upgrade-track-list {
   /* No max-height/overflow of its own — .screen now scrolls the whole page
      (see the mobile-layout fix), so a second nested scroll container here
@@ -881,6 +937,21 @@
   bottom: 0;
   right: 0;
   text-align: right;
+}
+
+.hud-zoom-indicator {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.3rem 0.9rem;
+  border: 1px solid rgba(242, 193, 78, 0.5);
+  border-radius: 3px;
+  background: rgba(10, 13, 18, 0.6);
+}
+
+.hud-zoom-indicator .hud-label {
+  color: #f2c14e;
 }
 
 .hud-sublabel {

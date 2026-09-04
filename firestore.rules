@@ -21,7 +21,10 @@ service cloud.firestore {
         && request.resource.data.missionsCompleted == 0
         && request.resource.data.missionsFailed == 0
         && request.resource.data.bestScore == 0
-        && request.resource.data.unlockedUpgrades.size() == 0;
+        && request.resource.data.unlockedUpgrades.size() == 0
+        && request.resource.data.ownedGuns.size() == 1
+        && request.resource.data.ownedGuns[0] == 'm134'
+        && request.resource.data.equippedGun == 'm134';
 
       // Ongoing client updates are settings only (updatePlayerSettings) —
       // xp/credits/etc. can only change via the Cloud Functions above.

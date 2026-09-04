@@ -1,5 +1,6 @@
 import { collection, doc, getDoc, getDocs, onSnapshot, serverTimestamp, setDoc, updateDoc, type Unsubscribe } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
+import { DEFAULT_GUN_ID } from '../game/data/guns'
 import type { Difficulty, MissionResult, MissionStats } from '../game/types'
 import { db, functions } from './config'
 
@@ -29,6 +30,8 @@ export interface PlayerProfile {
   missionsFailed: number
   bestScore: number
   unlockedUpgrades: string[]
+  ownedGuns: string[]
+  equippedGun: string
   settings: PlayerSettings
 }
 
@@ -47,6 +50,8 @@ const DEFAULT_PROGRESS: Omit<PlayerProfile, 'displayName' | 'createdAt' | 'lastP
   missionsFailed: 0,
   bestScore: 0,
   unlockedUpgrades: [],
+  ownedGuns: [DEFAULT_GUN_ID],
+  equippedGun: DEFAULT_GUN_ID,
 }
 
 function playerDocRef(uid: string) {
@@ -98,6 +103,8 @@ export function watchPlayerProfile(uid: string, onChange: (profile: PlayerProfil
 const submitMissionResultFn = httpsCallable(functions, 'submitMissionResult')
 const resetProgressFn = httpsCallable(functions, 'resetProgress')
 const purchaseUpgradeFn = httpsCallable(functions, 'purchaseUpgrade')
+const purchaseGunFn = httpsCallable(functions, 'purchaseGun')
+const equipGunFn = httpsCallable(functions, 'equipGun')
 
 /** Records a finished mission; the Cloud Function derives uid from the caller's auth token.
  * Returns the operation's updated lifetime stats (completions/highestDifficulty) so the
@@ -130,4 +137,15 @@ export async function resetPlayerProgress(): Promise<void> {
  * re-validates cost/ordering/ownership against Firestore, not the client's assumptions. */
 export async function purchaseUpgrade(upgradeId: string): Promise<void> {
   await purchaseUpgradeFn({ upgradeId })
+}
+
+/** Spends credits to unlock a new gun. Throws (FirebaseError with a player-readable
+ * .message) if the purchase isn't valid — see purchaseUpgrade above. */
+export async function purchaseGun(gunId: string): Promise<void> {
+  await purchaseGunFn({ gunId })
+}
+
+/** Equips an already-owned gun. Free and instant — no confirmation needed client-side. */
+export async function equipGun(gunId: string): Promise<void> {
+  await equipGunFn({ gunId })
 }

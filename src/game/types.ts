@@ -89,6 +89,7 @@ export interface HudState {
   waveIndex: number
   waveCount: number
   enemiesRemaining: number
+  zoomed: boolean
 }
 
 export interface MissionResult {

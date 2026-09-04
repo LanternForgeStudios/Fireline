@@ -46,8 +46,64 @@ on top.
 - [x] Per-operation lifetime stats — `players/{uid}/missionStats/{missionId}` (`completions`,
       `highestDifficulty`), server-maintained inside `submitMissionResult`'s existing transaction.
       Read-only to the client, same model as `missionResults`.
+- [x] Multi-weapon system — `ownedGuns`/`equippedGun` on `players/{uid}`, `purchaseGun`/`equipGun`
+      Cloud Functions, gun-scoped upgrade ids (`${gunId}-${track}-${level}`). Same
+      server-owns-progression model as everything else above. Verified against the emulator: see
+      log entry below.
 
 ## Log
+
+### 2026-09-04 (40) — Multi-weapon system: recoil, 4 purchasable guns, zoom
+- Player-requested: heat should visibly punish sustained fire (not just gate at 100%), and "the
+  gun" should become a roster of purchasable guns with different stats/upgrade tracks/feel,
+  including a zoom-capable one — a reason to rotate loadouts instead of always maxing one gun.
+- **Recoil**: `Weapon.tick()` now computes an upward pixel offset from `(heat/maxHeat)^curve *
+  maxClimbPx` (per-gun `curve`/`maxClimbPx`) and smooths it via a 140ms exponential lerp so it
+  climbs/decays continuously rather than stepping with each shot's heat jump. `CombatScene` applies
+  it as a new `effectiveAim` computed every frame from `crosshairPos - recoilOffsetY` —
+  `crosshairPos` itself (mouse-absolute, touch-relative-delta, aim-assist) is untouched, so touch
+  aim-assist keeps pulling toward true aim intent even while recoil visually displaces where shots
+  land. `handleFiring()`'s hit-test/tracer/spark/hit-marker all read `effectiveAim` now.
+- **4 guns** (`src/game/data/guns.ts`, server-mirrored in `functions/src/gunCatalog.ts` +
+  `upgradeCatalog.ts`): M134 Minigun (free, all 4 tracks, today's exact shipped stat curves —
+  zero drift), M60 "Long Gun" (heavy damage, no fire-rate track, 9,000cr), GAU-19 ".50 Cal"
+  (zoom 1.6x, only damage/heatCapacity tracks, tiny heat pool, 14,000cr), M249 SAW (fire-rate/
+  cooling only, high cyclic/low damage, 6,000cr). Upgrade ids are now gun-scoped
+  (`${gunId}-${track}-${level}`) so two guns can both have e.g. a `damage` track without
+  colliding in the flat `unlockedUpgrades` array.
+- **Zoom**: hold-to-activate (confirmed via AskUserQuestion) — right-click-hold on desktop,
+  a new on-screen hold button on mobile (own touch-pointer id, independent of the aim pads'
+  single-active-pad exclusivity). Implemented via `cameras.main.setZoom()` (no prior camera-zoom
+  code existed) with coordinate conversion only at the two raw-pointer read sites
+  (`updateCrosshairFromMouse`, `updatePadDrag`) — everything downstream (clamps, aim-assist,
+  hit-testing) stays correct unchanged since `getWorldPoint` returns the same world space
+  regardless of zoom.
+- **Backend**: new `purchaseGun`/`equipGun` Cloud Functions (same transactional
+  validate-then-`arrayUnion`/increment pattern as `purchaseUpgrade`); `purchaseUpgrade` gained a
+  check that the upgrade's gun is actually owned; `resetProgress` now also resets `ownedGuns`/
+  `equippedGun`. `firestore.rules`' `allow create` extended to require the zero-state
+  `ownedGuns: ['m134']`/`equippedGun: 'm134'` shape.
+- **UI**: Upgrades screen (kept its existing route/props, retitled "Armory") gained a gun-tab
+  strip (icon, name, Equipped/Locked tag) above the per-gun upgrade tracks; selecting an unowned
+  gun shows a purchase card instead. Mission Briefing's loadout summary is now gun-aware.
+- Migration: per explicit owner instruction, the one production account's pre-existing
+  `unlockedUpgrades` (old un-prefixed ids, meaningless under the new scheme) will be manually
+  cleared and refunded via a one-off Admin-SDK script run once at deploy time — not an automated
+  migration path, no permanent compat code.
+- **Balance flag (not solved here, deliberate)**: unlock costs (29,000cr for all 3 non-default
+  guns) and per-track curves are first-pass numbers shaped like the existing `62*(n²+n+1)` cost
+  curve, not re-validated against the 10-15%-idle-credits target entry (38) tuned for the
+  single-gun economy. Flagged as a follow-up once real per-gun playtesting data exists.
+- **Verified live against the Local Emulator Suite** (fresh signed-up account, credits patched
+  directly in the Firestore emulator — emulator-only, no production data touched): purchased
+  GAU-19, equipped it, bought a track level, confirmed Mission Briefing showed the new gun/track;
+  in combat confirmed `weapon.heat`/`maxHeat` matched GAU-19's stats, `recoilY` grew with heat and
+  `effectiveAim.y` shifted above `crosshairPos.y` accordingly, right-click-hold set
+  `camera.zoom` to 1.6 and released back to 1; confirmed SAW's Armory card shows only its 2
+  allowed tracks (Fire Rate, Cooling); confirmed `resetProgress` reverts `ownedGuns`/`equippedGun`
+  to `['m134']`/`'m134'` and credits to 0. Temporary DEV-only debug hooks used for this
+  (`window.__fireline` in `GameCanvas.tsx`, `window.__firelineAuth` in `firebase/config.ts`) were
+  reverted before shipping.
 
 ### 2026-09-04 (39) — Tracer now lands where the bullet actually lands
 - Player-reported: bullet spread still looked like a solid laser line despite the impact-spark

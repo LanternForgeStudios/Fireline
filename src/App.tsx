@@ -5,8 +5,10 @@ import { playMusic, setMusicVolume, stopMusic } from './audio/musicPlayer'
 import { signOutUser, watchAuthState } from './firebase/auth'
 import {
   DEFAULT_SETTINGS,
+  equipGun,
   loadAllMissionStats,
   loadOrCreatePlayerProfile,
+  purchaseGun,
   purchaseUpgrade,
   recordMissionResult,
   resetPlayerProgress,
@@ -15,6 +17,7 @@ import {
   type PlayerProfile,
   type PlayerSettings,
 } from './firebase/playerProfile'
+import { DEFAULT_GUN_ID } from './game/data/guns'
 import { DEFAULT_MISSION } from './game/data/missions'
 import { gameEvents } from './game/events'
 import { missionState } from './game/missionState'
@@ -110,7 +113,8 @@ function App() {
   // mission start — see game/playerLoadout.ts.
   useEffect(() => {
     playerLoadout.unlockedUpgrades = profile?.unlockedUpgrades ?? []
-  }, [profile?.unlockedUpgrades])
+    playerLoadout.equippedGun = profile?.equippedGun ?? DEFAULT_GUN_ID
+  }, [profile?.unlockedUpgrades, profile?.equippedGun])
 
   useEffect(() => {
     const recordAndUpdateStats = (missionResult: MissionResult) => {
@@ -235,6 +239,7 @@ function App() {
       {screen === 'briefing' && (
         <MissionBriefing
           mission={selectedMission}
+          equippedGun={profile?.equippedGun ?? DEFAULT_GUN_ID}
           unlockedUpgrades={profile?.unlockedUpgrades ?? []}
           onLaunch={launchMission}
           onBack={goToMissionSelect}
@@ -243,8 +248,12 @@ function App() {
       {screen === 'upgrades' && (
         <UpgradesScreen
           credits={profile?.credits ?? 0}
+          ownedGuns={profile?.ownedGuns ?? [DEFAULT_GUN_ID]}
+          equippedGun={profile?.equippedGun ?? DEFAULT_GUN_ID}
           unlockedUpgrades={profile?.unlockedUpgrades ?? []}
-          onPurchase={purchaseUpgrade}
+          onPurchaseGun={purchaseGun}
+          onEquipGun={equipGun}
+          onPurchaseUpgrade={purchaseUpgrade}
           onBack={goToMenu}
         />
       )}

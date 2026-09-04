@@ -13,6 +13,7 @@ const INITIAL_STATE: HudState = {
   waveIndex: 0,
   waveCount: missionState.current.waves.length,
   enemiesRemaining: 0,
+  zoomed: false,
 }
 
 export function Hud() {
@@ -45,6 +46,11 @@ export function Hud() {
     <div className="hud">
       <div className="hud-cockpit-frame" />
       {hitFlash && <div className="hud-hit-flash" />}
+      {state.zoomed && (
+        <div className="hud-zoom-indicator">
+          <span className="hud-label">ZOOM</span>
+        </div>
+      )}
 
       <div className="hud-top-left">
         <div className="hud-label">Aircraft</div>

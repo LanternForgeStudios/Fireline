@@ -1,25 +1,29 @@
 import { playUiSound } from '../audio/uiSound'
-import { UPGRADE_TRACKS } from '../game/data/upgrades'
+import { getGunDef, gunUpgradeTracks } from '../game/data/guns'
 import type { MissionDef } from '../game/types'
 
 interface MissionBriefingProps {
   mission: MissionDef
+  equippedGun: string
   unlockedUpgrades: string[]
   onLaunch: () => void
   onBack: () => void
 }
 
-function loadoutSummary(unlockedUpgrades: string[]): string {
+function loadoutSummary(gunId: string, unlockedUpgrades: string[]): string {
+  const gun = getGunDef(gunId)
   const owned = new Set(unlockedUpgrades)
-  const parts = UPGRADE_TRACKS.map((track) => {
-    const level = track.levels.filter((l) => owned.has(l.id)).length
-    return level > 0 ? `${track.label} ${level}` : null
-  }).filter((p): p is string => p !== null)
+  const parts = gunUpgradeTracks(gun)
+    .map((track) => {
+      const level = track.levels.filter((l) => owned.has(l.id)).length
+      return level > 0 ? `${track.label} ${level}` : null
+    })
+    .filter((p): p is string => p !== null)
 
-  return parts.length > 0 ? `Door Gun (M134) · ${parts.join(' · ')}` : 'Door Gun (M134) — Stock'
+  return parts.length > 0 ? `${gun.name} · ${parts.join(' · ')}` : `${gun.name} — Stock`
 }
 
-export function MissionBriefing({ mission, unlockedUpgrades, onLaunch, onBack }: MissionBriefingProps) {
+export function MissionBriefing({ mission, equippedGun, unlockedUpgrades, onLaunch, onBack }: MissionBriefingProps) {
   return (
     <div className="screen briefing-screen">
       <div className="briefing-content">
@@ -34,7 +38,7 @@ export function MissionBriefing({ mission, unlockedUpgrades, onLaunch, onBack }:
           </div>
           <div>
             <span className="hud-label">Loadout</span>
-            <span className="briefing-value">{loadoutSummary(unlockedUpgrades)}</span>
+            <span className="briefing-value">{loadoutSummary(equippedGun, unlockedUpgrades)}</span>
           </div>
         </div>
 

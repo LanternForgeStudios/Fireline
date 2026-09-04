@@ -128,22 +128,26 @@ alongside them — worth double-checking their source/license before a public re
 
 ## General polish
 
-- [x] Weapon upgrades — Main Menu → Upgrades. 4 tracks (damage, cooling, heat capacity, fire rate)
-      × 10 levels (expanded from 3 on 2026-09-04), bought with credits (previously earned but had
-      nowhere to spend). Server-side
-      (`purchaseUpgrade` Cloud Function) for the same reason mission rewards are — verified
-      end-to-end against the emulator (successful purchase, ordering enforcement, duplicate
-      rejection, insufficient-credits rejection, all correct). `Weapon.ts` now takes its stats from
-      `computeWeaponStats(unlockedUpgrades)` instead of hardcoded constants; Mission Briefing's
-      loadout line reflects what's actually owned. Not a "select between different guns" system —
-      one persistent, upgradeable M134, which fits the GDD's "select loadout" + "upgradeable
-      weapons" language better than adding weapon variety would have.
+- [x] Weapon upgrades — Main Menu → Upgrades (now "Armory"). 4 tracks (damage, cooling, heat
+      capacity, fire rate) × 10 levels (expanded from 3 on 2026-09-04), bought with credits
+      (previously earned but had nowhere to spend). Server-side (`purchaseUpgrade` Cloud Function)
+      for the same reason mission rewards are — verified end-to-end against the emulator
+      (successful purchase, ordering enforcement, duplicate rejection, insufficient-credits
+      rejection, all correct). `Weapon.ts` takes its stats from `computeGunStats(gun,
+      unlockedUpgrades)`; Mission Briefing's loadout line reflects what's actually owned/equipped.
+      **Superseded 2026-09-04** by a real multi-gun system (`src/game/data/guns.ts`) — 4 purchasable
+      guns, each with its own stat curves and a subset of the 4 tracks, upgrade ids now gun-scoped
+      (`${gunId}-${track}-${level}`); see the PROGRESS.md log entry for the full design (recoil,
+      zoom, per-gun tracks).
 - [ ] Upgrade costs (`cost(n) = 62·(n²+n+1)`, 186cr for level 1 up to 6,882cr for level 10 per
-      track, 111,600cr to max all four — raised from k=50/90,000cr 2026-09-04, see PROGRESS.md)
-      were re-derived against the rank curve's math rather than picked freestanding, but still
-      aren't validated against actual play — a generated mission's credits-per-clear varies a lot
-      by luck of the draw, so whether the full climb feels like a reasonable arc or takes forever
-      needs real playtesting to know.
+      track, 111,600cr to max the M134's 4 tracks — raised from k=50/90,000cr 2026-09-04, see
+      PROGRESS.md) were re-derived against the rank curve's math for the *single-gun* economy, but
+      still aren't validated against actual play — a generated mission's credits-per-clear varies a
+      lot by luck of the draw, so whether the full climb feels like a reasonable arc or takes
+      forever needs real playtesting to know. Now compounded by the 3 new guns' unlock costs
+      (29,000cr total) and track curves, which are first-pass numbers shaped like the existing cost
+      curve but not re-solved against any idle-credit target — a full multi-gun economy rebalance
+      is a deliberate, explicit follow-up once real per-gun playtesting data exists.
 - [x] Settings screen has an autosave note (not a toast per change — simpler, avoids timing/spam
       issues from continuous slider drags; revisit if it doesn't read clearly enough in practice)
 - [x] `resetPlayerProgress` now also deletes the `missionResults` subcollection (batched, loops

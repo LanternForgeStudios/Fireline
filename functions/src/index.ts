@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase-admin/app'
 import { FieldValue, getFirestore, type CollectionReference } from 'firebase-admin/firestore'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
+import { getGun } from './gunCatalog'
 import { getMissionBounds } from './missionCatalog'
 import { getUpgrade, priorLevelsOf } from './upgradeCatalog'
 
@@ -166,6 +167,8 @@ export const resetProgress = onCall({ enforceAppCheck: !isEmulator }, async (req
     missionsFailed: 0,
     bestScore: 0,
     unlockedUpgrades: [],
+    ownedGuns: ['m134'],
+    equippedGun: 'm134',
   })
 
   await deleteAllDocs(playerRef.collection('missionResults'))
@@ -200,7 +203,11 @@ export const purchaseUpgrade = onCall<{ upgradeId: string }>({ enforceAppCheck: 
     }
     const data = snap.data()!
     const owned: string[] = data.unlockedUpgrades ?? []
+    const ownedGuns: string[] = data.ownedGuns ?? []
 
+    if (!ownedGuns.includes(upgrade.gunId)) {
+      throw new HttpsError('failed-precondition', 'Purchase that gun first.')
+    }
     if (owned.includes(upgrade.id)) {
       throw new HttpsError('already-exists', 'Already purchased.')
     }
@@ -220,4 +227,76 @@ export const purchaseUpgrade = onCall<{ upgradeId: string }>({ enforceAppCheck: 
   })
 
   return { ok: true, upgradeId: upgrade.id }
+})
+
+/**
+ * Purchases a new gun. Server-side for the same reason purchaseUpgrade is:
+ * ownedGuns and credits are both client-write-blocked by firestore.rules.
+ * Runs in a transaction so a double-click can't spend the same credits
+ * twice.
+ */
+export const purchaseGun = onCall<{ gunId: string }>({ enforceAppCheck: !isEmulator }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Must be signed in.')
+  }
+  const gun = getGun(request.data.gunId)
+  if (!gun) {
+    throw new HttpsError('invalid-argument', `Unknown gun: ${request.data.gunId}`)
+  }
+
+  const playerRef = db.collection('players').doc(request.auth.uid)
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(playerRef)
+    if (!snap.exists) {
+      throw new HttpsError('failed-precondition', 'Player profile does not exist yet.')
+    }
+    const data = snap.data()!
+    const owned: string[] = data.ownedGuns ?? []
+    if (owned.includes(gun.id)) {
+      throw new HttpsError('already-exists', 'Already purchased.')
+    }
+    const credits = (data.credits as number | undefined) ?? 0
+    if (credits < gun.cost) {
+      throw new HttpsError('failed-precondition', 'Not enough credits.')
+    }
+
+    tx.update(playerRef, {
+      credits: FieldValue.increment(-gun.cost),
+      ownedGuns: FieldValue.arrayUnion(gun.id),
+    })
+  })
+
+  return { ok: true, gunId: gun.id }
+})
+
+/**
+ * Equips an already-owned gun. Free and instant per design — just validates
+ * ownership and flips the pointer, still server-side so a client can't
+ * equip a gun it never purchased.
+ */
+export const equipGun = onCall<{ gunId: string }>({ enforceAppCheck: !isEmulator }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Must be signed in.')
+  }
+  const gun = getGun(request.data.gunId)
+  if (!gun) {
+    throw new HttpsError('invalid-argument', `Unknown gun: ${request.data.gunId}`)
+  }
+
+  const playerRef = db.collection('players').doc(request.auth.uid)
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(playerRef)
+    if (!snap.exists) {
+      throw new HttpsError('failed-precondition', 'Player profile does not exist yet.')
+    }
+    const owned: string[] = snap.data()!.ownedGuns ?? []
+    if (!owned.includes(gun.id)) {
+      throw new HttpsError('failed-precondition', 'Purchase this gun first.')
+    }
+    tx.update(playerRef, { equippedGun: gun.id })
+  })
+
+  return { ok: true, gunId: gun.id }
 })

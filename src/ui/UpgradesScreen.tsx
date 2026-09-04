@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { playUiSound } from '../audio/uiSound'
-import { nextPurchasableLevel, UPGRADE_TRACKS, type UpgradeTrackId } from '../game/data/upgrades'
+import { GUN_DEFS, gunUpgradeTracks, type GunDef } from '../game/data/guns'
+import { nextPurchasableLevel, type UpgradeTrackId } from '../game/data/upgrades'
 
 interface UpgradesScreenProps {
   credits: number
+  ownedGuns: string[]
+  equippedGun: string
   unlockedUpgrades: string[]
-  onPurchase: (upgradeId: string) => Promise<void>
+  onPurchaseGun: (gunId: string) => Promise<void>
+  onEquipGun: (gunId: string) => Promise<void>
+  onPurchaseUpgrade: (upgradeId: string) => Promise<void>
   onBack: () => void
 }
 
@@ -23,22 +28,38 @@ const TRACK_ACCENT: Record<UpgradeTrackId, string> = {
   fireRate: '#f2c14e',
 }
 
-export function UpgradesScreen({ credits, unlockedUpgrades, onPurchase, onBack }: UpgradesScreenProps) {
-  const [pendingTrack, setPendingTrack] = useState<string | null>(null)
-  const [errorByTrack, setErrorByTrack] = useState<Record<string, string>>({})
+const ALL_GUNS: GunDef[] = Object.values(GUN_DEFS)
 
-  const handlePurchase = async (trackId: string, upgradeId: string) => {
-    setPendingTrack(trackId)
-    setErrorByTrack((prev) => ({ ...prev, [trackId]: '' }))
+export function UpgradesScreen({
+  credits,
+  ownedGuns,
+  equippedGun,
+  unlockedUpgrades,
+  onPurchaseGun,
+  onEquipGun,
+  onPurchaseUpgrade,
+  onBack,
+}: UpgradesScreenProps) {
+  const [selectedGunId, setSelectedGunId] = useState(equippedGun)
+  const [pendingAction, setPendingAction] = useState<string | null>(null)
+  const [errorByAction, setErrorByAction] = useState<Record<string, string>>({})
+
+  const selectedGun = GUN_DEFS[selectedGunId] ?? GUN_DEFS[equippedGun]
+  const owned = ownedGuns.includes(selectedGun.id)
+  const equipped = selectedGun.id === equippedGun
+
+  const runAction = async (actionKey: string, action: () => Promise<void>) => {
+    setPendingAction(actionKey)
+    setErrorByAction((prev) => ({ ...prev, [actionKey]: '' }))
     try {
-      await onPurchase(upgradeId)
+      await action()
       playUiSound('ui_confirm')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Purchase failed.'
-      setErrorByTrack((prev) => ({ ...prev, [trackId]: message }))
+      const message = err instanceof Error ? err.message : 'Action failed.'
+      setErrorByAction((prev) => ({ ...prev, [actionKey]: message }))
       playUiSound('toggle_off')
     } finally {
-      setPendingTrack(null)
+      setPendingAction(null)
     }
   }
 
@@ -46,52 +67,122 @@ export function UpgradesScreen({ credits, unlockedUpgrades, onPurchase, onBack }
     <div className="screen briefing-screen">
       <div className="briefing-content">
         <div className="briefing-type">Loadout</div>
-        <h2 className="briefing-name">Weapon Upgrades</h2>
+        <h2 className="briefing-name">Armory</h2>
         <p className="briefing-text settings-autosave-note">Credits: {credits.toLocaleString()}</p>
 
-        <div className="upgrade-track-list">
-          {UPGRADE_TRACKS.map((track) => {
-            const next = nextPurchasableLevel(track, unlockedUpgrades)
-            const maxed = next === null
-            const canAfford = next !== null && credits >= next.cost
-
+        <div className="gun-tab-strip">
+          {ALL_GUNS.map((gun) => {
+            const gunOwned = ownedGuns.includes(gun.id)
+            const gunEquipped = gun.id === equippedGun
             return (
-              <div
-                key={track.id}
-                className={`upgrade-track ${maxed ? 'upgrade-track-maxed' : ''}`}
-                style={{ borderLeftColor: maxed ? '#d9b45f' : TRACK_ACCENT[track.id] }}
+              <button
+                key={gun.id}
+                className={`gun-tab ${selectedGun.id === gun.id ? 'gun-tab-active' : ''} ${gunOwned ? '' : 'gun-tab-locked'}`}
+                onClick={() => {
+                  playUiSound('ui_select')
+                  setSelectedGunId(gun.id)
+                }}
               >
-                <img className="upgrade-track-icon" src={`${import.meta.env.BASE_URL}ui/${TRACK_ICON[track.id]}`} alt="" />
-                <div className="upgrade-track-body">
-                  <div className="upgrade-track-header">
-                    <span className="briefing-value">{track.label}</span>
-                    <div className="upgrade-track-dots">
-                      {track.levels.map((l) => (
-                        <span
-                          key={l.id}
-                          className={`upgrade-dot ${unlockedUpgrades.includes(l.id) ? 'upgrade-dot-owned' : ''}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="briefing-text mission-list-blurb">{track.description}</p>
-                  {errorByTrack[track.id] && <p className="login-error">{errorByTrack[track.id]}</p>}
-                  {maxed ? (
-                    <span className="hud-label upgrade-track-maxed-label">Maxed out</span>
-                  ) : (
-                    <button
-                      className="btn btn-secondary"
-                      disabled={!canAfford || pendingTrack === track.id}
-                      onClick={() => handlePurchase(track.id, next.id)}
-                    >
-                      {pendingTrack === track.id ? 'Purchasing...' : `Buy ${next.label} — ${next.cost} cr`}
-                    </button>
-                  )}
-                </div>
-              </div>
+                <img className="gun-tab-icon" src={`${import.meta.env.BASE_URL}ui/${gun.icon}`} alt="" />
+                <span className="gun-tab-name">{gun.name}</span>
+                {gunEquipped && <span className="gun-tab-tag">Equipped</span>}
+                {!gunOwned && <span className="gun-tab-tag gun-tab-tag-locked">Locked</span>}
+              </button>
             )
           })}
         </div>
+
+        <p className="briefing-text mission-list-blurb">{selectedGun.description}</p>
+
+        {!owned ? (
+          <div className="upgrade-track" style={{ borderLeftColor: '#4b5563' }}>
+            <img className="upgrade-track-icon" src={`${import.meta.env.BASE_URL}ui/${selectedGun.icon}`} alt="" />
+            <div className="upgrade-track-body">
+              <div className="briefing-details">
+                <div>
+                  <span className="hud-label">Damage</span>
+                  <span className="briefing-value">{selectedGun.baseStats.damagePerShot}</span>
+                </div>
+                <div>
+                  <span className="hud-label">Fire Interval</span>
+                  <span className="briefing-value">{selectedGun.baseStats.fireIntervalMs}ms</span>
+                </div>
+                <div>
+                  <span className="hud-label">Heat Capacity</span>
+                  <span className="briefing-value">{selectedGun.baseStats.maxHeat}</span>
+                </div>
+              </div>
+              {errorByAction[`purchase-${selectedGun.id}`] && (
+                <p className="login-error">{errorByAction[`purchase-${selectedGun.id}`]}</p>
+              )}
+              <button
+                className="btn btn-secondary"
+                disabled={credits < selectedGun.unlockCost || pendingAction === `purchase-${selectedGun.id}`}
+                onClick={() => runAction(`purchase-${selectedGun.id}`, () => onPurchaseGun(selectedGun.id))}
+              >
+                {pendingAction === `purchase-${selectedGun.id}` ? 'Purchasing...' : `Purchase — ${selectedGun.unlockCost} cr`}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="upgrade-track-list">
+              {gunUpgradeTracks(selectedGun).map((track) => {
+                const next = nextPurchasableLevel(track, unlockedUpgrades)
+                const maxed = next === null
+                const canAfford = next !== null && credits >= next.cost
+                const actionKey = `upgrade-${track.id}`
+
+                return (
+                  <div
+                    key={track.id}
+                    className={`upgrade-track ${maxed ? 'upgrade-track-maxed' : ''}`}
+                    style={{ borderLeftColor: maxed ? '#d9b45f' : TRACK_ACCENT[track.id] }}
+                  >
+                    <img className="upgrade-track-icon" src={`${import.meta.env.BASE_URL}ui/${TRACK_ICON[track.id]}`} alt="" />
+                    <div className="upgrade-track-body">
+                      <div className="upgrade-track-header">
+                        <span className="briefing-value">{track.label}</span>
+                        <div className="upgrade-track-dots">
+                          {track.levels.map((l) => (
+                            <span
+                              key={l.id}
+                              className={`upgrade-dot ${unlockedUpgrades.includes(l.id) ? 'upgrade-dot-owned' : ''}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="briefing-text mission-list-blurb">{track.description}</p>
+                      {errorByAction[actionKey] && <p className="login-error">{errorByAction[actionKey]}</p>}
+                      {maxed ? (
+                        <span className="hud-label upgrade-track-maxed-label">Maxed out</span>
+                      ) : (
+                        <button
+                          className="btn btn-secondary"
+                          disabled={!canAfford || pendingAction === actionKey}
+                          onClick={() => runAction(actionKey, () => onPurchaseUpgrade(next.id))}
+                        >
+                          {pendingAction === actionKey ? 'Purchasing...' : `Buy ${next.label} — ${next.cost} cr`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {errorByAction[`equip-${selectedGun.id}`] && <p className="login-error">{errorByAction[`equip-${selectedGun.id}`]}</p>}
+            {!equipped && (
+              <button
+                className="btn btn-secondary"
+                disabled={pendingAction === `equip-${selectedGun.id}`}
+                onClick={() => runAction(`equip-${selectedGun.id}`, () => onEquipGun(selectedGun.id))}
+              >
+                {pendingAction === `equip-${selectedGun.id}` ? 'Equipping...' : 'Equip'}
+              </button>
+            )}
+          </>
+        )}
 
         <div className="briefing-actions">
           <button

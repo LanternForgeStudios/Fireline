@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { audioSettings } from '../../audio/audioSettings'
 import type { Difficulty } from '../../firebase/playerProfile'
-import { computeWeaponStats } from '../data/upgrades'
+import { computeGunStats, getGunDef, type GunDef } from '../data/guns'
 import { ENEMY_DEFS } from '../data/enemyTypes'
 import { missionState } from '../missionState'
 import { Enemy, type EnemySpawnPoint } from '../entities/Enemy'
@@ -102,6 +102,13 @@ const TOUCH_PAD_RADIUS = 80
 // knob's rendered position, not for how it's interpreted as input).
 const TOUCH_PAD_ACTIVATION_RADIUS = 110
 const TOUCH_PAD_SENSITIVITY = 2.2
+// Mobile hold-to-zoom button, placed away from both aim pads (bottom-center)
+// so a thumb can hold zoom while the other thumb drags the aim pad — tracked
+// by its own touch pointer id, entirely independent of the aim pads'
+// one-live-pad-at-a-time exclusivity.
+const ZOOM_BUTTON_X = WORLD_WIDTH / 2
+const ZOOM_BUTTON_Y = WORLD_HEIGHT - 90
+const ZOOM_BUTTON_RADIUS = 44
 // Touch aiming is meaningfully harder than mouse aiming — a phone screen is
 // smaller, fingers are less precise than a cursor, and fast-approaching
 // enemies can close the gap before a trackpad drag lands exactly on them.
@@ -193,9 +200,19 @@ export const COMBAT_SCENE_KEY = 'combat'
 
 export class CombatScene extends Phaser.Scene {
   private weapon!: Weapon
+  private equippedGunDef!: GunDef
   private enemies: Enemy[] = []
   private crosshair!: Phaser.GameObjects.Image
   private crosshairPos = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }
+  // Recomputed every frame from crosshairPos + the weapon's current recoil
+  // offset — the only thing recoil ever touches. crosshairPos itself stays
+  // the untouched source of true aim intent (mouse-absolute, touch-relative
+  // + aim-assist), so aim-assist keeps pulling toward the player's real
+  // target even while recoil is visually displacing where shots land.
+  private effectiveAim = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }
+  private zoomHeld = false
+  private zoomButton?: Phaser.GameObjects.Arc
+  private zoomTouchPointerId: number | null = null
   private ground!: Phaser.GameObjects.TileSprite
   private groundTextureKey!: string
   private mountainTextureKey!: string
@@ -286,7 +303,16 @@ export class CombatScene extends Phaser.Scene {
     this.noDamageTaken = true
     this.totalEnemiesSpawned = 0
     this.enemies = []
-    this.weapon = new Weapon(computeWeaponStats(playerLoadout.unlockedUpgrades))
+    this.zoomHeld = false
+    this.zoomTouchPointerId = null
+    this.equippedGunDef = getGunDef(playerLoadout.equippedGun)
+    this.weapon = new Weapon(
+      computeGunStats(this.equippedGunDef, playerLoadout.unlockedUpgrades),
+      this.equippedGunDef.heatPerShot,
+      this.equippedGunDef.recoil,
+    )
+    this.cameras.main.setZoom(1)
+    this.input.mouse?.disableContextMenu()
 
     this.buildBackground()
     this.buildEnemyTextures()
@@ -298,6 +324,7 @@ export class CombatScene extends Phaser.Scene {
     this.buildRotorFlicker()
     this.buildCrosshair()
     this.buildTouchPad()
+    if (this.equippedGunDef.zoom.enabled) this.buildZoomButton()
     this.setupInput()
 
     this.playCombatMusic()
@@ -764,10 +791,44 @@ export class CombatScene extends Phaser.Scene {
     return { center, ring, knob }
   }
 
+  /** Mobile hold-to-zoom button — only built when the equipped gun has zoom enabled.
+   * Own touch-pointer id (zoomTouchPointerId), independent of the aim pads' single-
+   * active-pad exclusivity, so a player can hold zoom with one thumb while dragging
+   * an aim pad with the other. */
+  private buildZoomButton() {
+    const visible = supportsTouch()
+    const button = this.add.circle(ZOOM_BUTTON_X, ZOOM_BUTTON_Y, ZOOM_BUTTON_RADIUS, 0xffffff, 0.1)
+    button.setStrokeStyle(2, 0xf2c14e, 0.5)
+    button.setDepth(2100)
+    button.setVisible(visible)
+
+    const label = this.add.text(ZOOM_BUTTON_X, ZOOM_BUTTON_Y, 'ZOOM', {
+      fontFamily: 'monospace',
+      fontSize: '13px',
+      color: '#f2c14e',
+    })
+    label.setOrigin(0.5, 0.5)
+    label.setDepth(2101)
+    label.setVisible(visible)
+
+    this.zoomButton = button
+  }
+
+  private hitsZoomButton(pointer: Phaser.Input.Pointer): boolean {
+    if (!this.zoomButton) return false
+    return Phaser.Math.Distance.Between(pointer.x, pointer.y, ZOOM_BUTTON_X, ZOOM_BUTTON_Y) <= ZOOM_BUTTON_RADIUS
+  }
+
+  /** Converts a raw screen-space pointer to world coordinates when zoomed — the
+   * camera's zoom pivots around its fixed center (this scene never pans), so
+   * everything downstream of crosshairPos (clamps, aim-assist, hit-testing) stays
+   * correct with no further changes since getWorldPoint always returns the same
+   * 0..WORLD_WIDTH/HEIGHT space regardless of zoom. */
   private updateCrosshairFromMouse(pointer: Phaser.Input.Pointer) {
-    this.crosshairPos.x = Phaser.Math.Clamp(pointer.x, 0, WORLD_WIDTH)
-    this.crosshairPos.y = Phaser.Math.Clamp(pointer.y, 0, WORLD_HEIGHT)
-    this.crosshair.setPosition(this.crosshairPos.x, this.crosshairPos.y)
+    const zoom = this.cameras.main.zoom
+    const world = zoom !== 1 ? this.cameras.main.getWorldPoint(pointer.x, pointer.y) : pointer
+    this.crosshairPos.x = Phaser.Math.Clamp(world.x, 0, WORLD_WIDTH)
+    this.crosshairPos.y = Phaser.Math.Clamp(world.y, 0, WORLD_HEIGHT)
   }
 
   /** Only one pad can be live at a time — if either is already engaged, a touch
@@ -798,10 +859,13 @@ export class CombatScene extends Phaser.Scene {
     const deltaY = pointer.y - this.padLastPos.y
     this.padLastPos = { x: pointer.x, y: pointer.y }
 
-    this.crosshairPos.x = Phaser.Math.Clamp(this.crosshairPos.x + deltaX * TOUCH_PAD_SENSITIVITY, 0, WORLD_WIDTH)
-    this.crosshairPos.y = Phaser.Math.Clamp(this.crosshairPos.y + deltaY * TOUCH_PAD_SENSITIVITY, 0, WORLD_HEIGHT)
+    // A fixed finger-pixel movement maps to a smaller world-space movement
+    // while zoomed in, matching the reduced sensitivity a magnified scope
+    // implies (mirrors updateCrosshairFromMouse's getWorldPoint conversion).
+    const zoom = this.cameras.main.zoom
+    this.crosshairPos.x = Phaser.Math.Clamp(this.crosshairPos.x + (deltaX * TOUCH_PAD_SENSITIVITY) / zoom, 0, WORLD_WIDTH)
+    this.crosshairPos.y = Phaser.Math.Clamp(this.crosshairPos.y + (deltaY * TOUCH_PAD_SENSITIVITY) / zoom, 0, WORLD_HEIGHT)
     this.applyTouchAimAssist()
-    this.crosshair.setPosition(this.crosshairPos.x, this.crosshairPos.y)
 
     this.updatePadKnobVisual(pointer)
   }
@@ -856,8 +920,17 @@ export class CombatScene extends Phaser.Scene {
   private setupInput() {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (pointer.wasTouch) {
+        if (this.zoomButton && this.hitsZoomButton(pointer)) {
+          this.zoomHeld = true
+          this.zoomTouchPointerId = pointer.id
+          return
+        }
         this.engagePad(pointer)
         return
+      }
+      if (this.equippedGunDef.zoom.enabled && pointer.rightButtonDown()) {
+        this.zoomHeld = true
+        return // right-click zooms, doesn't fire
       }
       this.updateCrosshairFromMouse(pointer)
       this.weapon.setTrigger(true)
@@ -871,16 +944,30 @@ export class CombatScene extends Phaser.Scene {
     })
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       if (pointer.wasTouch) {
+        if (pointer.id === this.zoomTouchPointerId) {
+          this.zoomHeld = false
+          this.zoomTouchPointerId = null
+          return
+        }
         if (pointer.id === this.padPointerId) this.releasePad()
+        return
+      }
+      if (pointer.button === 2) {
+        this.zoomHeld = false
         return
       }
       this.weapon.setTrigger(false)
     })
     this.input.on('pointerout', (pointer: Phaser.Input.Pointer) => {
       if (pointer.wasTouch) {
+        if (pointer.id === this.zoomTouchPointerId) {
+          this.zoomHeld = false
+          this.zoomTouchPointerId = null
+        }
         if (pointer.id === this.padPointerId) this.releasePad()
         return
       }
+      this.zoomHeld = false
       this.weapon.setTrigger(false)
     })
   }
@@ -920,6 +1007,8 @@ export class CombatScene extends Phaser.Scene {
     this.ground.tilePositionY += delta * 0.03
 
     this.weapon.tick(delta)
+    this.updateAimWithRecoil()
+    this.cameras.main.setZoom(this.zoomHeld ? this.equippedGunDef.zoom.factor : 1)
     this.updateWaveSpawning(delta)
     this.updateEnemies(delta)
     this.updateDustKickup(delta)
@@ -938,6 +1027,17 @@ export class CombatScene extends Phaser.Scene {
     }
 
     this.emitHud()
+  }
+
+  /** Recomputes effectiveAim from crosshairPos + the weapon's current recoil offset,
+   * and moves the crosshair sprite to it. Runs every frame (not just on pointer
+   * events) so recoil keeps climbing while the trigger's held even with a
+   * motionless pointer, and keeps decaying after release. */
+  private updateAimWithRecoil() {
+    const recoilY = this.weapon.getRecoilOffsetY()
+    this.effectiveAim.x = this.crosshairPos.x
+    this.effectiveAim.y = Phaser.Math.Clamp(this.crosshairPos.y - recoilY, 0, WORLD_HEIGHT)
+    this.crosshair.setPosition(this.effectiveAim.x, this.effectiveAim.y)
   }
 
   private updateWaveSpawning(_delta: number) {
@@ -1038,17 +1138,17 @@ export class CombatScene extends Phaser.Scene {
     if (!this.weapon.tryFire()) return
 
     this.sound.play('sfx-shot', { volume: audioSettings.sfxVolume * 0.5 })
-    this.spawnSpark(this.crosshairPos.x, this.crosshairPos.y, 0xfff3c4, 1, 90)
+    this.spawnSpark(this.effectiveAim.x, this.effectiveAim.y, 0xfff3c4, 1, 90)
     if (this.weapon.overheated && !wasOverheated) {
       this.sound.play('sfx-overheat', { volume: audioSettings.sfxVolume })
     }
 
     let target: Enemy | null = null
     for (const enemy of this.enemies) {
-      if (!enemy.containsPoint(this.crosshairPos.x, this.crosshairPos.y)) continue
+      if (!enemy.containsPoint(this.effectiveAim.x, this.effectiveAim.y)) continue
       if (!target || enemy.progress > target.progress) target = enemy
     }
-    gameEvents.emit(EVT_HIT_MARKER, { hit: Boolean(target), x: this.crosshairPos.x, y: this.crosshairPos.y })
+    gameEvents.emit(EVT_HIT_MARKER, { hit: Boolean(target), x: this.effectiveAim.x, y: this.effectiveAim.y })
 
     // Staggered across the hit circle, not always dead-center — at high
     // Fire Rate upgrade levels, every shot landing on the exact same pixel
@@ -1057,7 +1157,7 @@ export class CombatScene extends Phaser.Scene {
     // now terminates at this same point so the line and the spark agree —
     // it still starts every shot from the gun, it just doesn't all land on
     // one pixel anymore.
-    const impact = target ? target.randomImpactPoint() : this.crosshairPos
+    const impact = target ? target.randomImpactPoint() : this.effectiveAim
     this.spawnTracer(impact.x, impact.y)
 
     if (!target) return
@@ -1127,6 +1227,7 @@ export class CombatScene extends Phaser.Scene {
       waveIndex: Math.min(this.waveIndex, missionState.current.waves.length - 1),
       waveCount: missionState.current.waves.length,
       enemiesRemaining: this.enemies.length,
+      zoomed: this.zoomHeld,
     }
     gameEvents.emit(EVT_HUD_UPDATE, state)
   }

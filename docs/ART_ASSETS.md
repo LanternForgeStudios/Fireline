@@ -221,6 +221,16 @@ Shown at 2.6rem in each track's card on the Upgrades screen (`.upgrade-track-ico
 per-track accent color on the card's left border (`TRACK_ACCENT` in `UpgradesScreen.tsx`) — a
 gold border/tint replaces the accent once a track is maxed out.
 
+| Gun icon | File | Notes |
+| --- | --- | --- |
+| M134 Minigun | `icon-gun-m134.png` | 64×64 via `create_image_pixflux` (job `f5d90481-6deb-4d3b-836d-6e5a40aa97e9`), rotary gatling barrel cluster |
+| M60 "Long Gun" | `icon-gun-m60.png` | 64×64 via `create_image_pixflux` (job `6380a89f-889e-4cd5-a556-dcc51a12d10d`), belt-fed machine gun side profile |
+| GAU-19 ".50 Cal" | `icon-gun-gau19.png` | 64×64 via `create_image_pixflux` (job `31d4597c-728f-474a-a632-69356d52e83d`), sniper scope crosshair — the zoom-capable gun |
+| M249 SAW | `icon-gun-saw.png` | 64×64 via `create_image_pixflux` (job `c5819092-4e1c-4371-876b-ba47aa3e755d`), light machine gun with box magazine |
+
+Shown at 2.2rem in the Armory (Upgrades) screen's gun-tab strip (`.gun-tab-icon`) — see the
+2026-09-04 multi-weapon-system log entry in `docs/PROGRESS.md`.
+
 | Mission icon | File | Notes |
 | --- | --- | --- |
 | Operation Firebreak | `icon-mission-firebreak.png` | 64×64 via `create_image_pixflux` (job `78a0fe07-b1be-441e-8948-6eb2be8ad73b`), crosshair over a desert dune |
