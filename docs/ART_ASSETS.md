@@ -201,6 +201,7 @@ reliable real screenshots).
 
 | Asset | File | Notes |
 | --- | --- | --- |
+| Favicon | `public/favicon.png` | 64×64 via `create_image_pixflux` (job `a8035600-caed-4aae-8bad-99d74007068c`), bold helicopter gunship silhouette, flat shading/low detail so it stays readable at browser-tab size. Replaces the default Vite/scaffold `favicon.svg`, which was never swapped for real branding — `index.html`'s `<link rel="icon">` updated to `type="image/png"` accordingly. |
 | Helicopter hero | `helicopter-hero.png` | 256×256 via `create_1_direction_object` (id `a0ae0212-c277-4337-b9c5-328dd42937c3`), shown on the Main Menu. Asked for a side profile with door gunner visible; got a front-on Apache-style gunship instead — kept it, it reads well as hero art even though it doesn't literally match the brief |
 | Upgrades icon | `icon-upgrades.png` | 64×64 via `create_image_pixflux` (job `3c24dd85-ee5b-4afe-bda7-c742c39e17e7`), wrench crossed over a gear, military stencil style |
 | Settings icon | `icon-settings.png` | 64×64 via `create_image_pixflux` (job `97d171b2-e45f-4803-8339-479088e313f4`), plain gear cog |
