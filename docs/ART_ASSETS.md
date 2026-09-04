@@ -110,14 +110,23 @@ see below), achievement/rank badges.
 
 ## Escort/support ground element (`public/env/escort-vehicle.png`)
 
-96×96 via `create_image_pixflux` (job `54001409-7a7e-43b7-91b7-ace22afc7bb7`) — a friendly
-canvas-covered supply truck, sandy tan/olive colors, deliberately non-hostile-looking (no visible
-weapons) so it doesn't read as another enemy. Shown for `mission.type === 'Escort'` missions only
-(currently just Operation Steel Convoy) — sits in the mid-ground (`ESCORT_VEHICLE_Y = 460` in
-`CombatScene.ts`, above the enemy impact zone so it doesn't visually compete with approaching
-contacts) with a gentle vertical bob tween, not a scroll — it travels at the same pace as the
-helicopter, so it stays roughly fixed on screen the same way the helicopter itself does. Never
-added to `this.enemies`, so it's not targetable/damageable by design.
+96×96 via `create_image_pixflux` — a friendly canvas-covered supply truck, sandy tan/olive colors,
+deliberately non-hostile-looking (no visible weapons) so it doesn't read as another enemy. Shown
+for `mission.type === 'Escort'` missions only (currently just Operation Steel Convoy) — sits in
+the mid-ground (`ESCORT_VEHICLE_Y = 460` in `CombatScene.ts`, above the enemy impact zone so it
+doesn't visually compete with approaching contacts) with a gentle vertical bob plus a slower,
+wider horizontal sway on a different tween period (so the two don't lock into an obvious
+repeating diagonal loop) — it travels at the same pace as the helicopter, so it stays roughly
+fixed on screen (with that idle wiggle) the same way the helicopter itself does, rather than
+scrolling. Never added to `this.enemies`, so it's not targetable/damageable by design.
+
+**Facing direction fix (2026-09-04):** the first version (job `54001409-...`) showed the truck's
+cab/windshield toward the camera — read as driving *at* the helicopter rather than traveling
+alongside it in the same direction. Regenerated facing away (job `d317a0e6-194b-4897-9f58-93c9503a8d26`,
+rear/tailgate toward the viewer) so it reads as moving with the aircraft, not toward it. Checked
+the enemy vehicle sprites (`technical.png`, `armored.png`, etc.) for the same issue — they're all
+3/4-profile "hero shot" angles that don't make a strong directional claim either way, so no
+mismatch there; the escort vehicle was the one asset with an actual facing problem.
 
 ## In-scene elements still procedural (not yet swapped for real art)
 

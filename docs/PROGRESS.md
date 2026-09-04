@@ -49,6 +49,20 @@ on top.
 
 ## Log
 
+### 2026-09-04 (19) — Music volume hydration race, escort vehicle facing + movement
+- **Real bug fixed:** menu music could briefly play at the default volume (0.6) on load even for a
+  returning player who'd saved it at 0 — `playMusic()` fired on mount before the real setting had
+  hydrated from Firestore. Fixed by gating it on the player profile actually being loaded
+  (`App.tsx`'s music effect now depends on `profile`, not just `screen`). See
+  [AUDIO_AND_POLISH.md](AUDIO_AND_POLISH.md).
+- **Escort vehicle facing fixed:** the truck showed its cab/windshield toward the camera, reading
+  as driving at the helicopter instead of traveling alongside it. Regenerated facing away
+  (rear/tailgate toward the viewer). Checked the enemy vehicle sprites for the same class of
+  issue — they're 3/4-profile shots that don't make a directional claim either way, so no
+  mismatch there. See [ART_ASSETS.md](ART_ASSETS.md).
+- Escort vehicle now also sways side to side (on a different tween period than its existing
+  vertical bob) so it reads as doing something rather than sitting totally still.
+
 ### 2026-09-04 (18) — Larger enemy targets (mobile + desktop)
 - Enemies now spawn 50% larger (`SPAWN_SCALE` 0.35 → 0.525 in `Enemy.ts`) and still grow the same
   amount on top of that as they approach (`APPROACH_SCALE_GROWTH` unchanged at 1.55) — player

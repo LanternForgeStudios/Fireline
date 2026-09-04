@@ -23,6 +23,14 @@ a final thematic fit). Copied (not symlinked) into `public/audio/`.
 Both volumes and difficulty live in Firestore (`players/{uid}.settings`) and hydrate on any
 device/browser the player signs into — see the Settings screen (Main Menu → Settings).
 
+**Fixed a real hydration race (2026-09-04):** `audioSettings`/the menu-music `<audio>` element both
+start at a hardcoded default volume (0.6), and menu music began playing on mount before the
+player's real saved volume had loaded from Firestore — a returning player who'd set music to 0
+would briefly hear it anyway, at the default level, during that async round-trip. Fixed by gating
+`playMusic()` on the player profile actually being loaded (`App.tsx`'s music effect now depends on
+`profile`, not just `screen`) — verified via debug logging that after a fresh sign-in with a saved
+volume of 0, `playMusic` is called exactly once, already at volume 0, never at the stale default.
+
 **Downloaded but not wired in yet:** `sfx/hit.wav` (`Materials/metal_clang.wav`) — skipped to
 avoid audio clutter layered on top of the per-shot `shot.wav` at the gun's ~14 shots/sec rate.
 Available if a distinct "confirmed hit" cue is wanted later (e.g. only on the killing blow, or

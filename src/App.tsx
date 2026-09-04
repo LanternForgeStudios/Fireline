@@ -131,14 +131,19 @@ function App() {
   }, [user])
 
   // Menu music plays on every screen except combat — Phaser owns its own
-  // combat music independently once GameCanvas mounts.
+  // combat music independently once GameCanvas mounts. Gated on `profile`
+  // being loaded (not just `user`): audioSettings/the music element start
+  // at a hardcoded default volume, and starting playback before the
+  // player's real saved volume has hydrated from Firestore meant a
+  // returning player who'd set music to 0 would briefly hear it anyway,
+  // at the default level, during that async round-trip.
   useEffect(() => {
     if (screen === 'playing') {
       stopMusic()
-    } else {
+    } else if (profile) {
       playMusic('audio/music/menu.ogg')
     }
-  }, [screen])
+  }, [screen, profile])
 
   const goToMissionSelect = useCallback(() => setScreen('select'), [])
   const goToMenu = useCallback(() => setScreen('menu'), [])

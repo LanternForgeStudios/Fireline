@@ -309,6 +309,18 @@ export class CombatScene extends Phaser.Scene {
       repeat: -1,
       ease: 'Sine.InOut',
     })
+    // A slower, wider sway on a different period than the vertical bob so
+    // the two don't lock into an obvious repeating diagonal loop — reads as
+    // a vehicle picking its way over uneven ground rather than a static
+    // prop with a single canned wiggle.
+    this.tweens.add({
+      targets: vehicle,
+      x: WORLD_WIDTH / 2 + 14,
+      duration: 1600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    })
   }
 
   /**
