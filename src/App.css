@@ -432,7 +432,9 @@
 }
 
 .mission-list-item {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
   width: 100%;
   text-align: left;
   background: rgba(255, 255, 255, 0.02);
@@ -442,6 +444,19 @@
   padding: 1rem 1.1rem;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.mission-list-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
+.mission-list-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .mission-list-item:hover {
@@ -488,6 +503,15 @@
   border-style: dashed;
   padding: 0;
   cursor: default;
+}
+
+.mission-list-item-random .mission-list-icon {
+  margin: 1rem 0.6rem 0 1.1rem;
+}
+
+.mission-list-random-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .mission-list-random-select {

@@ -16,6 +16,14 @@ function toCssColor(hex: number): string {
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard' }
 
+const MISSION_ICON: Record<string, string> = {
+  'operation-firebreak': 'icon-mission-firebreak.png',
+  'operation-steel-convoy': 'icon-mission-steelconvoy.png',
+  'operation-green-hell': 'icon-mission-greenhell.png',
+  'operation-nightfall': 'icon-mission-nightfall.png',
+}
+const RANDOM_MISSION_ICON = 'icon-mission-random.png'
+
 /** Random missions get a fresh id every reroll, so there's no persistent
  * "operation" identity to show completion history against — only the
  * hand-authored missions get a stats line. */
@@ -53,35 +61,41 @@ export function MissionSelect({ onSelect, onBack, operationStats }: MissionSelec
                 onSelect(mission)
               }}
             >
-              <div className="mission-list-header">
-                <span className="briefing-type">{mission.type}</span>
-                <span className="hud-label">{mission.waves.length} waves</span>
+              <img className="mission-list-icon" src={`${import.meta.env.BASE_URL}ui/${MISSION_ICON[mission.id]}`} alt="" />
+              <div className="mission-list-body">
+                <div className="mission-list-header">
+                  <span className="briefing-type">{mission.type}</span>
+                  <span className="hud-label">{mission.waves.length} waves</span>
+                </div>
+                <div className="briefing-name mission-list-name">{mission.name}</div>
+                <p className="briefing-text mission-list-blurb">{mission.briefing}</p>
+                <OperationStatsLine stats={operationStats[mission.id]} />
               </div>
-              <div className="briefing-name mission-list-name">{mission.name}</div>
-              <p className="briefing-text mission-list-blurb">{mission.briefing}</p>
-              <OperationStatsLine stats={operationStats[mission.id]} />
             </button>
           ))}
 
           <div className="mission-list-item mission-list-item-random" style={{ borderLeftColor: toCssColor(randomMission.theme.skyBottom) }}>
-            <button
-              key={randomMission.id}
-              className="mission-list-random-select"
-              onClick={() => {
-                playUiSound('ui_confirm')
-                onSelect(randomMission)
-              }}
-            >
-              <div className="mission-list-header">
-                <span className="briefing-type">Randomly Generated&nbsp;· {randomMission.type}</span>
-                <span className="hud-label">{randomMission.waves.length} waves</span>
-              </div>
-              <div className="briefing-name mission-list-name">{randomMission.name}</div>
-              <p className="briefing-text mission-list-blurb">{randomMission.briefing}</p>
-            </button>
-            <button className="mission-reroll" onClick={reroll}>
-              🎲 Reroll
-            </button>
+            <img className="mission-list-icon" src={`${import.meta.env.BASE_URL}ui/${RANDOM_MISSION_ICON}`} alt="" />
+            <div className="mission-list-random-body">
+              <button
+                key={randomMission.id}
+                className="mission-list-random-select"
+                onClick={() => {
+                  playUiSound('ui_confirm')
+                  onSelect(randomMission)
+                }}
+              >
+                <div className="mission-list-header">
+                  <span className="briefing-type">Randomly Generated&nbsp;· {randomMission.type}</span>
+                  <span className="hud-label">{randomMission.waves.length} waves</span>
+                </div>
+                <div className="briefing-name mission-list-name">{randomMission.name}</div>
+                <p className="briefing-text mission-list-blurb">{randomMission.briefing}</p>
+              </button>
+              <button className="mission-reroll" onClick={reroll}>
+                🎲 Reroll
+              </button>
+            </div>
           </div>
         </div>
 

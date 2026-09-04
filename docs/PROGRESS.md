@@ -49,6 +49,19 @@ on top.
 
 ## Log
 
+### 2026-09-04 (21) — Fourth hand-authored mission (jungle), Mission Select icons
+- **Operation Green Hell** — a Rescue-type mission using the jungle landscape, closing the gap
+  where jungle only existed for procedural missions. 4 waves (Undergrowth Contact → Flanking
+  Patrol → River Crossing → LZ Secure), `no-damage` secondary objective (+95 credits), warm dusk
+  sky tint chosen to pair with the jungle backdrop's own baked-in sunset. Added to both
+  `src/game/data/missions.ts` (client) and `functions/src/missionCatalog.ts` (server-side reward
+  bounds — required, or `submitMissionResult` would reject it as an unknown mission). Verified
+  live against the emulator: mission completes, records correctly, bonus objective credits land.
+- **Mission Select icons:** each of the 4 hand-authored missions now shows a PixelLab icon
+  (crosshair/dunes, shield/truck, distress beacon, moon/ladder — one per operation's theme), plus
+  a fixed die-with-question-mark icon on the procedural mission card. Same visual treatment as the
+  Upgrades screen's track icons. See [ART_ASSETS.md](ART_ASSETS.md).
+
 ### 2026-09-04 (20) — Fix mobile-landscape canvas mis-centering
 - **Real bug found and fixed:** on mobile landscape (any phone aspect wider than the game's fixed
   16:9 world — most of them), the combat canvas wasn't centered — noticeably more black space on

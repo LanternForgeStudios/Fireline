@@ -30,6 +30,7 @@ export const ENEMY_SCORE_VALUES: Record<string, number> = {
 const SECONDARY_OBJECTIVE_BONUS: Record<string, number> = {
   'operation-firebreak': 100,
   'operation-steel-convoy': 90,
+  'operation-green-hell': 95,
   'operation-nightfall': 90,
 }
 
@@ -49,6 +50,12 @@ const MISSION_WAVES: Record<string, string[][]> = {
     ['technical', 'drone', 'technical', 'infantry', 'infantry'],
     ['rocket', 'gunner', 'rocket', 'technical', 'drone', 'drone'],
     ['armored', 'technical', 'rocket', 'gunner', 'gunner', 'commander'],
+  ],
+  'operation-green-hell': [
+    ['infantry', 'infantry', 'infantry'],
+    ['gunner', 'infantry', 'rocket', 'infantry', 'drone'],
+    ['technical', 'drone', 'gunner', 'rocket', 'drone', 'technical'],
+    ['gunner', 'armored', 'rocket', 'commander', 'gunner', 'drone', 'rocket'],
   ],
   'operation-nightfall': [
     ['infantry', 'gunner', 'infantry', 'drone'],

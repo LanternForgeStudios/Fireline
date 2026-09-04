@@ -63,8 +63,7 @@ independent of the weather/mood tint layered on top (`CombatScene.LANDSCAPE_GROU
 `LANDSCAPE_MOUNTAIN_FILE` map the id to files; texture keys are landscape-specific, e.g.
 `ground-art-coastal`, since Phaser's texture cache is keyed globally and a fixed key would stick
 to whichever landscape loaded first in a session). Hand-authored missions: Firebreak=desert,
-Steel Convoy=urban, Nightfall=coastal — jungle is procedural-only for now, no hand-authored
-mission uses it yet. Procedural missions roll a landscape independently of the weather preset
+Steel Convoy=urban, Nightfall=coastal, Green Hell=jungle. Procedural missions roll a landscape independently of the weather preset
 (`generateMission.ts`) — the weather tint values were tuned against the desert art, so some
 combinations (a warm sand-toned preset over coastal's blue water, say) read a bit muddier than a
 hand-picked pairing; acceptable first-pass variance, not re-tuned per landscape.
@@ -105,8 +104,19 @@ Shown at 2.6rem in each track's card on the Upgrades screen (`.upgrade-track-ico
 per-track accent color on the card's left border (`TRACK_ACCENT` in `UpgradesScreen.tsx`) — a
 gold border/tint replaces the accent once a track is maxed out.
 
-**Not done:** mission-type icons (Rescue/Base Defense/etc. — only Escort has bespoke ground art,
-see below), achievement/rank badges.
+| Mission icon | File | Notes |
+| --- | --- | --- |
+| Operation Firebreak | `icon-mission-firebreak.png` | 64×64 via `create_image_pixflux` (job `78a0fe07-b1be-441e-8948-6eb2be8ad73b`), crosshair over a desert dune |
+| Operation Steel Convoy | `icon-mission-steelconvoy.png` | 64×64 via `create_image_pixflux` (job `34eaf4bc-e539-4ca2-8805-416ab40eadca`), shield protecting a convoy truck |
+| Operation Green Hell | `icon-mission-greenhell.png` | 64×64 via `create_image_pixflux` (job `6bdc4410-aa1c-4f70-95ad-fc5ebb5b062d`), handheld distress beacon with a signal wave — first attempt (job `a0f86126-...`) came back as just a plain leaf, no beacon element, regenerated with the signal emphasized |
+| Operation Nightfall | `icon-mission-nightfall.png` | 64×64 via `create_image_pixflux` (job `5caaea5f-c94e-473c-99dc-3571b8b1b123`), crescent moon with a rope ladder |
+| Randomly Generated (procedural) | `icon-mission-random.png` | 64×64 via `create_image_pixflux` (job `d653ce51-270c-415c-9821-f809deb15800`), die with a question mark — one fixed icon regardless of the rolled mission type, since procedural missions have no fixed identity to hang a specific icon on |
+
+Shown at 2.4rem on each Mission Select card (`.mission-list-icon`), same treatment as the
+Upgrades screen's track icons.
+
+**Not done:** mission-type icons for types with no hand-authored mission yet (Base Defense,
+Reconnaissance), achievement/rank badges.
 
 ## Escort/support ground element (`public/env/escort-vehicle.png`)
 

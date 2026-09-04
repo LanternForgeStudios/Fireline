@@ -140,6 +140,68 @@ export const MISSIONS: MissionDef[] = [
     ],
   },
   {
+    id: 'operation-green-hell',
+    name: 'Operation Green Hell',
+    type: 'Rescue',
+    briefing:
+      "A recon team went dark under the canopy six hours ago. Their beacon's still pinging, faint and getting fainter — get in low, punch through whatever's dug in between here and them, and get them out before the jungle finishes the job the enemy started.",
+    // Humid late-afternoon haze under a warm, hazy sky — pairs with the
+    // jungle backdrop's own baked-in sunset (palm silhouettes, sun glow).
+    // A light warm-green ground tint unifies with the foliage tile itself.
+    theme: {
+      landscape: 'jungle',
+      skyTop: 0xf2d99b,
+      skyBottom: 0xd97a3f,
+      mountainTint: 0xffffff,
+      mountainAlpha: 0.8,
+      groundTint: 0xd8e6b8,
+    },
+    secondaryObjective: { type: 'no-damage', label: 'Untouched — take zero aircraft damage', bonusCredits: 95 },
+    waves: [
+      {
+        name: 'Undergrowth Contact',
+        spawns: [
+          { enemyType: 'infantry', delayMs: 0 },
+          { enemyType: 'infantry', delayMs: 1400 },
+          { enemyType: 'infantry', delayMs: 3000 },
+        ],
+      },
+      {
+        name: 'Flanking Patrol',
+        spawns: [
+          { enemyType: 'gunner', delayMs: 0 },
+          { enemyType: 'infantry', delayMs: 1200 },
+          { enemyType: 'rocket', delayMs: 2600 },
+          { enemyType: 'infantry', delayMs: 3600 },
+          { enemyType: 'drone', delayMs: 4800 },
+        ],
+      },
+      {
+        name: 'River Crossing',
+        spawns: [
+          { enemyType: 'technical', delayMs: 0 },
+          { enemyType: 'drone', delayMs: 1400 },
+          { enemyType: 'gunner', delayMs: 2400 },
+          { enemyType: 'rocket', delayMs: 3400 },
+          { enemyType: 'drone', delayMs: 4400 },
+          { enemyType: 'technical', delayMs: 5400 },
+        ],
+      },
+      {
+        name: 'LZ Secure',
+        spawns: [
+          { enemyType: 'gunner', delayMs: 0 },
+          { enemyType: 'armored', delayMs: 1200 },
+          { enemyType: 'rocket', delayMs: 2600 },
+          { enemyType: 'commander', delayMs: 3800 },
+          { enemyType: 'gunner', delayMs: 5200 },
+          { enemyType: 'drone', delayMs: 5800 },
+          { enemyType: 'rocket', delayMs: 6800 },
+        ],
+      },
+    ],
+  },
+  {
     id: 'operation-nightfall',
     name: 'Operation Nightfall',
     type: 'Extraction',
