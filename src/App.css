@@ -533,9 +533,15 @@
 .game-canvas {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  /* No flex centering here — Phaser's own Scale.FIT + CENTER_BOTH already
+     centers the canvas via an inline margin on the <canvas> element itself.
+     Flex-centering this container on top of that double-centers it: the
+     canvas's own margin shifts it one way, then the flexbox re-centers the
+     resulting (now-asymmetric) margin box, landing the canvas off-center —
+     most visible on mobile landscape, where phone aspect ratios wider than
+     the game's fixed 16:9 world mean Phaser actually needs a real margin to
+     center, unlike a ~16:9 desktop viewport where that margin is ~0 and the
+     conflict is invisible. */
 }
 
 .game-canvas canvas {

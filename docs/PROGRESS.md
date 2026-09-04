@@ -49,6 +49,27 @@ on top.
 
 ## Log
 
+### 2026-09-04 (20) — Fix mobile-landscape canvas mis-centering
+- **Real bug found and fixed:** on mobile landscape (any phone aspect wider than the game's fixed
+  16:9 world — most of them), the combat canvas wasn't centered — noticeably more black space on
+  the left than the right. Root cause: `.game-canvas`'s CSS (`display: flex; align-items: center;
+  justify-content: center`) and Phaser's own `Scale.FIT` + `CENTER_BOTH` centering (an inline
+  margin on the `<canvas>` element) were both trying to center the canvas at once — the flexbox
+  re-centered the canvas's already-margined box, landing it off-center. Invisible on a ~16:9
+  desktop viewport (Phaser's own margin is ~0 there, so there's nothing for the flexbox to
+  conflict with) — only shows up when Phaser actually needs a real centering margin, i.e. mobile
+  landscape. **Not a regression from this session's portrait/landscape work** — traced via
+  `git log -S` to the original scaffold commit (`23c3bec`); it just never got exercised by real
+  mobile-landscape testing until now. Fixed by removing the redundant flex-centering from
+  `.game-canvas` — Phaser's own centering is sufficient on its own. Verified via Playwright on an
+  844×390 landscape viewport: canvas is now symmetrically centered (75px black bar each side,
+  matching the expected FIT-letterbox math exactly) instead of the previous 112.8px/37.9px split.
+- Some letterboxing on the sides is still inherent to keeping a fixed 16:9 world on phone aspect
+  ratios wider than that (most of them) — this fix corrects the *centering*, not the remaining
+  gap itself. Eliminating that entirely would mean a bigger change (dynamic world width, or
+  `Scale.ENVELOP` with its own crop-vs-HUD tradeoffs) — not attempted here, flagged as a possible
+  follow-up if it's still wanted after seeing the corrected centering in person.
+
 ### 2026-09-04 (19) — Music volume hydration race, escort vehicle facing + movement
 - **Real bug fixed:** menu music could briefly play at the default volume (0.6) on load even for a
   returning player who'd saved it at 0 — `playMusic()` fired on mount before the real setting had
