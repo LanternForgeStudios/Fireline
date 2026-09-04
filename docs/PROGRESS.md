@@ -10,8 +10,8 @@ on top.
 | --- | --- | --- |
 | 1 | Core Combat | **Done** — playable shooting prototype |
 | 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 3 missions (Search & Destroy, Escort, Extraction) with a select screen, each with distinct visual theming, plus loadout selection via the weapon upgrade system (see Phase 4) |
-| 3 | Procedural Content | **Done** per the GDD's own list — seeded generation, encounter blocks, threat budgets, weather/time-of-day variety, and secondary objectives, all shipped. Gameplay-affecting weather (currently visual-mood only) is the one item not literally covered — a refinement, not a missing deliverable |
-| 4 | Backend | **Mostly done** — see below; only App Check enforcement is outstanding |
+| 3 | Procedural Content | **Done** per the GDD's own list — seeded generation, encounter blocks, threat budgets, weather/time-of-day variety, and secondary objectives, all shipped. Weather stays visual-mood only, not gameplay-affecting — a deliberate scope call, not a gap |
+| 4 | Backend | **Done** — see below |
 | 5 | Release | Not started (web live on GitHub Pages; iOS/Capacitor future) |
 
 ## Backend (Phase 4) detail
@@ -21,7 +21,10 @@ on top.
 - [x] Firestore — `players/{uid}` profile (xp, credits, missionsCompleted/Failed, bestScore,
       unlockedUpgrades) + `players/{uid}/missionResults/{id}` history, live-synced to the UI
 - [x] Firestore security rules — per-player read/write isolation (`firestore.rules`)
-- [x] App Check (reCAPTCHA v3) on Firestore/Auth, currently in **Monitor** mode
+- [x] App Check (reCAPTCHA Enterprise) **enforced** on Firestore/Auth (owner flipped it in Console
+      2026-09-04, after the provider/project-mismatch fixes below made App Check actually work end
+      to end). Verified live immediately after: fresh sign-in, Firestore player-profile read, and a
+      full mission launch all succeeded with zero Firestore/Auth/App Check errors.
 - [x] Player settings (music/SFX volume, difficulty, mobile control side) stored in Firestore,
       hydrate on any device
 - [x] Server-side reward validation — Cloud Functions (`functions/`, Blaze plan) now own all
@@ -40,12 +43,6 @@ on top.
       submission with no App Check header, score 99999999, wavesCleared 999 got through auth fine
       and was correctly clamped server-side to 43200 (the generous fallback bound for procedurally
       generated missions — see the Phase 3 log entry below) rather than accepted at face value.
-- [ ] App Check enforcement on Firestore/Auth themselves — requested, but this toggle has **no
-      CLI/API path**; it's a Firebase Console-only action (Build → App Check → APIs tab). Handed
-      back to the project owner rather than attempted via an improvised authenticated REST call
-      against a security-sensitive production toggle, especially right after the unexplained
-      black-screen incident below. Test in the app immediately after flipping it (sign in, play a
-      mission, open Settings) — it's instantly reversible back to Monitor if anything breaks.
 
 ## Log
 
