@@ -49,6 +49,35 @@ on top.
 
 ## Log
 
+### 2026-09-04 (14) — Second half of the App Check fix: wrong GCP project for the site key
+- The provider swap in the entry below fixed the client/Console *provider* mismatch (confirmed by
+  the exchange call correctly switching to `exchangeRecaptchaEnterpriseToken`), but live
+  verification turned up a **second, independent bug**: the exchange now failed with `"Unable to
+  call the reCAPTCHA Enterprise CreateAssessment method; ensure that the reCAPTCHA Enterprise API
+  is enabled and that the site key is from the same project as the one containing this app."`
+- **Root cause:** the reCAPTCHA Enterprise key lived under a completely different, unrelated
+  Google Cloud project (`fireline-507502`) than the actual Firebase project (`fireline-lf`,
+  project number `643236089836` — confirmed via `firebase projects:list`, which doesn't list
+  `fireline-507502` at all). App Check's `CreateAssessment` call requires the key to be in the
+  *same* GCP project as the Firebase app; a key from any other project fails outright regardless
+  of whether the reCAPTCHA Enterprise API is enabled there. Likely cause of the mixup: Cloud
+  Console's project switcher had two entries both display-named "fireline" (only distinguishable
+  by the Project ID field), and Cloud Console's raw navigation kept defaulting to the wrong one.
+- **Fix:** created a new reCAPTCHA Enterprise key directly under `fireline-lf` (via a
+  `?project=fireline-lf`-scoped Console link to force past the project-switcher ambiguity),
+  domain `lanternforgestudios.github.io`, score-based. Swapped the new key into
+  `RECAPTCHA_ENTERPRISE_SITE_KEY` in `src/firebase/config.ts`.
+- **Verified live, end to end:** the App Check exchange now returns `200` with a valid token
+  (`"provider":"recaptcha_enterprise"`, correct project audience, 1hr TTL) — confirmed via a
+  direct network-response check against the deployed site. Player-confirmed after: completed a
+  mission on the live site and credits/XP landed correctly. This also unblocks `resetProgress` and
+  `purchaseUpgrade`, which were failing for the same underlying reason.
+- **Unrelated, same-session cleanup:** also bumped the deploy workflow's pinned GitHub Actions
+  (`checkout` v4→v7, `setup-node` v4→v7, `configure-pages` v5→v6, `upload-pages-artifact` v3→v5,
+  `deploy-pages` v4→v5) to clear a "Node.js 20 actions are deprecated" warning — all had already
+  migrated to the Node 24 runtime in their latest majors (GitHub is removing Node 20 support
+  2026-09-23). No behavior change for this workflow's simple usage of each.
+
 ### 2026-09-03 (13) — Fix App Check provider mismatch breaking all progression on the live site
 - **Real, live-site-breaking bug found and fixed.** Reported symptom: "completed a mission,
   earned no credits" — investigation showed it was much bigger than credits: App Check's
