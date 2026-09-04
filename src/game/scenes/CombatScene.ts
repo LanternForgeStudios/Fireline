@@ -55,6 +55,18 @@ const DEATH_FRAME_RATE = 12
 const WALK_HUMANOID_TYPES: ReadonlySet<EnemyTypeId> = new Set(['infantry', 'gunner', 'rocket', 'commander'])
 const WALK_FRAME_COUNT = 8
 const WALK_FRAME_RATE = 9
+
+// combat.ogg loops from 0 (the very start, intro included) rather than a
+// proper loop point — see docs/AUDIO_AND_POLISH.md. The pack's license PDF
+// documents a dedicated loop-optimized export with its own exact loop
+// start/length, but that file isn't in this project's copy of the pack, and
+// automated waveform analysis (cross-correlation for an exact repeated
+// section, an energy envelope scan for a structural intro/body boundary)
+// found no strong signal either way in the file we do have — this is a
+// best-guess pick from the least-weak correlation candidate, not a verified
+// splice. If it still sounds like it "restarts" on loop, that's a sign this
+// needs the pack's real Loopable file rather than a smaller timestamp nudge.
+const COMBAT_MUSIC_LOOP_START_SEC = 29.0
 // Where tracer fire visually originates from — the M134 mount at the open
 // door, just above the sill silhouette drawn at the bottom of the screen.
 const GUN_ORIGIN = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT - 24 }
@@ -175,6 +187,7 @@ export class CombatScene extends Phaser.Scene {
   private rotorFlicker!: Phaser.GameObjects.Rectangle
   private nextDustAtMs = 0
   private nextFlickerAtMs = 0
+  private combatMusicSource: AudioBufferSourceNode | null = null
 
   private pads!: Record<PadSide, TouchPad>
   private activePad: PadSide | null = null
@@ -257,9 +270,59 @@ export class CombatScene extends Phaser.Scene {
     this.buildTouchPad()
     this.setupInput()
 
-    this.sound.play('music-combat', { loop: true, volume: audioSettings.musicVolume })
+    this.playCombatMusic()
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.stopCombatMusic())
 
     this.emitHud()
+  }
+
+  /**
+   * Plays combat.ogg once through in full (intro included), then loops only
+   * [COMBAT_MUSIC_LOOP_START_SEC, end] forever after — using the raw Web
+   * Audio API's native `AudioBufferSourceNode.loopStart`/`loopEnd` rather
+   * than Phaser's `sound.play({ loop: true })`, which always loops the
+   * entire buffer back to 0 with no way to offset just the *repeat* passes.
+   * Falls back to Phaser's normal whole-buffer loop if the WebAudio backend
+   * isn't active (e.g. HTML5 Audio fallback) or the buffer isn't a decoded
+   * AudioBuffer in the cache.
+   */
+  private playCombatMusic() {
+    const soundManager = this.sound
+    if (!(soundManager instanceof Phaser.Sound.WebAudioSoundManager)) {
+      this.sound.play('music-combat', { loop: true, volume: audioSettings.musicVolume })
+      return
+    }
+    // The decoded buffer lives on a WebAudioSound wrapper's .audioBuffer,
+    // not in this.cache.audio (that holds the raw/HTML5-backend form) —
+    // add() without playing it just gets us the buffer reference, which we
+    // then discard the wrapper for since looping is handled manually below.
+    const wrapper = soundManager.add('music-combat') as Phaser.Sound.WebAudioSound
+    const buffer = wrapper.audioBuffer
+    wrapper.destroy()
+    if (!(buffer instanceof AudioBuffer)) {
+      this.sound.play('music-combat', { loop: true, volume: audioSettings.musicVolume })
+      return
+    }
+
+    const context = soundManager.context
+    const gain = context.createGain()
+    gain.gain.value = audioSettings.musicVolume
+    gain.connect(context.destination)
+
+    const source = context.createBufferSource()
+    source.buffer = buffer
+    source.loop = true
+    source.loopStart = Math.min(COMBAT_MUSIC_LOOP_START_SEC, buffer.duration - 1)
+    source.loopEnd = buffer.duration
+    source.connect(gain)
+    source.start(0)
+
+    this.combatMusicSource = source
+  }
+
+  private stopCombatMusic() {
+    this.combatMusicSource?.stop()
+    this.combatMusicSource = null
   }
 
   /**

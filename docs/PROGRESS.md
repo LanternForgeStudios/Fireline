@@ -49,6 +49,32 @@ on top.
 
 ## Log
 
+### 2026-09-04 (30) — Combat music: play the intro once, loop only the body
+- combat.ogg previously looped the entire 73.37s file from 0, intro included, via Phaser's
+  `sound.play({ loop: true })` — every ~73s the player heard the same intro flourish restart.
+  Ran two automated waveform analyses (exact-repeat cross-correlation; energy-envelope scan for a
+  structural intro/body boundary) trying to find a confident splice point in the actual audio;
+  neither found a strong signal, which points to this file being the pack's "full preview" render
+  rather than the dedicated loop-optimized export its license PDF documents (that file isn't in
+  this project's copy of the pack — see the existing note above). Picked user option: ship a
+  best-guess loop point now rather than block on sourcing the real file.
+- `COMBAT_MUSIC_LOOP_START_SEC = 29.0` in `CombatScene.ts`, the least-weak candidate from the
+  correlation pass — a best guess, not a verified splice.
+- Implemented via the raw Web Audio API's `AudioBufferSourceNode.loopStart`/`loopEnd` (the native,
+  sample-accurate tool for exactly "play once, then loop only a subrange") rather than Phaser's
+  `sound.play({ loop: true })`, which always loops the whole buffer back to 0 with no way to offset
+  just the repeat passes. Reuses Phaser's own decoded buffer (`sound.add(key).audioBuffer` — NOT
+  `this.cache.audio`, which doesn't hold the decoded WebAudio-backend buffer) and Phaser's existing
+  AudioContext, so this doesn't spin up a second audio graph. Falls back to Phaser's normal
+  whole-buffer loop if the WebAudio backend isn't active.
+- Verified live via Playwright: confirmed `combatMusicSource.{loop,loopStart,loopEnd}` are correct
+  on a fresh mission launch (not just after Phaser's own asset cache warms up — the first check
+  hit a test-harness timing gotcha, not a real bug: `window.__fireline` becomes available at
+  `Phaser.Game` construction, well before the async preload that fetches/decodes combat.ogg
+  finishes, so the test needed to wait for the actual signal instead of a fixed delay) and again
+  after a scene restart (fresh node, same loop config, old node stopped cleanly on `SHUTDOWN`).
+  Could not verify by ear whether 29.0s actually sounds seamless — that needs a real listen.
+
 ### 2026-09-04 (29) — Fixed laggy UI click sounds
 - Player-reported: UI SFX (button clicks etc.) sometimes played noticeably late relative to the
   click. Root cause: `playUiSound()` (`src/audio/uiSound.ts`) called `new Audio(src)` followed

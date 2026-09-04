@@ -68,9 +68,14 @@ alongside them — worth double-checking their source/license before a public re
       duration to the millisecond. Verified by loading both through the real dev server into an
       `<audio>` element and confirming `loadedmetadata` fires with the correct duration (not just
       an ffmpeg-side decode check) before committing.
-- [ ] Combat music loops from the very start (intro included) rather than at a proper loop point —
-      the source pack's license PDF documents loop start/length in seconds for a "Loopable" file
-      set, but that folder wasn't present in the copy pulled from; full tracks were used as-is
+- [x] Combat music loops from the very start (intro included) rather than at a proper loop point —
+      fixed 2026-09-04: plays the intro once, then loops only `[29.0s, end]` via the Web Audio
+      API's native `loopStart`/`loopEnd` (see `CombatScene.playCombatMusic`/PROGRESS.md). The
+      29.0s point is a best-guess from automated waveform analysis, not a verified-by-ear splice —
+      the source pack's license PDF documents loop start/length for a dedicated "Loopable" file
+      set, but that folder wasn't present in the copy pulled from, so there's no ground truth to
+      confirm against. Worth a real listen; report back if the seam still sounds off so the
+      timestamp can be nudged, or if it's worth sourcing the pack's actual Loopable export instead.
 - [ ] A true military-themed SFX pack (actual automatic gunfire, rotor/engine loop, radio chatter)
       would read much better than the fantasy-pack placeholders currently in use
 
