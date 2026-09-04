@@ -39,7 +39,7 @@ export interface WaveDef {
 
 /** Which ground/backdrop art set a mission uses — independent of `MissionTheme`'s
  * mood tinting, which layers on top of whichever landscape is picked. */
-export type LandscapeId = 'desert' | 'coastal' | 'urban'
+export type LandscapeId = 'desert' | 'coastal' | 'urban' | 'jungle'
 
 export interface MissionTheme {
   landscape: LandscapeId

@@ -123,11 +123,13 @@ const LANDSCAPE_GROUND_FILE: Record<LandscapeId, string> = {
   desert: 'ground.png',
   coastal: 'coastal-ground.png',
   urban: 'urban-ground.png',
+  jungle: 'jungle-ground.png',
 }
 const LANDSCAPE_MOUNTAIN_FILE: Record<LandscapeId, string> = {
   desert: 'mountains.png',
   coastal: 'coastal.png',
   urban: 'urban.png',
+  jungle: 'jungle.png',
 }
 
 // Foot soldiers and wheeled/tracked vehicles don't make sense standing on

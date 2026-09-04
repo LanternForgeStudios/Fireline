@@ -49,6 +49,20 @@ on top.
 
 ## Log
 
+### 2026-09-04 (17) — Fourth landscape: jungle
+- Added `jungle` as a 4th `LandscapeId` — ground tile + backdrop via PixelLab (dense foliage tile,
+  palm-silhouette sunset skyline with birds), wired into `CombatScene`'s
+  `LANDSCAPE_GROUND_FILE`/`LANDSCAPE_MOUNTAIN_FILE` maps and `generateMission.ts`'s `LANDSCAPES`
+  pool. Procedural-only for now — no hand-authored mission uses it yet (Firebreak/Steel
+  Convoy/Nightfall keep their existing desert/urban/coastal assignments). See
+  [ART_ASSETS.md](ART_ASSETS.md).
+- Confirmed the procedural generator already rolls a landscape independently of weather/mission
+  type for every generated mission (`rng.pick(LANDSCAPES)` in `generateMission.ts`, unchanged
+  logic, just a longer pool now) — this was already correct, not a new bug fix.
+- Verified live: rerolled Mission Select until landing on jungle (using a temporary debug log to
+  confirm which landscape a given reroll produced, removed before committing), launched it,
+  confirmed the backdrop/ground/enemies all render correctly with zero missing-asset errors.
+
 ### 2026-09-04 (16) — Upgrade screen visual pass, coastal boat enemies, Escort ground vehicle
 - **Upgrades screen:** each track now shows a PixelLab icon (bullet/snowflake/gauge/lightning bolt
   for Rounds/Cooling/Heat Capacity/Fire Rate) plus a per-track accent color on the card's left

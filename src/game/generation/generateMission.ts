@@ -16,9 +16,9 @@ const MAX_WAVES = 6
 // WEATHER_PRESETS was done against the desert art, so some combinations
 // (esp. the warmer sand-toned presets over coastal's blue water) will read
 // a bit muddier than a hand-picked pairing — acceptable variance for a
-// first pass, worth a look once there's real art for all three landscapes
+// first pass, worth a look once there's real art for all four landscapes
 // in front of someone.
-const LANDSCAPES: LandscapeId[] = ['desert', 'coastal', 'urban']
+const LANDSCAPES: LandscapeId[] = ['desert', 'coastal', 'urban', 'jungle']
 
 const OBJECTIVE_LABELS: Record<SecondaryObjectiveType, string> = {
   'no-damage': 'Untouched — take zero aircraft damage',

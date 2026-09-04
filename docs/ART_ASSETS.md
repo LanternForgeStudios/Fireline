@@ -58,27 +58,29 @@ version; no new animations were generated for this pass.
 
 ## Environment / landscapes (`public/env/*.png`)
 
-Three landscapes now exist — `MissionTheme.landscape` (`types.ts`) picks which one a mission uses,
+Four landscapes now exist — `MissionTheme.landscape` (`types.ts`) picks which one a mission uses,
 independent of the weather/mood tint layered on top (`CombatScene.LANDSCAPE_GROUND_FILE`/
 `LANDSCAPE_MOUNTAIN_FILE` map the id to files; texture keys are landscape-specific, e.g.
 `ground-art-coastal`, since Phaser's texture cache is keyed globally and a fixed key would stick
 to whichever landscape loaded first in a session). Hand-authored missions: Firebreak=desert,
-Steel Convoy=urban, Nightfall=coastal. Procedural missions roll a landscape independently of the
-weather preset (`generateMission.ts`) — the weather tint values were tuned against the desert
-art, so some combinations (a warm sand-toned preset over coastal's blue water, say) read a bit
-muddier than a hand-picked pairing; acceptable first-pass variance, not re-tuned per landscape.
+Steel Convoy=urban, Nightfall=coastal — jungle is procedural-only for now, no hand-authored
+mission uses it yet. Procedural missions roll a landscape independently of the weather preset
+(`generateMission.ts`) — the weather tint values were tuned against the desert art, so some
+combinations (a warm sand-toned preset over coastal's blue water, say) read a bit muddier than a
+hand-picked pairing; acceptable first-pass variance, not re-tuned per landscape.
 
 | Landscape | Ground tile | Backdrop | Notes |
 | --- | --- | --- | --- |
 | Desert | `ground.png` | `mountains.png` | 64×64 tile via `create_tiles_pro` (id `ff5cabdb-8b77-4728-adf9-c50cef4f7fcb`, `tile_0` of 16); backdrop 400×68 via `create_image_pixflux` (job `2ac273b9-eaa8-47af-b561-ca80502bfd11`) |
 | Coastal | `coastal-ground.png` | `coastal.png` | tile via `create_tiles_pro` (id `79195108-7ecc-48b0-bdb7-a332d8a56413`, `tile_2` of 16 — picked for the clearest wave-line texture when tiled); backdrop via `create_image_pixflux` (job `af41c91d-fbe0-4a89-8c18-84c9e07ccf6a`), sea horizon with rocky islands and a sun glow |
 | Urban | `urban-ground.png` | `urban.png` | tile via `create_tiles_pro` (id `8617ee1a-6925-4946-85ae-aaed69c3bbce`, `tile_0` of 16 — cracked asphalt/rubble); backdrop via `create_image_pixflux` (job `596a7ca2-a5fb-4fec-a07b-a9d3b31c92b0`), ruined city skyline silhouette |
+| Jungle | `jungle-ground.png` | `jungle.png` | tile via `create_tiles_pro` (id `7ab546fe-780b-4ada-9b65-4d3887c0e5a0`, `tile_0` of 16 — dense foliage with mud showing through); backdrop via `create_image_pixflux` (job `6b6e28d5-953d-4d03-b251-b19ff95251a6`), palm tree silhouette skyline with a sunset glow and birds |
 
-Both new backdrops replace the old procedural sun circle the same way the desert one did — each
-bakes in its own light source (sun glow / smoke-lit skyline).
+All four backdrops replace the old procedural sun circle the same way the desert one did — each
+bakes in its own light source (sun glow / smoke-lit skyline / jungle sunset).
 
 **Not done:** gameplay-affecting weather (still visual-mood only, tracked in
-[AUDIO_AND_POLISH.md](AUDIO_AND_POLISH.md)); a 4th+ landscape if more variety is wanted later.
+[AUDIO_AND_POLISH.md](AUDIO_AND_POLISH.md)); a 5th+ landscape if more variety is wanted later.
 
 ## UI / Hero art (`public/ui/*.png`)
 
