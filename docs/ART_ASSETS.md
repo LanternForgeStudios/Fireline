@@ -182,13 +182,17 @@ than a flat per-rank XP curve. `getRankProgress(xp)` in `ranks.ts` returns the c
 next tier, and a 0-1 progress fraction; the Main Menu renders that as a small bar with "N XP to
 [next rank]" under the badge, or just the badge with no bar once Colonel (max) is reached.
 
+The badge is clickable — opens a modal (`RankListModal`) listing all 8 tiers with the current one
+highlighted and marked "YOU", so the player has a reference point for the full ladder, not just
+their current rung. Closes on backdrop click or the ✕.
+
 Verified: rank/progress math checked at every tier boundary (999/1000, 2499/2500, ... 59999/60000,
 plus 250,000 well past Colonel) via a scratch script — all thresholds and progress percentages
 came back correct. All 8 icon files confirmed as valid 64×64 RGBA PNGs and load-tested (200s)
-through the dev server. Layout/visual placement on the Main Menu itself was **not** verified live
-against a signed-in account in this pass (the project's `pw-verify@lanternforgestudios.dev` test
-account's credentials weren't available in this session) — worth a glance next time the site's
-open.
+through the dev server. The badge, its click-to-open modal (8 rows, correct "YOU" marker,
+closes on backdrop click), and the underlying progress bar were all verified live end-to-end via
+Playwright against a real signed-up account on the local emulator suite (this session didn't have
+the live-site `pw-verify` test account's credentials — see prior note in this file's history).
 
 ## Escort/support ground element (`public/env/escort-vehicle.png`)
 

@@ -31,52 +31,53 @@ export const BASE_WEAPON_STATS: WeaponStats = {
   fireIntervalMs: 70,
 }
 
-// [stock, level 1, level 2, level 3] — index by owned level (0 if none).
-const DAMAGE_VALUES = [9, 11, 13, 16]
-const COOLING_VALUES = [42, 52, 64, 80]
-const HEAT_CAPACITY_VALUES = [100, 120, 145, 175]
-const FIRE_RATE_VALUES = [70, 62, 55, 48] // lower = faster
+// [stock, level 1..10] — index by owned level (0 if none). Each track's
+// original 3 levels were already a near-perfect geometric progression
+// (e.g. heat capacity multiplies by ~1.207 every level) — levels 4-10
+// extend that same ratio rather than inventing a new curve, per-level
+// values independently rounded from stock * ratio^level (not compounded
+// from the previous *rounded* value, which would drift off the curve).
+const DAMAGE_VALUES = [9, 11, 13, 16, 19, 23, 28, 34, 41, 50, 61]
+const COOLING_VALUES = [42, 52, 64, 80, 99, 123, 153, 189, 235, 291, 361]
+const HEAT_CAPACITY_VALUES = [100, 120, 145, 175, 212, 256, 309, 373, 450, 543, 656]
+const FIRE_RATE_VALUES = [70, 62, 55, 48, 43, 38, 33, 29, 26, 23, 20] // lower = faster
+
+// Cost curve: the original 3 costs (150, 350, 650) fit cost(n) = 50*(n^2+n+1)
+// exactly — levels 4-10 continue that same formula rather than a new one.
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
+const LEVEL_COST = (n: number) => 50 * (n * n + n + 1)
+
+function buildLevels(track: UpgradeTrackId, namePrefix: string): UpgradeLevel[] {
+  return ROMAN.map((numeral, i) => {
+    const level = i + 1
+    return { id: `${track}-${level}`, track, level, cost: LEVEL_COST(level), label: `${namePrefix} ${numeral}` }
+  })
+}
 
 export const UPGRADE_TRACKS: UpgradeTrack[] = [
   {
     id: 'damage',
     label: 'Rounds',
     description: 'Heavier ammunition — more damage per hit.',
-    levels: [
-      { id: 'damage-1', track: 'damage', level: 1, cost: 150, label: 'AP Rounds I' },
-      { id: 'damage-2', track: 'damage', level: 2, cost: 350, label: 'AP Rounds II' },
-      { id: 'damage-3', track: 'damage', level: 3, cost: 650, label: 'AP Rounds III' },
-    ],
+    levels: buildLevels('damage', 'AP Rounds'),
   },
   {
     id: 'cooling',
     label: 'Cooling',
     description: 'Better barrel cooling — heat bleeds off faster.',
-    levels: [
-      { id: 'cooling-1', track: 'cooling', level: 1, cost: 150, label: 'Cooling Jacket I' },
-      { id: 'cooling-2', track: 'cooling', level: 2, cost: 350, label: 'Cooling Jacket II' },
-      { id: 'cooling-3', track: 'cooling', level: 3, cost: 650, label: 'Cooling Jacket III' },
-    ],
+    levels: buildLevels('cooling', 'Cooling Jacket'),
   },
   {
     id: 'heatCapacity',
     label: 'Heat Capacity',
     description: 'Reinforced receiver — more sustained fire before overheating.',
-    levels: [
-      { id: 'heatCapacity-1', track: 'heatCapacity', level: 1, cost: 150, label: 'Reinforced Receiver I' },
-      { id: 'heatCapacity-2', track: 'heatCapacity', level: 2, cost: 350, label: 'Reinforced Receiver II' },
-      { id: 'heatCapacity-3', track: 'heatCapacity', level: 3, cost: 650, label: 'Reinforced Receiver III' },
-    ],
+    levels: buildLevels('heatCapacity', 'Reinforced Receiver'),
   },
   {
     id: 'fireRate',
     label: 'Fire Rate',
     description: 'Tuned feed mechanism — shorter delay between shots.',
-    levels: [
-      { id: 'fireRate-1', track: 'fireRate', level: 1, cost: 150, label: 'Feed Tuning I' },
-      { id: 'fireRate-2', track: 'fireRate', level: 2, cost: 350, label: 'Feed Tuning II' },
-      { id: 'fireRate-3', track: 'fireRate', level: 3, cost: 650, label: 'Feed Tuning III' },
-    ],
+    levels: buildLevels('fireRate', 'Feed Tuning'),
   },
 ]
 

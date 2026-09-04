@@ -150,20 +150,25 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
   margin-bottom: 0.35rem;
 }
 
 .upgrade-track-dots {
   display: flex;
-  gap: 0.3rem;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+  max-width: 9rem;
 }
 
 .upgrade-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   border: 1px solid #4b5563;
   background: transparent;
+  flex-shrink: 0;
 }
 
 .upgrade-dot-owned {
@@ -324,6 +329,16 @@
   align-items: center;
   gap: 0.6rem;
   margin-bottom: 0.6rem;
+  background: transparent;
+  border: none;
+  padding: 0.25rem 0.4rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.menu-rank:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .menu-rank-icon {
@@ -368,6 +383,109 @@
   font-size: 0.65rem;
   letter-spacing: 0.04em;
   color: #9ca3af;
+}
+
+.rank-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  background: rgba(5, 7, 10, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.rank-modal {
+  width: 100%;
+  max-width: 22rem;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #14161c;
+  border: 1px solid #2e303a;
+  border-radius: 10px;
+  padding: 1.25rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.rank-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+
+.rank-modal-close {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+.rank-modal-close:hover {
+  color: #e6e8ec;
+}
+
+.rank-modal-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rank-modal-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+
+.rank-modal-row-current {
+  background: rgba(242, 193, 78, 0.1);
+  border-color: rgba(242, 193, 78, 0.4);
+}
+
+.rank-modal-row-icon {
+  width: 1.9rem;
+  height: 1.9rem;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+.rank-modal-row-icon-locked {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.rank-modal-row-name {
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e6e8ec;
+  flex: 1;
+}
+
+.rank-modal-row-xp {
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: #9ca3af;
+}
+
+.rank-modal-row-you {
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 0.65rem;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  color: #14161c;
+  background: #f2c14e;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
 }
 
 .menu-hero {

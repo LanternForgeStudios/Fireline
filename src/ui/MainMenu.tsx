@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { playUiSound } from '../audio/uiSound'
-import { getRankProgress } from '../game/data/ranks'
+import { getRankProgress, RANK_TIERS } from '../game/data/ranks'
 import type { PlayerProfile } from '../firebase/playerProfile'
 
 interface MainMenuProps {
@@ -117,20 +117,75 @@ export function MainMenu({ onStart, onSettings, onCredits, onUpgrades, onSignOut
 }
 
 function RankBadge({ xp }: { xp: number }) {
+  const [showList, setShowList] = useState(false)
   const { rank, next, progress } = getRankProgress(xp)
   return (
-    <div className="menu-rank">
-      <img className="menu-rank-icon" src={`${import.meta.env.BASE_URL}ui/${rank.icon}`} alt="" />
-      <div className="menu-rank-info">
-        <span className="menu-rank-name">{rank.name}</span>
-        {next && (
-          <>
-            <div className="menu-rank-bar">
-              <div className="menu-rank-bar-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
-            </div>
-            <span className="menu-rank-next">{next.minXp - xp} XP to {next.name}</span>
-          </>
-        )}
+    <>
+      <button
+        className="menu-rank"
+        onClick={() => {
+          playUiSound('ui_select')
+          setShowList(true)
+        }}
+      >
+        <img className="menu-rank-icon" src={`${import.meta.env.BASE_URL}ui/${rank.icon}`} alt="" />
+        <div className="menu-rank-info">
+          <span className="menu-rank-name">{rank.name}</span>
+          {next && (
+            <>
+              <div className="menu-rank-bar">
+                <div className="menu-rank-bar-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
+              </div>
+              <span className="menu-rank-next">{next.minXp - xp} XP to {next.name}</span>
+            </>
+          )}
+        </div>
+      </button>
+      {showList && <RankListModal xp={xp} currentRankId={rank.id} onClose={() => setShowList(false)} />}
+    </>
+  )
+}
+
+function RankListModal({ xp, currentRankId, onClose }: { xp: number; currentRankId: string; onClose: () => void }) {
+  return (
+    <div
+      className="rank-modal-backdrop"
+      onClick={() => {
+        playUiSound('ui_select')
+        onClose()
+      }}
+    >
+      <div className="rank-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="rank-modal-header">
+          <span className="briefing-value">Ranks</span>
+          <button
+            className="rank-modal-close"
+            onClick={() => {
+              playUiSound('ui_select')
+              onClose()
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <ul className="rank-modal-list">
+          {RANK_TIERS.map((tier) => {
+            const isCurrent = tier.id === currentRankId
+            const reached = xp >= tier.minXp
+            return (
+              <li key={tier.id} className={`rank-modal-row ${isCurrent ? 'rank-modal-row-current' : ''}`}>
+                <img
+                  className={`rank-modal-row-icon ${reached ? '' : 'rank-modal-row-icon-locked'}`}
+                  src={`${import.meta.env.BASE_URL}ui/${tier.icon}`}
+                  alt=""
+                />
+                <span className="rank-modal-row-name">{tier.name}</span>
+                <span className="rank-modal-row-xp">{tier.minXp.toLocaleString()} XP</span>
+                {isCurrent && <span className="rank-modal-row-you">YOU</span>}
+              </li>
+            )
+          })}
+        </ul>
       </div>
     </div>
   )

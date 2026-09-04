@@ -11,19 +11,22 @@ export interface UpgradeInfo {
   cost: number
 }
 
+// Cost curve mirrors src/game/data/upgrades.ts: cost(n) = 50*(n^2+n+1), which
+// the original 3 hand-picked costs (150, 350, 650) fit exactly.
+const LEVEL_COST = (n: number): number => 50 * (n * n + n + 1)
+
+function buildLevels(track: string): UpgradeInfo[] {
+  return Array.from({ length: 10 }, (_, i) => {
+    const level = i + 1
+    return { id: `${track}-${level}`, track, level, cost: LEVEL_COST(level) }
+  })
+}
+
 export const ALL_UPGRADES: UpgradeInfo[] = [
-  { id: 'damage-1', track: 'damage', level: 1, cost: 150 },
-  { id: 'damage-2', track: 'damage', level: 2, cost: 350 },
-  { id: 'damage-3', track: 'damage', level: 3, cost: 650 },
-  { id: 'cooling-1', track: 'cooling', level: 1, cost: 150 },
-  { id: 'cooling-2', track: 'cooling', level: 2, cost: 350 },
-  { id: 'cooling-3', track: 'cooling', level: 3, cost: 650 },
-  { id: 'heatCapacity-1', track: 'heatCapacity', level: 1, cost: 150 },
-  { id: 'heatCapacity-2', track: 'heatCapacity', level: 2, cost: 350 },
-  { id: 'heatCapacity-3', track: 'heatCapacity', level: 3, cost: 650 },
-  { id: 'fireRate-1', track: 'fireRate', level: 1, cost: 150 },
-  { id: 'fireRate-2', track: 'fireRate', level: 2, cost: 350 },
-  { id: 'fireRate-3', track: 'fireRate', level: 3, cost: 650 },
+  ...buildLevels('damage'),
+  ...buildLevels('cooling'),
+  ...buildLevels('heatCapacity'),
+  ...buildLevels('fireRate'),
 ]
 
 export function getUpgrade(id: string): UpgradeInfo | undefined {

@@ -49,6 +49,28 @@ on top.
 
 ## Log
 
+### 2026-09-04 (28) — Clickable rank list modal, weapon upgrades expanded to 10 levels/track
+- The rank badge on the Main Menu is now clickable, opening a modal listing all 8 rank tiers
+  (icon, name, XP threshold) with the player's current tier highlighted and marked "YOU" — a
+  reference for where they stand and what's still ahead, not just the single current badge.
+  Closes on backdrop click or the ✕ button (`RankListModal` in `MainMenu.tsx`).
+- Expanded all 4 weapon upgrade tracks (Rounds, Cooling, Heat Capacity, Fire Rate) from 3 levels to
+  10. The original 3 hand-picked values per track were already a near-exact fit for a formula —
+  cost(n) = 50·(n²+n+1) for credits, and each stat's own ~1.2-1.25x-per-level geometric ratio for
+  its effect — so levels 4-10 continue those same formulas rather than inventing new curves. Costs
+  now run 150cr (L1) up to 5,550cr (L10); maxing one track costs 22,500cr total, all four costs
+  90,000cr. See `src/game/data/upgrades.ts` for the exact per-level values.
+- Updated the server-side mirror (`functions/src/upgradeCatalog.ts`, same cost formula) and
+  redeployed Cloud Functions — `purchaseUpgrade`'s validation logic already walked `levels[]`
+  generically (no track-length assumption), so this was a pure data change, no logic change.
+- Verified live end-to-end via Playwright against the local emulator suite: rank modal opens with
+  all 8 rows and exactly one "YOU" marker on the correct current tier, closes on backdrop click;
+  Upgrades screen renders 10 dots per track cleanly at a 375px mobile viewport with no overflow;
+  a real purchase (via a debug-hook-forced mission completion for test credits, then buying Rounds
+  level 1) went through the actual rebuilt Cloud Function, deducted the right cost, filled the
+  first dot, and updated the button to the level 2 price — confirming client/server catalogs agree
+  end to end, not just that they match on paper.
+
 ### 2026-09-04 (27) — Hit-flinch reaction on non-lethal hits
 - Enemies previously gave zero visual feedback on a hit that didn't kill them — nothing happened
   until the health bar ticked down, unlike the death animation's clear payoff on a kill. Added a
