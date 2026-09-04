@@ -10,12 +10,14 @@ export interface EnemySpawnPoint {
 
 // Spawn-time scale, and how much scale grows on top of that by the time an
 // enemy reaches impact (added to SPAWN_SCALE, not multiplied by it) — bumped
-// 50% larger at spawn (was 0.35) per player feedback that targets were hard
-// to track/hit, especially on mobile; the growth-as-it-approaches curve
-// itself is unchanged. containsPoint()'s hit radius (Enemy) and the touch
-// aim-assist radius (CombatScene) both read container.scale directly, so
-// both grow in step with this automatically — no separate tuning needed.
-const SPAWN_SCALE = 0.525
+// 50% larger twice now per player feedback that targets were hard to
+// track/hit, especially on mobile (0.35 -> 0.525 -> 0.7875); the
+// growth-as-it-approaches curve itself is unchanged both times, so bigger
+// spawn size also means a bigger impact size, not just a bigger start.
+// containsPoint()'s hit radius (Enemy) and the touch aim-assist radius
+// (CombatScene) both read container.scale directly, so both grow in step
+// with this automatically — no separate tuning needed.
+const SPAWN_SCALE = 0.7875
 const APPROACH_SCALE_GROWTH = 1.55
 
 /**

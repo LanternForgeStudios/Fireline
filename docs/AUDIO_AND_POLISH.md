@@ -31,6 +31,16 @@ would briefly hear it anyway, at the default level, during that async round-trip
 `profile`, not just `screen`) — verified via debug logging that after a fresh sign-in with a saved
 volume of 0, `playMusic` is called exactly once, already at volume 0, never at the stale default.
 
+**Second music-volume bug found and fixed (2026-09-04):** the fix above didn't cover a report of
+music still audible right after a mission finishes. Root cause was different: `mission_complete`/
+`mission_failed` (played via `playUiSound` on the result screen) are musical-sounding synth stings
+— "UI/synth_process_complete.wav" / "UI/synth_shut_down.wav" in the table above — but were
+volume-gated by `sfxVolume`, not `musicVolume`. A player who'd muted music but left SFX volume up
+(the default is 0.8) would still hear that sting at full SFX volume at exactly that transition —
+technically correct per the SFX/music split, but not what a player experiences as "music is
+muted." Reclassified those two sounds in `uiSound.ts` to respect `musicVolume` instead — every
+other sound played through that function still uses `sfxVolume` as before.
+
 **Downloaded but not wired in yet:** `sfx/hit.wav` (`Materials/metal_clang.wav`) — skipped to
 avoid audio clutter layered on top of the per-shot `shot.wav` at the gun's ~14 shots/sec rate.
 Available if a distinct "confirmed hit" cue is wanted later (e.g. only on the killing blow, or

@@ -49,6 +49,27 @@ on top.
 
 ## Log
 
+### 2026-09-04 (23) — Mission-end sting respects music volume, bigger enemies again, escort vehicle aerial angle
+- **Real bug found and fixed:** the earlier music-hydration-race fix didn't cover the reported
+  "music still plays after an operation finishes" case — traced with debug logging through the
+  full mission-completion flow and found the actual source: `mission_complete`/`mission_failed`
+  (musical-sounding synth stings, played via `playUiSound` on the result screen) were volume-gated
+  by `sfxVolume`, not `musicVolume`. A player who muted music but left SFX volume up would still
+  hear that sting at full SFX volume right at mission end — technically "honoring settings"
+  (SFX volume was respected), but not matching what a player experiences as "music." Reclassified
+  those two sounds to respect `musicVolume` instead, in `uiSound.ts`. Verified via debug logging:
+  `playUiSound mission_complete appliedVolume= 0` with music muted, even with SFX volume left at
+  its default 0.8.
+- Enemies spawn another 50% larger again (`SPAWN_SCALE` 0.525 → 0.7875 in `Enemy.ts`), same
+  unchanged growth-as-it-approaches curve as before, so impact size grows too, not just spawn
+  size. Second bump on top of the earlier +50% (0.35 → 0.525 → 0.7875 total).
+- **Escort vehicle art fixed again:** the previous regeneration fixed the *facing* direction but
+  came out as a flat, straight-on rear-elevation shot rather than the aerial/top-down angle the
+  rest of the game's ground objects use. Regenerated with `view="high top-down"` (more overhead
+  than the `"low top-down"` used elsewhere, since the text description alone wasn't pulling the
+  angle overhead enough on the prior attempt) — now shows the roof and cargo bed from above,
+  matching "flying over the top of it." See [ART_ASSETS.md](ART_ASSETS.md).
+
 ### 2026-09-04 (22) — Main Menu: sign-out confirmation, subtler Credits link
 - Sign out is now a `.btn-danger` (red-outlined) button that requires confirmation — click shows
   "Sign out of your account?" with Cancel/Confirm, matching the existing confirm-before-destructive-

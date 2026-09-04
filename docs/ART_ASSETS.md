@@ -138,6 +138,16 @@ the enemy vehicle sprites (`technical.png`, `armored.png`, etc.) for the same is
 3/4-profile "hero shot" angles that don't make a strong directional claim either way, so no
 mismatch there; the escort vehicle was the one asset with an actual facing problem.
 
+**Perspective fix (2026-09-04):** the facing-direction fix above still read wrong — it was a flat,
+straight-on rear-elevation shot (looking at the tailgate head-on) rather than the aerial/top-down
+angle the rest of the game's ground objects use, since the helicopter is flying *over* the convoy,
+not trailing behind it at ground level. Regenerated at `view="high top-down"` (job
+`b7194e93-5184-4b3e-93d9-86d9a866e171`) — more overhead than the `"low top-down"` used for
+everything else, since on the previous attempt the text description alone didn't pull the angle
+overhead enough even with `view="low top-down"` set. Now shows the roof and canvas-covered cargo
+bed from above, cab still oriented away (matching "driving into the distance," not toward the
+viewer).
+
 ## In-scene elements still procedural (not yet swapped for real art)
 
 - Sky gradient + sun glow strip — left procedural; a flat gradient doesn't gain much from being
