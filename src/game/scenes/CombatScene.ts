@@ -44,6 +44,17 @@ const DOOR_SILL_HEIGHT = 56
 // 0 (animate_object's default keep_first_frame behavior).
 const DEATH_FRAME_COUNT = 7
 const DEATH_FRAME_RATE = 12
+// A looping walk cycle for the approach itself (previously a single static
+// frame the whole way in) — only the humanoid/soldier enemy types, since
+// the PixelLab Character API this comes from doesn't support vehicles or
+// aircraft (see docs/ART_ASSETS.md). South-direction only: enemies close in
+// almost straight toward the viewer in this game (only minor lateral
+// jitter), so the other 7 compass directions Character API generates would
+// rarely if ever be seen — not worth the extra generations/complexity of
+// wiring up direction-switching for a game that doesn't really have one.
+const WALK_HUMANOID_TYPES: ReadonlySet<EnemyTypeId> = new Set(['infantry', 'gunner', 'rocket', 'commander'])
+const WALK_FRAME_COUNT = 8
+const WALK_FRAME_RATE = 9
 // Where tracer fire visually originates from — the M134 mount at the open
 // door, just above the sill silhouette drawn at the bottom of the screen.
 const GUN_ORIGIN = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT - 24 }
@@ -197,6 +208,11 @@ export class CombatScene extends Phaser.Scene {
       this.load.image(key, `${import.meta.env.BASE_URL}enemies/${file}`)
       for (let i = 0; i < DEATH_FRAME_COUNT; i++) {
         this.load.image(`enemy-${def.id}-death-${i}`, `${import.meta.env.BASE_URL}enemies/${def.id}-death-${i}.png`)
+      }
+      if (WALK_HUMANOID_TYPES.has(def.id)) {
+        for (let i = 0; i < WALK_FRAME_COUNT; i++) {
+          this.load.image(`enemy-${def.id}-walk-${i}`, `${import.meta.env.BASE_URL}enemies/${def.id}-walk-${i}.png`)
+        }
       }
     }
     this.groundTextureKey = `ground-art-${landscape}`
@@ -359,14 +375,27 @@ export class CombatScene extends Phaser.Scene {
    */
   private buildEnemyAnimations() {
     for (const def of Object.values(ENEMY_DEFS)) {
-      const key = `${def.id}-death`
-      if (this.anims.exists(key)) continue
-      this.anims.create({
-        key,
-        frames: Array.from({ length: DEATH_FRAME_COUNT }, (_, i) => ({ key: `enemy-${def.id}-death-${i}` })),
-        frameRate: DEATH_FRAME_RATE,
-        repeat: 0,
-      })
+      const deathKey = `${def.id}-death`
+      if (!this.anims.exists(deathKey)) {
+        this.anims.create({
+          key: deathKey,
+          frames: Array.from({ length: DEATH_FRAME_COUNT }, (_, i) => ({ key: `enemy-${def.id}-death-${i}` })),
+          frameRate: DEATH_FRAME_RATE,
+          repeat: 0,
+        })
+      }
+
+      if (WALK_HUMANOID_TYPES.has(def.id)) {
+        const walkKey = `${def.id}-walk`
+        if (!this.anims.exists(walkKey)) {
+          this.anims.create({
+            key: walkKey,
+            frames: Array.from({ length: WALK_FRAME_COUNT }, (_, i) => ({ key: `enemy-${def.id}-walk-${i}` })),
+            frameRate: WALK_FRAME_RATE,
+            repeat: -1,
+          })
+        }
+      }
     }
   }
 

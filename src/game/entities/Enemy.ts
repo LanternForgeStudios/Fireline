@@ -58,6 +58,16 @@ export class Enemy {
     // animation CombatScene.buildEnemyAnimations registers globally.
     this.sprite = scene.add.sprite(0, 0, textureKey)
     this.sprite.setDisplaySize(def.baseRadius * 2, def.baseRadius * 2)
+    // Humanoid types get a looping walk cycle for the approach instead of
+    // sitting on the static texture the whole way in — see
+    // CombatScene.WALK_HUMANOID_TYPES for which types have one registered.
+    // Gated on textureKey matching the plain `enemy-${id}` key specifically
+    // (not e.g. a coastal `boat-${id}` reskin): the walk frames were
+    // generated from the soldier art, not the boat art, so playing them
+    // over a boat sprite would yank its texture over to a soldier
+    // mid-animation. Coastal boat reskins just keep their static texture.
+    const walkKey = `${def.id}-walk`
+    if (textureKey === `enemy-${def.id}` && scene.anims.exists(walkKey)) this.sprite.play(walkKey)
 
     this.healthBarBg = scene.add.rectangle(0, -def.baseRadius - 14, 34, 5, 0x000000, 0.55)
     this.healthBarFill = scene.add.rectangle(0, -def.baseRadius - 14, 34, 5, 0x4ade80, 0.95)

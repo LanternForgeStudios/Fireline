@@ -49,6 +49,25 @@ on top.
 
 ## Log
 
+### 2026-09-04 (25) — Character API walk-cycle prototype, rolled out to 4 humanoid enemy types
+- Prototyped the PixelLab **Character API** (`create_character` v3 mode, using each enemy's
+  existing sprite as a reference image) on infantry first, to evaluate quality/cost before
+  committing further — per an earlier open design question about Character API vs Object API.
+  Quality was excellent (faithfully preserved the original design) and cost was low (~9
+  generations per type for a full 8-direction character + 8-direction walk cycle).
+- Decided against full 8-direction rollout: enemies close in almost straight toward the viewer in
+  this game, so 7 of 8 generated directions would rarely be seen — not worth the extra cost/
+  complexity. Rolled out a **south-only looping walk cycle** instead, replacing the single static
+  frame enemies previously sat on for their entire approach.
+- Applied to the 4 **humanoid** enemy types only (infantry, gunner, rocket, commander) — the
+  Character API doesn't support vehicles/aircraft, so technical/armored/drone keep their existing
+  static Object API sprites (fine, since those don't need a walk cycle the way a soldier does).
+- Verified live: walk animation confirmed actively playing during approach, cleanly interrupted by
+  the existing death animation on kill, and confirmed **not** applied to coastal boat-reskinned
+  enemies (which reuse these same 4 type IDs but render as boats — the walk frames are soldier
+  art, so `Enemy.ts` gates playback on the actual texture key in use, not just the enemy type).
+  See [ART_ASSETS.md](ART_ASSETS.md).
+
 ### 2026-09-04 (24) — Music re-encode, escort vehicle orientation correction
 - Music tracks re-encoded 128kbps (from ~500kbps): `menu.ogg` 6.9MB → 2.0MB, `combat.ogg` 4.2MB →
   1.1MB, same duration to the millisecond. Used `ffmpeg-static` (npm-installable, scratch-installed

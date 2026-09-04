@@ -39,6 +39,45 @@ damaged) — scoped out of this pass to keep it to one animation set per type; t
 impact-spark VFX (`spawnSpark` in `CombatScene.ts`) still covers non-lethal hit feedback. Worth a
 follow-up if it reads as needed once someone's actually played against it.
 
+### Approach walk cycle — humanoid types only (`public/enemies/${id}-walk-{0..7}.png`, 64×64)
+
+Enemies previously sat on a single static frame the whole way in, only animating on death. Added
+a looping 8-frame walk cycle for the four **humanoid** enemy types (infantry, gunner, rocket,
+commander) via the **PixelLab Character API** (`create_character`, mode `v3` with each type's
+existing sprite as `reference_image_url` — rotates the exact existing design into a full 8-direction
+character rather than redesigning it) + `animate_character` (`walking-8-frames` template,
+**south direction only**).
+
+Why south-only, and why not the other 3 enemy types: prototyped full 8-direction rotations +
+walk cycles on infantry first (quality was excellent, faithfully preserved the original design —
+see the prototype character `536e1727-4783-424e-b203-c98f3be69a35` in the PixelLab project if it's
+still there) before committing to a wider rollout. Two findings shaped the final scope:
+- Enemies in this game close in almost straight toward the viewer (only minor lateral jitter, see
+  `Enemy.update()`) — so 7 of the 8 generated directions would rarely if ever actually be seen.
+  Not worth the extra generations or the direction-switching logic to use them.
+- The Character API only supports humanoid/quadruped bodies, not vehicles or aircraft — so
+  `technical`, `armored`, and `drone` can't get this treatment at all and keep their existing
+  static Object API sprites (which is fine — a truck or drone doesn't need a walk cycle the way a
+  soldier does).
+
+| Type | Character ID | Animation group | Notes |
+| --- | --- | --- | --- |
+| Infantry | `536e1727-4783-424e-b203-c98f3be69a35` | `f57141d0-ebb6-429e-a0df-3bd7d07b157b` (south) | the prototype character, reused as production |
+| Machine Gunner | `ad7c7503-4ccc-4d6b-981c-d64929201896` | `66e2ddae-8795-4024-b084-88a3eb37b159` (south) | |
+| Rocket Team | `75c2ac9b-eab4-4cef-aa7e-378711313872` | `5b254610-886d-46a1-b59a-a5bec96e2d18` (south) | |
+| Commander | `962ddda1-beb9-4285-9d7c-387b21b42e52` | `b2641699-d303-4370-b678-a2cf52c11f02` (south) | |
+
+Registered as `${id}-walk` (`repeat: -1`, `CombatScene.buildEnemyAnimations`) and played on spawn
+(`Enemy`'s constructor) — `Enemy.playDeath()` still switches the same sprite over to the existing
+`${id}-death` animation on kill, same as before the walk cycle existed; `sprite.play()` cleanly
+interrupts whatever's currently playing, no special handling needed. **Gated on the actual
+texture key, not just the enemy type**: on a coastal mission these same 4 types render as boats
+(see below) instead of soldiers, and the walk frames were generated from the soldier art — so
+`Enemy.ts` only plays the walk animation when `textureKey === 'enemy-${id}'` specifically, never
+over a `boat-${id}` reskin. Verified live: `infantry-walk` confirmed actively playing during
+approach, correctly switches to `infantry-death` on a forced kill, and confirmed *not* playing at
+all for boat-textured enemies on a coastal mission (Operation Nightfall).
+
 ### Coastal boat reskins (`public/enemies/boat-*.png`, 64×64)
 
 Ground vehicles/infantry standing on open water read wrong, so every non-aerial type gets a
