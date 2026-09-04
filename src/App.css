@@ -451,6 +451,12 @@
   margin-bottom: 0;
 }
 
+.mission-list-stats {
+  font-size: 0.75rem;
+  color: #9fb0c3;
+  margin: 0.4rem 0 0;
+}
+
 .mission-list-item-random {
   border-style: dashed;
   padding: 0;
@@ -695,6 +701,12 @@
 .result-objective-met {
   border-color: #d9b45f;
   background: rgba(217, 180, 95, 0.08);
+}
+
+.result-operation-stats {
+  font-size: 0.8rem;
+  color: #9fb0c3;
+  margin: 0 0 1.5rem;
 }
 
 .result-objective-met .hud-label,

@@ -2,18 +2,33 @@ import { useState } from 'react'
 import { playUiSound } from '../audio/uiSound'
 import { MISSIONS } from '../game/data/missions'
 import { generateMission } from '../game/generation/generateMission'
-import type { MissionDef } from '../game/types'
+import type { Difficulty, MissionDef, MissionStats } from '../game/types'
 
 interface MissionSelectProps {
   onSelect: (mission: MissionDef) => void
   onBack: () => void
+  operationStats: Record<string, MissionStats>
 }
 
 function toCssColor(hex: number): string {
   return `#${hex.toString(16).padStart(6, '0')}`
 }
 
-export function MissionSelect({ onSelect, onBack }: MissionSelectProps) {
+const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard' }
+
+/** Random missions get a fresh id every reroll, so there's no persistent
+ * "operation" identity to show completion history against — only the
+ * hand-authored missions get a stats line. */
+function OperationStatsLine({ stats }: { stats: MissionStats | undefined }) {
+  if (!stats || stats.completions === 0) return null
+  return (
+    <p className="mission-list-stats">
+      Completed {stats.completions}× · Highest: {DIFFICULTY_LABEL[stats.highestDifficulty]}
+    </p>
+  )
+}
+
+export function MissionSelect({ onSelect, onBack, operationStats }: MissionSelectProps) {
   const [randomMission, setRandomMission] = useState<MissionDef>(() => generateMission())
 
   const reroll = () => {
@@ -44,6 +59,7 @@ export function MissionSelect({ onSelect, onBack }: MissionSelectProps) {
               </div>
               <div className="briefing-name mission-list-name">{mission.name}</div>
               <p className="briefing-text mission-list-blurb">{mission.briefing}</p>
+              <OperationStatsLine stats={operationStats[mission.id]} />
             </button>
           ))}
 

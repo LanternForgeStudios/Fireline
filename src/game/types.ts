@@ -53,6 +53,8 @@ export interface MissionTheme {
   groundTint: number
 }
 
+export type Difficulty = 'easy' | 'normal' | 'hard'
+
 export type SecondaryObjectiveType = 'no-damage' | 'clean-sweep'
 
 export interface SecondaryObjective {
@@ -94,6 +96,18 @@ export interface MissionResult {
    * ever awarded) when outcome is 'complete'; the server re-checks this isn't just
    * trusted, see functions/src/index.ts. */
   secondaryObjectiveComplete: boolean
+  /** The difficulty this attempt was played at — informational only (doesn't affect
+   * server-side reward clamping), tracked so the player can see their highest
+   * difficulty clear per operation. See MissionStats. */
+  difficulty: Difficulty
+}
+
+/** Per-mission (per-"operation") lifetime stats, server-maintained in
+ * players/{uid}/missionStats/{missionId} — only successful runs count toward
+ * either field, see functions/src/index.ts. */
+export interface MissionStats {
+  completions: number
+  highestDifficulty: Difficulty
 }
 
 export const EVT_HUD_UPDATE = 'hud-update'

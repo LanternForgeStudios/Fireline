@@ -43,8 +43,37 @@ on top.
       submission with no App Check header, score 99999999, wavesCleared 999 got through auth fine
       and was correctly clamped server-side to 43200 (the generous fallback bound for procedurally
       generated missions — see the Phase 3 log entry below) rather than accepted at face value.
+- [x] Per-operation lifetime stats — `players/{uid}/missionStats/{missionId}` (`completions`,
+      `highestDifficulty`), server-maintained inside `submitMissionResult`'s existing transaction.
+      Read-only to the client, same model as `missionResults`.
 
 ## Log
+
+### 2026-09-04 (15) — Per-operation completion stats (times completed, highest difficulty)
+- Added `players/{uid}/missionStats/{missionId}` — a small per-mission doc tracking
+  `completions` and `highestDifficulty`, maintained server-side inside `submitMissionResult`'s
+  existing transaction (only a `'complete'` outcome moves either field; a failed attempt at a
+  higher difficulty doesn't retroactively claim it). `MissionResult` gained a `difficulty` field
+  (sourced from `audioSettings.difficulty`) so the server has something to compare against.
+- The Function now returns the operation's updated `completions`/`highestDifficulty` in its
+  response, so the result screen can show them immediately without a second read racing the
+  write. `recordMissionResult` (client) returns that; `loadAllMissionStats` bulk-fetches the whole
+  `missionStats` collection once per sign-in (a handful of small docs — cheaper than N per-mission
+  listeners) for Mission Select's per-card display.
+- Shown on **both** the result screen ("This operation: completed 2× · highest difficulty
+  Normal") and Mission Select (a line under each hand-authored mission's blurb) — the random
+  mission doesn't get one, since it gets a fresh id every reroll and has no persistent identity to
+  accumulate history against.
+- `resetProgress` now also wipes `missionStats` alongside `missionResults`, so "reset my save"
+  doesn't leave stale completion counts behind. Extracted the batched-delete-a-collection loop
+  into a shared `deleteAllDocs` helper (previously inlined, now used twice).
+- **Verified against the Local Emulator Suite**: forced two `endMission('complete')` calls and one
+  `endMission('failed')` via a temporary debug hook (reverted after) — completions correctly went
+  0→1→2, highest difficulty tracked correctly, and the failed run left both fields unchanged.
+  Confirmed live on both the result screen and Mission Select. Caught and fixed a real gotcha in
+  the process: the Functions emulator was silently serving a **stale compiled `functions/lib/`**
+  (only watches for file changes, doesn't run `tsc` itself) — `npm run build` inside `functions/`
+  is required after editing `functions/src/*.ts` for local testing to reflect the real change.
 
 ### 2026-09-04 (14) — Second half of the App Check fix: wrong GCP project for the site key
 - The provider swap in the entry below fixed the client/Console *provider* mismatch (confirmed by

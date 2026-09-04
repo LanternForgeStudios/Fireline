@@ -1,14 +1,20 @@
 import { useEffect } from 'react'
 import { playUiSound } from '../audio/uiSound'
-import type { MissionResult, SecondaryObjective } from '../game/types'
+import type { Difficulty, MissionResult, MissionStats, SecondaryObjective } from '../game/types'
 
 interface ResultScreenProps {
   result: MissionResult
   objective: SecondaryObjective
+  /** This operation's lifetime stats, updated by the same server call that recorded this
+   * run — null until that call resolves (briefly, since App.tsx awaits it before setting
+   * this), or if the operation has never actually been completed. */
+  stats: MissionStats | null
   onReturnToBase: () => void
 }
 
-export function ResultScreen({ result, objective, onReturnToBase }: ResultScreenProps) {
+const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard' }
+
+export function ResultScreen({ result, objective, stats, onReturnToBase }: ResultScreenProps) {
   const success = result.outcome === 'complete'
 
   useEffect(() => {
@@ -51,6 +57,12 @@ export function ResultScreen({ result, objective, onReturnToBase }: ResultScreen
             {result.secondaryObjectiveComplete && ` — +${objective.bonusCredits} credits`}
           </p>
         </div>
+
+        {stats && (
+          <p className="result-operation-stats">
+            This operation: completed {stats.completions}× · highest difficulty {DIFFICULTY_LABEL[stats.highestDifficulty]}
+          </p>
+        )}
 
         <button className="btn btn-primary" onClick={onReturnToBase}>
           Return to Base

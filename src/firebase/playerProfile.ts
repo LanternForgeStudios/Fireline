@@ -1,9 +1,12 @@
-import { doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc, type Unsubscribe } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, onSnapshot, serverTimestamp, setDoc, updateDoc, type Unsubscribe } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import type { MissionResult } from '../game/types'
+import type { Difficulty, MissionResult, MissionStats } from '../game/types'
 import { db, functions } from './config'
 
-export type Difficulty = 'easy' | 'normal' | 'hard'
+// Difficulty is a gameplay concept (game/types.ts) — re-exported here so
+// existing call sites that import it alongside PlayerSettings/PlayerProfile
+// don't need to know it moved.
+export type { Difficulty }
 
 export interface PlayerSettings {
   musicVolume: number
@@ -89,9 +92,24 @@ const submitMissionResultFn = httpsCallable(functions, 'submitMissionResult')
 const resetProgressFn = httpsCallable(functions, 'resetProgress')
 const purchaseUpgradeFn = httpsCallable(functions, 'purchaseUpgrade')
 
-/** Records a finished mission; the Cloud Function derives uid from the caller's auth token. */
-export async function recordMissionResult(result: MissionResult): Promise<void> {
-  await submitMissionResultFn(result)
+/** Records a finished mission; the Cloud Function derives uid from the caller's auth token.
+ * Returns the operation's updated lifetime stats (completions/highestDifficulty) so the
+ * result screen can show them without a separate read racing the write. */
+export async function recordMissionResult(result: MissionResult): Promise<MissionStats> {
+  const response = await submitMissionResultFn(result)
+  const data = response.data as { completions: number; highestDifficulty: Difficulty }
+  return { completions: data.completions, highestDifficulty: data.highestDifficulty }
+}
+
+/** Fetches every operation's lifetime stats at once (Mission Select shows one per mission
+ * card) — a handful of small docs, cheaper as one collection read than N per-mission ones. */
+export async function loadAllMissionStats(uid: string): Promise<Record<string, MissionStats>> {
+  const snap = await getDocs(collection(db, 'players', uid, 'missionStats'))
+  const stats: Record<string, MissionStats> = {}
+  for (const docSnap of snap.docs) {
+    stats[docSnap.id] = docSnap.data() as MissionStats
+  }
+  return stats
 }
 
 /** Resets progression (XP, credits, mission history, unlocks) back to defaults. Keeps

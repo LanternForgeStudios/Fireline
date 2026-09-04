@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase-admin/app'
-import { FieldValue, getFirestore } from 'firebase-admin/firestore'
+import { FieldValue, getFirestore, type CollectionReference } from 'firebase-admin/firestore'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { getMissionBounds } from './missionCatalog'
 import { getUpgrade, priorLevelsOf } from './upgradeCatalog'
@@ -15,6 +15,12 @@ const db = getFirestore()
 // no security benefit — the emulator isn't the production backend anyway.
 const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true'
 
+type Difficulty = 'easy' | 'normal' | 'hard'
+const DIFFICULTY_RANK: Record<Difficulty, number> = { easy: 0, normal: 1, hard: 2 }
+function isDifficulty(value: unknown): value is Difficulty {
+  return value === 'easy' || value === 'normal' || value === 'hard'
+}
+
 interface MissionResultInput {
   missionId: string
   outcome: 'complete' | 'failed'
@@ -22,12 +28,24 @@ interface MissionResultInput {
   wavesCleared: number
   enemiesDestroyed: number
   secondaryObjectiveComplete: boolean
+  difficulty: string
 }
 
 // Same formula as the client used to compute directly — now the only place
 // it runs is here, against server-validated numbers.
 function computeRewards(score: number) {
   return { xpEarned: score, creditsEarned: Math.round(score / 10) }
+}
+
+/** Batched-delete every doc in a collection, 500 (Firestore's batch cap) at a time. */
+async function deleteAllDocs(ref: CollectionReference) {
+  for (;;) {
+    const snap = await ref.limit(500).get()
+    if (snap.empty) break
+    const batch = db.batch()
+    for (const doc of snap.docs) batch.delete(doc.ref)
+    await batch.commit()
+  }
 }
 
 /**
@@ -60,6 +78,7 @@ export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck:
   const enemiesDestroyed = Math.max(0, Math.min(Math.floor(data.enemiesDestroyed) || 0, bounds.maxEnemies))
   const score = Math.max(0, Math.min(Math.floor(data.score) || 0, bounds.maxScore))
   const { xpEarned, creditsEarned: baseCreditsEarned } = computeRewards(score)
+  const difficulty: Difficulty = isDifficulty(data.difficulty) ? data.difficulty : 'normal'
 
   // Only ever awarded alongside a 'complete' outcome — same rule the client
   // enforces in CombatScene.endMission, re-checked here rather than trusted.
@@ -69,13 +88,29 @@ export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck:
 
   const playerRef = db.collection('players').doc(uid)
   const missionResultRef = playerRef.collection('missionResults').doc()
+  // Per-operation lifetime stats ("times completed", "highest difficulty
+  // cleared") — only successful runs move either field, an attempt that
+  // failed doesn't count as a completion at any difficulty.
+  const missionStatsRef = playerRef.collection('missionStats').doc(data.missionId)
 
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(playerRef)
-    if (!snap.exists) {
+  const { completions, highestDifficulty } = await db.runTransaction(async (tx) => {
+    const [playerSnap, statsSnap] = await Promise.all([tx.get(playerRef), tx.get(missionStatsRef)])
+    if (!playerSnap.exists) {
       throw new HttpsError('failed-precondition', 'Player profile does not exist yet.')
     }
-    const currentBest = (snap.data()?.bestScore as number | undefined) ?? 0
+    const currentBest = (playerSnap.data()?.bestScore as number | undefined) ?? 0
+    const priorCompletions = (statsSnap.data()?.completions as number | undefined) ?? 0
+    const priorHighest = statsSnap.data()?.highestDifficulty as Difficulty | undefined
+    const justCompleted = data.outcome === 'complete'
+    const nextCompletions = priorCompletions + (justCompleted ? 1 : 0)
+    // null (not `difficulty`) when this operation has never actually been
+    // completed — a failed first attempt must not report a false "highest
+    // difficulty cleared" of whatever it was just attempted at.
+    const nextHighest: Difficulty | null = justCompleted
+      ? !priorHighest || DIFFICULTY_RANK[difficulty] > DIFFICULTY_RANK[priorHighest]
+        ? difficulty
+        : priorHighest
+      : (priorHighest ?? null)
 
     tx.set(missionResultRef, {
       missionId: data.missionId,
@@ -88,6 +123,7 @@ export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck:
       creditsEarned,
       secondaryObjectiveAwarded,
       secondaryObjectiveBonus,
+      difficulty,
       playedAt: FieldValue.serverTimestamp(),
     })
 
@@ -99,9 +135,15 @@ export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck:
       bestScore: Math.max(currentBest, score),
       lastPlayedAt: FieldValue.serverTimestamp(),
     })
+
+    if (data.outcome === 'complete') {
+      tx.set(missionStatsRef, { completions: nextCompletions, highestDifficulty: nextHighest })
+    }
+
+    return { completions: nextCompletions, highestDifficulty: nextHighest }
   })
 
-  return { xpEarned, creditsEarned, score, secondaryObjectiveAwarded }
+  return { xpEarned, creditsEarned, score, secondaryObjectiveAwarded, completions, highestDifficulty }
 })
 
 /**
@@ -126,14 +168,8 @@ export const resetProgress = onCall({ enforceAppCheck: !isEmulator }, async (req
     unlockedUpgrades: [],
   })
 
-  const missionResultsRef = playerRef.collection('missionResults')
-  for (;;) {
-    const snap = await missionResultsRef.limit(500).get()
-    if (snap.empty) break
-    const batch = db.batch()
-    for (const doc of snap.docs) batch.delete(doc.ref)
-    await batch.commit()
-  }
+  await deleteAllDocs(playerRef.collection('missionResults'))
+  await deleteAllDocs(playerRef.collection('missionStats'))
 
   return { ok: true }
 })

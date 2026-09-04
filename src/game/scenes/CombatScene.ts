@@ -880,6 +880,7 @@ export class CombatScene extends Phaser.Scene {
       totalWaves: missionState.current.waves.length,
       enemiesDestroyed: this.enemiesDestroyed,
       secondaryObjectiveComplete,
+      difficulty: audioSettings.difficulty,
     }
     gameEvents.emit(outcome === 'complete' ? EVT_MISSION_COMPLETE : EVT_MISSION_FAILED, result)
   }

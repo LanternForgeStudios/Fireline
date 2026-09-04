@@ -32,6 +32,14 @@ service cloud.firestore {
         allow read: if request.auth != null && request.auth.uid == uid;
         allow write: if false;
       }
+
+      // Per-operation lifetime stats (times completed, highest difficulty
+      // cleared) — server-derived in submitMissionResult, same read-only
+      // model as missionResults above.
+      match /missionStats/{missionId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false;
+      }
     }
   }
 }

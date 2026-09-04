@@ -5,6 +5,7 @@ import { playMusic, setMusicVolume, stopMusic } from './audio/musicPlayer'
 import { signOutUser, watchAuthState } from './firebase/auth'
 import {
   DEFAULT_SETTINGS,
+  loadAllMissionStats,
   loadOrCreatePlayerProfile,
   purchaseUpgrade,
   recordMissionResult,
@@ -18,7 +19,7 @@ import { DEFAULT_MISSION } from './game/data/missions'
 import { gameEvents } from './game/events'
 import { missionState } from './game/missionState'
 import { playerLoadout } from './game/playerLoadout'
-import { EVT_MISSION_COMPLETE, EVT_MISSION_FAILED, type MissionDef, type MissionResult } from './game/types'
+import { EVT_MISSION_COMPLETE, EVT_MISSION_FAILED, type MissionDef, type MissionResult, type MissionStats } from './game/types'
 import { CreditsScreen } from './ui/CreditsScreen'
 import { GameCanvas } from './ui/GameCanvas'
 import { Hud } from './ui/Hud'
@@ -41,6 +42,11 @@ function App() {
   const [authTimedOut, setAuthTimedOut] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<PlayerProfile | null>(null)
+  // Per-operation lifetime stats (times completed, highest difficulty
+  // cleared), keyed by missionId — loaded once per sign-in and merged with
+  // the server's response after every mission so Mission Select and the
+  // result screen never show stale numbers.
+  const [operationStats, setOperationStats] = useState<Record<string, MissionStats>>({})
 
   // Firebase Authentication gates play — no account, no mission. Firestore
   // is the source of truth for progression once signed in, so the UI just
@@ -65,6 +71,7 @@ function App() {
   useEffect(() => {
     if (!user) {
       setProfile(null)
+      setOperationStats({})
       return
     }
     let unsubscribeProfile: (() => void) | undefined
@@ -74,6 +81,9 @@ function App() {
         unsubscribeProfile = watchPlayerProfile(user.uid, setProfile)
       })
       .catch((err) => console.error('Failed to load player profile', err))
+    loadAllMissionStats(user.uid)
+      .then(setOperationStats)
+      .catch((err) => console.error('Failed to load operation stats', err))
     return () => unsubscribeProfile?.()
   }, [user])
 
@@ -96,15 +106,21 @@ function App() {
   }, [profile?.unlockedUpgrades])
 
   useEffect(() => {
+    const recordAndUpdateStats = (missionResult: MissionResult) => {
+      if (!user) return
+      recordMissionResult(missionResult)
+        .then((stats) => setOperationStats((prev) => ({ ...prev, [missionResult.missionId]: stats })))
+        .catch((err) => console.error('Failed to record mission result', err))
+    }
     const onComplete = (missionResult: MissionResult) => {
       setResult(missionResult)
       setScreen('result')
-      if (user) recordMissionResult(missionResult).catch((err) => console.error('Failed to record mission result', err))
+      recordAndUpdateStats(missionResult)
     }
     const onFailed = (missionResult: MissionResult) => {
       setResult(missionResult)
       setScreen('result')
-      if (user) recordMissionResult(missionResult).catch((err) => console.error('Failed to record mission result', err))
+      recordAndUpdateStats(missionResult)
     }
     gameEvents.on(EVT_MISSION_COMPLETE, onComplete)
     gameEvents.on(EVT_MISSION_FAILED, onFailed)
@@ -195,7 +211,9 @@ function App() {
           onSignOut={signOut}
         />
       )}
-      {screen === 'select' && <MissionSelect onSelect={selectMission} onBack={goToMenu} />}
+      {screen === 'select' && (
+        <MissionSelect onSelect={selectMission} onBack={goToMenu} operationStats={operationStats} />
+      )}
       {screen === 'briefing' && (
         <MissionBriefing
           mission={selectedMission}
@@ -229,7 +247,12 @@ function App() {
         </div>
       )}
       {screen === 'result' && result && (
-        <ResultScreen result={result} objective={selectedMission.secondaryObjective} onReturnToBase={goToMenu} />
+        <ResultScreen
+          result={result}
+          objective={selectedMission.secondaryObjective}
+          stats={operationStats[result.missionId] ?? null}
+          onReturnToBase={goToMenu}
+        />
       )}
     </div>
   )
