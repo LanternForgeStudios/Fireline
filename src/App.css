@@ -199,6 +199,10 @@
   font-size: 0.9rem;
 }
 
+.settings-row-label {
+  cursor: pointer;
+}
+
 .settings-row-controls {
   display: flex;
   align-items: center;

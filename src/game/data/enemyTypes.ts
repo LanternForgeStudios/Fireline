@@ -15,6 +15,7 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
     fireDamagePerTick: 0,
     fireIntervalMs: 0,
     jitter: 4,
+    hasWalkCycle: true,
   },
   gunner: {
     id: 'gunner',
@@ -30,6 +31,7 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
     fireDamagePerTick: 2,
     fireIntervalMs: 900,
     jitter: 3,
+    hasWalkCycle: true,
   },
   rocket: {
     id: 'rocket',
@@ -45,6 +47,7 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
     fireDamagePerTick: 9,
     fireIntervalMs: 2600,
     jitter: 2,
+    hasWalkCycle: true,
   },
   technical: {
     id: 'technical',
@@ -60,6 +63,7 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
     fireDamagePerTick: 4,
     fireIntervalMs: 1200,
     jitter: 2,
+    hasWalkCycle: false,
   },
   armored: {
     id: 'armored',
@@ -75,6 +79,7 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
     fireDamagePerTick: 5,
     fireIntervalMs: 1500,
     jitter: 1,
+    hasWalkCycle: false,
   },
   drone: {
     id: 'drone',
@@ -90,6 +95,7 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
     fireDamagePerTick: 0,
     fireIntervalMs: 0,
     jitter: 22,
+    hasWalkCycle: false,
   },
   commander: {
     id: 'commander',
@@ -105,5 +111,6 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
     fireDamagePerTick: 6,
     fireIntervalMs: 1100,
     jitter: 5,
+    hasWalkCycle: true,
   },
 }

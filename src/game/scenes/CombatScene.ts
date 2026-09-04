@@ -52,7 +52,6 @@ const DEATH_FRAME_RATE = 12
 // jitter), so the other 7 compass directions Character API generates would
 // rarely if ever be seen — not worth the extra generations/complexity of
 // wiring up direction-switching for a game that doesn't really have one.
-const WALK_HUMANOID_TYPES: ReadonlySet<EnemyTypeId> = new Set(['infantry', 'gunner', 'rocket', 'commander'])
 const WALK_FRAME_COUNT = 8
 const WALK_FRAME_RATE = 9
 
@@ -222,7 +221,12 @@ export class CombatScene extends Phaser.Scene {
       for (let i = 0; i < DEATH_FRAME_COUNT; i++) {
         this.load.image(`enemy-${def.id}-death-${i}`, `${import.meta.env.BASE_URL}enemies/${def.id}-death-${i}.png`)
       }
-      if (WALK_HUMANOID_TYPES.has(def.id)) {
+      // Skip fetching walk frames a coastal boat reskin can never play (see
+      // Enemy.ts's own textureKey guard) — key === the plain enemy-${id}
+      // form specifically excludes boat-${id}, so this doesn't waste
+      // bandwidth/GPU memory loading soldier walk art for a mission where
+      // these types render as boats instead.
+      if (def.hasWalkCycle && key === `enemy-${def.id}`) {
         for (let i = 0; i < WALK_FRAME_COUNT; i++) {
           this.load.image(`enemy-${def.id}-walk-${i}`, `${import.meta.env.BASE_URL}enemies/${def.id}-walk-${i}.png`)
         }
@@ -285,21 +289,21 @@ export class CombatScene extends Phaser.Scene {
    * Falls back to Phaser's normal whole-buffer loop if the WebAudio backend
    * isn't active (e.g. HTML5 Audio fallback) or the buffer isn't a decoded
    * AudioBuffer in the cache.
+   *
+   * gain.gain.value is set once here from audioSettings.musicVolume and
+   * never re-read — unlike uiSound.ts/musicPlayer.ts, which re-read it on
+   * every play, or CombatScene's other this.sound.play(...) SFX calls,
+   * which do the same. That's fine only because Settings isn't reachable
+   * once a mission is running (no way to change musicVolume/mute mid-
+   * combat today) — if that ever changes, this needs to become a live
+   * subscription instead of a snapshot.
    */
   private playCombatMusic() {
     const soundManager = this.sound
-    if (!(soundManager instanceof Phaser.Sound.WebAudioSoundManager)) {
-      this.sound.play('music-combat', { loop: true, volume: audioSettings.musicVolume })
-      return
-    }
-    // The decoded buffer lives on a WebAudioSound wrapper's .audioBuffer,
-    // not in this.cache.audio (that holds the raw/HTML5-backend form) —
-    // add() without playing it just gets us the buffer reference, which we
-    // then discard the wrapper for since looping is handled manually below.
-    const wrapper = soundManager.add('music-combat') as Phaser.Sound.WebAudioSound
-    const buffer = wrapper.audioBuffer
-    wrapper.destroy()
-    if (!(buffer instanceof AudioBuffer)) {
+    // The decoded buffer lives directly in the WebAudio-backend loader's
+    // cache under the same key passed to load.audio() in preload().
+    const buffer = this.cache.audio.get('music-combat') as unknown
+    if (!(soundManager instanceof Phaser.Sound.WebAudioSoundManager) || !(buffer instanceof AudioBuffer)) {
       this.sound.play('music-combat', { loop: true, volume: audioSettings.musicVolume })
       return
     }
@@ -437,6 +441,7 @@ export class CombatScene extends Phaser.Scene {
    * same dedup buildEnemyTexture relies on via textures.exists).
    */
   private buildEnemyAnimations() {
+    const landscape = missionState.current.theme.landscape
     for (const def of Object.values(ENEMY_DEFS)) {
       const deathKey = `${def.id}-death`
       if (!this.anims.exists(deathKey)) {
@@ -448,16 +453,19 @@ export class CombatScene extends Phaser.Scene {
         })
       }
 
-      if (WALK_HUMANOID_TYPES.has(def.id)) {
-        const walkKey = `${def.id}-walk`
-        if (!this.anims.exists(walkKey)) {
-          this.anims.create({
-            key: walkKey,
-            frames: Array.from({ length: WALK_FRAME_COUNT }, (_, i) => ({ key: `enemy-${def.id}-walk-${i}` })),
-            frameRate: WALK_FRAME_RATE,
-            repeat: -1,
-          })
-        }
+      // Same gate preload() uses to decide whether it fetched walk frames
+      // this mission — registering the animation without that guard would
+      // reference texture keys that were never loaded on a coastal mission
+      // (boat reskin), the first time a humanoid type happens to spawn
+      // coastal before spawning anywhere else this session.
+      const walkKey = `${def.id}-walk`
+      if (def.hasWalkCycle && enemyTextureKey(def.id, landscape) === `enemy-${def.id}` && !this.anims.exists(walkKey)) {
+        this.anims.create({
+          key: walkKey,
+          frames: Array.from({ length: WALK_FRAME_COUNT }, (_, i) => ({ key: `enemy-${def.id}-walk-${i}` })),
+          frameRate: WALK_FRAME_RATE,
+          repeat: -1,
+        })
       }
     }
   }

@@ -32,11 +32,18 @@ export class Enemy {
   progress = 0
   alive = true
 
-  private readonly scene: Phaser.Scene
   private readonly spawn: EnemySpawnPoint
   private readonly jitterSeed: number
   private nextFireAt: number
   private readonly sprite: Phaser.GameObjects.Sprite
+  // The sprite's scale right after setDisplaySize() — the fixed reference
+  // point playHitFlinch()'s punch tween animates away from and back to.
+  // Captured once here rather than re-read from sprite.scaleX/Y at flinch
+  // time: mid-tween that property holds whatever interpolated value the
+  // punch has reached, not the true base, so re-reading it on a second hit
+  // during the first hit's tween would ratchet the scale away permanently.
+  private readonly spriteBaseScaleX: number
+  private readonly spriteBaseScaleY: number
   private readonly healthBarBg: Phaser.GameObjects.Rectangle
   private readonly healthBarFill: Phaser.GameObjects.Rectangle
 
@@ -47,7 +54,6 @@ export class Enemy {
     textureKey: string,
     spawnTime: number,
   ) {
-    this.scene = scene
     this.def = def
     this.spawn = spawn
     this.health = def.maxHealth
@@ -60,16 +66,20 @@ export class Enemy {
     // animation CombatScene.buildEnemyAnimations registers globally.
     this.sprite = scene.add.sprite(0, 0, textureKey)
     this.sprite.setDisplaySize(def.baseRadius * 2, def.baseRadius * 2)
-    // Humanoid types get a looping walk cycle for the approach instead of
-    // sitting on the static texture the whole way in — see
-    // CombatScene.WALK_HUMANOID_TYPES for which types have one registered.
-    // Gated on textureKey matching the plain `enemy-${id}` key specifically
-    // (not e.g. a coastal `boat-${id}` reskin): the walk frames were
-    // generated from the soldier art, not the boat art, so playing them
-    // over a boat sprite would yank its texture over to a soldier
-    // mid-animation. Coastal boat reskins just keep their static texture.
+    this.spriteBaseScaleX = this.sprite.scaleX
+    this.spriteBaseScaleY = this.sprite.scaleY
+    // Humanoid types (def.hasWalkCycle) get a looping walk cycle for the
+    // approach instead of sitting on the static texture the whole way in.
+    // Also gated on textureKey matching the plain `enemy-${id}` key
+    // specifically (not e.g. a coastal `boat-${id}` reskin): the walk
+    // frames were generated from the soldier art, not the boat art, so
+    // playing them over a boat sprite would yank its texture over to a
+    // soldier mid-animation. Coastal boat reskins just keep their static
+    // texture. CombatScene only ever registers the animation when both of
+    // these are true (see buildEnemyAnimations), so anims.exists() here is
+    // just a defensive check, not the primary signal.
     const walkKey = `${def.id}-walk`
-    if (textureKey === `enemy-${def.id}` && scene.anims.exists(walkKey)) this.sprite.play(walkKey)
+    if (def.hasWalkCycle && textureKey === `enemy-${def.id}` && scene.anims.exists(walkKey)) this.sprite.play(walkKey)
 
     this.healthBarBg = scene.add.rectangle(0, -def.baseRadius - 14, 34, 5, 0x000000, 0.55)
     this.healthBarFill = scene.add.rectangle(0, -def.baseRadius - 14, 34, 5, 0x4ade80, 0.95)
@@ -139,19 +149,18 @@ export class Enemy {
    * of needing a dedicated animation per type the way walk/death do.
    */
   playHitFlinch() {
-    this.scene.tweens.killTweensOf(this.sprite)
+    const scene = this.sprite.scene
+    scene.tweens.killTweensOf(this.sprite)
     this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL)
-    const baseScaleX = this.sprite.scaleX
-    const baseScaleY = this.sprite.scaleY
-    this.sprite.setScale(baseScaleX * 1.18, baseScaleY * 1.18)
-    this.scene.tweens.add({
+    this.sprite.setScale(this.spriteBaseScaleX * 1.18, this.spriteBaseScaleY * 1.18)
+    scene.tweens.add({
       targets: this.sprite,
-      scaleX: baseScaleX,
-      scaleY: baseScaleY,
+      scaleX: this.spriteBaseScaleX,
+      scaleY: this.spriteBaseScaleY,
       duration: 140,
       ease: 'Back.Out',
     })
-    this.scene.time.delayedCall(70, () => {
+    scene.time.delayedCall(70, () => {
       if (this.sprite.active) this.sprite.clearTint()
     })
   }
@@ -166,6 +175,14 @@ export class Enemy {
   playDeath(onComplete: () => void) {
     this.healthBarBg.setVisible(false)
     this.healthBarFill.setVisible(false)
+    // A hit-flinch tween/tint can still be in flight from the shot that
+    // just killed this enemy (playHitFlinch() only runs on non-lethal hits,
+    // but the *previous* shot may not have been lethal) — clear both before
+    // switching to the death animation so it doesn't start visibly
+    // stretched or tinted mid-transition.
+    this.sprite.scene.tweens.killTweensOf(this.sprite)
+    this.sprite.setScale(this.spriteBaseScaleX, this.spriteBaseScaleY)
+    this.sprite.clearTint()
     this.sprite.play(`${this.def.id}-death`)
     this.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, onComplete)
   }

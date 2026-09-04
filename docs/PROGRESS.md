@@ -9,7 +9,7 @@ on top.
 | Phase | Goal | Status |
 | --- | --- | --- |
 | 1 | Core Combat | **Done** — playable shooting prototype |
-| 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 3 missions (Search & Destroy, Escort, Extraction) with a select screen, each with distinct visual theming, plus loadout selection via the weapon upgrade system (see Phase 4) |
+| 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 4 missions (Search & Destroy, Escort, Extraction, Rescue) with a select screen, each with distinct visual theming, plus loadout selection via the weapon upgrade system (see Phase 4) |
 | 3 | Procedural Content | **Done** per the GDD's own list — seeded generation, encounter blocks, threat budgets, weather/time-of-day variety, and secondary objectives, all shipped. Weather stays visual-mood only, not gameplay-affecting — a deliberate scope call, not a gap |
 | 4 | Backend | **Done** — see below |
 | 5 | Release | Not started (web live on GitHub Pages; iOS/Capacitor future) |
@@ -25,8 +25,8 @@ on top.
       2026-09-04, after the provider/project-mismatch fixes below made App Check actually work end
       to end). Verified live immediately after: fresh sign-in, Firestore player-profile read, and a
       full mission launch all succeeded with zero Firestore/Auth/App Check errors.
-- [x] Player settings (music/SFX volume, difficulty, mobile control side) stored in Firestore,
-      hydrate on any device
+- [x] Player settings (music/SFX volume + independent mute flags, difficulty, mobile control side)
+      stored in Firestore, hydrate on any device
 - [x] Server-side reward validation — Cloud Functions (`functions/`, Blaze plan) now own all
       progression writes; `firestore.rules` restricts client writes on `players/{uid}` to just the
       `settings` field, and blocks `missionResults` writes entirely
@@ -48,6 +48,80 @@ on top.
       Read-only to the client, same model as `missionResults`.
 
 ## Log
+
+### 2026-09-04 (34) — Cleanup pass on this session's work (`/cleanup`)
+- Scope: everything from this session (entries 21-33 above, ~10 commits). Ran the security-review
+  and code-review skills plus 4 parallel simplify-angle reviews (reuse/simplification/efficiency/
+  altitude) against the diff. Security review: no findings. Code review + simplify: several real
+  issues, most fixed here.
+- **Fixed — real bugs:**
+  - `Enemy.playHitFlinch()` re-read the sprite's *current* (possibly mid-tween) scale as the new
+    "base" on every call — rapid re-hits on the same enemy (max Fire Rate upgrade now fires every
+    20ms) could permanently ratchet its scale away from true size. Now captures the base scale
+    once at construction time (`spriteBaseScaleX/Y`) instead.
+  - `Enemy.playDeath()` never cancelled an in-flight hit-flinch tween/tint before switching to the
+    death animation, so a kill shot arriving mid-flinch could render the first death frames
+    visibly stretched/tinted. Now kills the tween and resets scale/tint first.
+  - `CombatScene.preload()`/`buildEnemyAnimations()` unconditionally fetched and registered walk-
+    cycle frames for all 4 humanoid types even on coastal missions, where they render as boat
+    reskins and can never play the animation (`Enemy.ts`'s own texture-key guard already prevented
+    playback, but not the wasted fetch/registration). Fixed by moving walk-cycle eligibility onto
+    `EnemyDef.hasWalkCycle` (was a disconnected `WALK_HUMANOID_TYPES` set in `CombatScene.ts`) and
+    gating both preload and animation registration on it plus the actual per-mission texture key —
+    also fixes a latent crash risk where a coastal mission launched *first* in a session would have
+    registered `${id}-walk` referencing texture keys that were never loaded.
+- **Fixed — quality:**
+  - `playCombatMusic()` built a throwaway `WebAudioSound` via `soundManager.add()` just to read
+    `.audioBuffer` off it before destroying it; the decoded buffer is already directly in
+    `this.cache.audio` for the WebAudio backend (verified against Phaser's own loader source) — now
+    reads it directly, and the two identical fallback branches were combined into one condition.
+  - `uiSound.ts`: derived the `UiSoundFile` type from the sound-file list via `as const` instead of
+    maintaining two hand-synced lists; switched from one cached `<audio>` element per sound to a
+    small round-robin pool (2 per sound) so rapid repeats of the *same* sound (e.g. a double-click)
+    layer instead of cutting each other off; deferred the eager preload warm-up (`requestIdleCallback`)
+    since the 6 files total over 1MB and were competing with the initial auth/render on page load.
+  - `SettingsScreen.tsx`: extracted a shared `VolumeRow` component for the music/SFX rows (were
+    copy-pasted with only field names differing) — which also fixed a real regression the mute-
+    checkbox change had introduced: the row wrapper changed from `<label>` to `<div>`, silently
+    breaking click-to-focus on the volume slider. Each row's label is now its own `<label
+    htmlFor>` tied to its slider.
+  - `Enemy.ts`: dropped a redundant `private scene` field (every Phaser GameObject already carries
+    `.scene`); uses `this.sprite.scene` at the few call sites that needed it.
+- **Deliberately not fixed (noted, not argued with):**
+  - The `LEVEL_COST` cost-curve formula is duplicated between `src/game/data/upgrades.ts` and
+    `functions/src/upgradeCatalog.ts` (three reviewers flagged this). Left as-is — it's consistent
+    with this repo's existing, documented convention of hand-mirroring game data into the
+    separately-deployed Functions package (`missionCatalog.ts`'s header comment establishes the
+    same pattern for the same structural reason: Functions can't import Vite's `src/`). A real fix
+    (shared package) is a bigger architectural change than a cleanup pass; already tracked as a
+    known drift-risk via the `missionCatalog.ts` precedent.
+  - The rank badge's progress bar (`MainMenu.tsx`/`.menu-rank-bar`) duplicates the shape of the
+    HUD's `.hud-bar`/`.hud-bar-fill` (`Hud.tsx`, untouched by this session). Skipped: a real shared
+    base would mean editing `Hud.tsx`, which is outside this diff's scope, and the two bars are
+    genuinely different sizes for their different contexts (compact menu badge vs. combat gauge) —
+    forcing literal reuse would visually mismatch the badge.
+  - `playCombatMusic()`'s gain node snapshots `audioSettings.musicVolume` once at mission start and
+    never re-reads it, unlike every other audio call site in the app (uiSound/musicPlayer/CombatScene's
+    SFX all re-read live). Documented in a comment rather than fixed: Settings isn't reachable once
+    a mission is running today, so there's no way to trigger the gap in practice — worth revisiting
+    if that ever changes.
+- Verified live via Playwright: hit-flinch settles back to exact base scale after 4 rapid re-hits
+  (was drifting before); `playDeath` mid-flinch shows no leftover scale/tint; walk cycle still
+  plays correctly on a non-coastal mission; a coastal mission launched *first* in a fresh session
+  registers zero walk animations (the crash-risk edge case) with no errors; combat music loop node
+  still has the correct `loopStart`/`loopEnd` after the buffer-lookup simplification; Settings
+  label click-to-focus restored; mute checkboxes still work; rapid double-triggered UI sounds
+  produce no console errors.
+- Doc maintenance: `README.md`'s Status/Stack sections were stale on mission count (said 3, it's
+  4), App Check (said "reCAPTCHA v3, Monitor mode, not yet enforced" — it's been reCAPTCHA
+  Enterprise, enforced, since entry (14)/owner's Console toggle), and didn't mention the rank
+  system, 10-level upgrades, or mute settings at all. `docs/PROGRESS.md`'s own Phase 4 checklist
+  had the same stale mission count and settings description. `docs/ART_ASSETS.md` and
+  `docs/AUDIO_AND_POLISH.md` each had a stale "hit-flinch not done" note (shipped entry (27)) and
+  the upgrade-cost note still cited the old 150/350/650 values; `AUDIO_AND_POLISH.md` also had a
+  flatly wrong "secondary objectives — not attempted" line (they're shipped and server-validated) —
+  split into a correct done-line plus the genuinely-still-open gameplay-weather item it was
+  conflated with.
 
 ### 2026-09-04 (33) — Regenerated desert and urban ground tiles too
 - Follow-up to entry (32): once the jungle/coastal regeneration proved there was a genuinely

@@ -6,15 +6,15 @@ An arcade first-person rail shooter: you're the door gunner on an AI-piloted hel
 
 ## Status
 
-**Phases 1-3 done** per the GDD's own deliverables. Three hand-authored missions (Search & Destroy, Escort, Extraction) plus a "Randomly Generated" option (seeded generation, encounter blocks, threat budgets, weather/time-of-day variety, secondary objectives — see `src/game/generation/`), seven enemy types with PixelLab art, a persistent upgradeable M134 (4 tracks, bought with credits — Main Menu → Upgrades), aircraft health, and a login → menu → mission select → briefing → combat → results loop. Google/Email accounts with Firestore-backed progression (XP, credits, mission history, settings that hydrate on any device); rewards and purchases both run server-side via Cloud Functions. See [docs/PROGRESS.md](docs/PROGRESS.md) for the detailed status log and [docs/ART_ASSETS.md](docs/ART_ASSETS.md) / [docs/AUDIO_AND_POLISH.md](docs/AUDIO_AND_POLISH.md) for asset and polish tracking.
+**Phases 1-3 done** per the GDD's own deliverables. Four hand-authored missions (Search & Destroy, Escort, Extraction, and a jungle Rescue) plus a "Randomly Generated" option (seeded generation, encounter blocks, threat budgets, weather/time-of-day variety, secondary objectives — see `src/game/generation/`), seven enemy types with PixelLab art (four with a looping approach walk cycle), a persistent upgradeable M134 (4 tracks, 10 levels each, bought with credits — Main Menu → Upgrades), an 8-tier XP-based rank system, aircraft health, and a login → menu → mission select → briefing → combat → results loop. Google/Email accounts with Firestore-backed progression (XP, credits, mission history, settings — including independent music/SFX mute — that hydrate on any device); rewards and purchases both run server-side via Cloud Functions. See [docs/PROGRESS.md](docs/PROGRESS.md) for the detailed status log and [docs/ART_ASSETS.md](docs/ART_ASSETS.md) / [docs/AUDIO_AND_POLISH.md](docs/AUDIO_AND_POLISH.md) for asset and polish tracking.
 
-See the [Recommended Development Phases](docs/GDD.md#recommended-development-phases) table in the GDD for what's still ahead: gameplay-affecting weather (currently visual-mood only), App Check enforcement on Firestore/Auth (Console-only toggle, not something this repo's tooling can flip), and the asset/VFX/audio polish backlog in docs/AUDIO_AND_POLISH.md.
+See the [Recommended Development Phases](docs/GDD.md#recommended-development-phases) table in the GDD for what's still ahead: gameplay-affecting weather (currently visual-mood only), and the asset/VFX/audio polish backlog in docs/AUDIO_AND_POLISH.md. App Check enforcement (below) is done — enabled in Console 2026-09-04.
 
 ## Stack
 
 - **UI shell:** React + TypeScript, owns menus/briefing/results/settings and the state machine between them
 - **Gameplay:** Phaser 4, owns the combat scene (rendering, enemy AI, hit detection) — dynamically imported only once a mission starts, to keep it out of the initial page load
-- **Backend:** Firebase — Authentication (Google/Email), Firestore (player progression, source of truth for XP/credits/settings), App Check (reCAPTCHA v3, currently Monitor mode)
+- **Backend:** Firebase — Authentication (Google/Email), Firestore (player progression, source of truth for XP/credits/settings), App Check (reCAPTCHA Enterprise, **enforced** on Firestore/Auth and Cloud Functions)
 - **Bridge:** a small custom event emitter (`src/game/events.ts`) carries HUD state and mission-end results from Phaser to React
 - **Build:** Vite
 

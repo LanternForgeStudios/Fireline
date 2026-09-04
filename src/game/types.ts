@@ -24,6 +24,12 @@ export interface EnemyDef {
   fireIntervalMs: number
   /** Lateral jitter amplitude, for erratic movers like drones. */
   jitter: number
+  /** Whether a looping `${id}-walk` approach animation exists for this type
+   * (Character API only supports humanoid/quadruped body types — vehicles
+   * and aircraft don't have one, see docs/ART_ASSETS.md). Drives both
+   * CombatScene's preload (skip fetching walk frames that don't exist) and
+   * Enemy's constructor (skip trying to play them). */
+  hasWalkCycle: boolean
 }
 
 export interface WaveSpawn {

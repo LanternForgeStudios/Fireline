@@ -34,10 +34,10 @@ placeholder (scale up 1.3x and fade). Frame files: `public/enemies/${id}-death-{
 | Drone | `9f768ff1-3a47-4cb3-9ff2-bf69b2e7d38a` | sparks, spins out, falls |
 | Commander | `e25e2543-9dbd-4977-9ac7-043f52295847` | falls backward |
 
-**Not done:** a separate non-lethal "hit" flinch animation (still-alive reaction to being
-damaged) — scoped out of this pass to keep it to one animation set per type; the existing
-impact-spark VFX (`spawnSpark` in `CombatScene.ts`) still covers non-lethal hit feedback. Worth a
-follow-up if it reads as needed once someone's actually played against it.
+**Done:** non-lethal hit reaction shipped 2026-09-04 — see `docs/PROGRESS.md` entry (27). Went
+procedural (`Enemy.playHitFlinch`: white flash + scale punch) rather than a new PixelLab animation
+set, applying uniformly across every enemy type/texture instead of needing dedicated frames per
+type the way death/walk do.
 
 ### Approach walk cycle — humanoid types only (`public/enemies/${id}-walk-{0..7}.png`, 64×64)
 
@@ -293,8 +293,11 @@ the frame (north/away) as intended.
 
 - [ ] Regenerate `helicopter-hero.png` as a true side profile if the front-on look doesn't hold up
       once seen in context.
-- [ ] Enemy hit/death animation frames.
-- [ ] Muzzle flash + hit-spark VFX (currently just the health-bar-appears-on-damage feedback) — note
-      this line predates the actual muzzle flash/hit-spark/kill-burst tween VFX shipped 2026-09-02
-      (2), which are procedural, not PixelLab art; a real rotor-dust VFX pass is still open.
+- [x] Enemy death animation frames (PixelLab, per type) — done, see the Enemies section above.
+      Non-lethal hit reaction shipped 2026-09-04 as a procedural white-flash + scale-punch
+      (`Enemy.playHitFlinch`), not new PixelLab frames — same call as death (real animation) vs.
+      muzzle flash/hit-spark (procedural) below.
+- [x] Muzzle flash + hit-spark VFX — procedural tween VFX shipped 2026-09-02 (2); rotor flicker +
+      dust kickup also shipped since (see [AUDIO_AND_POLISH.md](AUDIO_AND_POLISH.md)'s Visual
+      effects section) — nothing open here anymore.
 - [x] Menu icons (Upgrades/Settings/Credits) — done 2026-09-03.

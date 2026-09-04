@@ -104,8 +104,10 @@ alongside them — worth double-checking their source/license before a public re
       the mission's own `theme.groundTint`) drift up from near the door sill every ~220-420ms.
       Verified mid-combat against the live site via Playwright — dust puffs visible drifting/fading
       near the ground line across several frames of an actual mission, no console/page errors.
-- [ ] Enemy hit/death sprite *animation* frames (the VFX above is procedural overlay, not new
-      PixelLab animation frames — still tracked in [ART_ASSETS.md](ART_ASSETS.md))
+- [x] Enemy death sprite animation frames — real PixelLab frames per type, done (see
+      [ART_ASSETS.md](ART_ASSETS.md)). Non-lethal hit reaction shipped 2026-09-04 as a procedural
+      white-flash + scale-punch instead of new animation frames, applying uniformly across every
+      type rather than needing dedicated art per type.
 - [x] Enemy return fire is now a real traveling bolt (`spawnEnemyProjectile`) from the shooter to
       the gun mount, tinted distinctly from the player's own tracer (orange-red vs. pale yellow),
       instead of an instant invisible damage tick. Damage lands on arrival, not on launch — travel
@@ -118,7 +120,8 @@ alongside them — worth double-checking their source/license before a public re
 ## General polish
 
 - [x] Weapon upgrades — Main Menu → Upgrades. 4 tracks (damage, cooling, heat capacity, fire rate)
-      × 3 levels, bought with credits (previously earned but had nowhere to spend). Server-side
+      × 10 levels (expanded from 3 on 2026-09-04), bought with credits (previously earned but had
+      nowhere to spend). Server-side
       (`purchaseUpgrade` Cloud Function) for the same reason mission rewards are — verified
       end-to-end against the emulator (successful purchase, ordering enforcement, duplicate
       rejection, insufficient-credits rejection, all correct). `Weapon.ts` now takes its stats from
@@ -126,10 +129,11 @@ alongside them — worth double-checking their source/license before a public re
       loadout line reflects what's actually owned. Not a "select between different guns" system —
       one persistent, upgradeable M134, which fits the GDD's "select loadout" + "upgradeable
       weapons" language better than adding weapon variety would have.
-- [ ] Upgrade costs/values (150/350/650 credits per level) are a first guess, not balanced against
-      actual play — a generated mission's credits-per-clear varies a lot by luck of the draw, so
-      whether 3-4 tracks maxed out feels like a reasonable arc or takes forever needs real
-      playtesting to know.
+- [ ] Upgrade costs/values (150cr for level 1 up to 5,550cr for level 10 per track, 90,000cr to max
+      all four — `cost(n) = 50·(n²+n+1)`, expanded 2026-09-04 from the original 3-level 150/350/650)
+      are a first guess, not balanced against actual play — a generated mission's credits-per-clear
+      varies a lot by luck of the draw, so whether the full 10-level climb on all 4 tracks feels
+      like a reasonable arc or takes forever needs real playtesting to know.
 - [x] Settings screen has an autosave note (not a toast per change — simpler, avoids timing/spam
       issues from continuous slider drags; revisit if it doesn't read clearly enough in practice)
 - [x] `resetPlayerProgress` now also deletes the `missionResults` subcollection (batched, loops
@@ -185,6 +189,9 @@ alongside them — worth double-checking their source/license before a public re
       script printing wave compositions) — nobody's actually played one yet. Threat budget/pacing
       constants (`BASE_BUDGET`, `BUDGET_GROWTH`, `MAX_SPAWNS_PER_WAVE`) will likely want another
       pass once someone has.
-- [ ] Secondary objectives (GDD Phase 3) — not attempted. Weather in the generator
-      (`weatherThemes.ts`) is visual-mood only; making it gameplay-affecting (visibility, spawn
-      rate) is a separate follow-up.
+- [x] Secondary objectives (GDD Phase 3) — done, both hand-authored and procedural missions each
+      carry one (`no-damage` or `clean-sweep`, bonus credits on success), server-validated in
+      `submitMissionResult`. This line was stale — see `MissionDef.secondaryObjective` in
+      `missions.ts`.
+- [ ] Weather in the generator (`weatherThemes.ts`) is visual-mood only; making it gameplay-affecting
+      (visibility, spawn rate) is a separate follow-up, still open.

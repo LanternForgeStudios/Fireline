@@ -30,60 +30,22 @@ export function SettingsScreen({ settings, confirmEmail, onChange, onResetProgre
         <h2 className="briefing-name">Options</h2>
         <p className="briefing-text settings-autosave-note">Changes save automatically to your account.</p>
 
-        <div className="settings-row">
-          <span>Music volume</span>
-          <div className="settings-row-controls">
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={settings.musicVolume}
-              disabled={settings.musicMuted}
-              onChange={(e) => onChange({ musicVolume: Number(e.target.value) })}
-            />
-            <label className="settings-mute-toggle">
-              <input
-                type="checkbox"
-                checked={settings.musicMuted ?? false}
-                onChange={(e) => {
-                  onChange({ musicMuted: e.target.checked })
-                  playUiSound(e.target.checked ? 'toggle_off' : 'toggle_on')
-                }}
-              />
-              Mute
-            </label>
-          </div>
-        </div>
+        <VolumeRow
+          label="Music volume"
+          volume={settings.musicVolume}
+          muted={settings.musicMuted ?? false}
+          onVolumeChange={(v) => onChange({ musicVolume: v })}
+          onMutedChange={(m) => onChange({ musicMuted: m })}
+        />
 
-        <div className="settings-row">
-          <span>SFX volume</span>
-          <div className="settings-row-controls">
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={settings.sfxVolume}
-              disabled={settings.sfxMuted}
-              onChange={(e) => {
-                onChange({ sfxVolume: Number(e.target.value) })
-                playUiSound('ui_select')
-              }}
-            />
-            <label className="settings-mute-toggle">
-              <input
-                type="checkbox"
-                checked={settings.sfxMuted ?? false}
-                onChange={(e) => {
-                  onChange({ sfxMuted: e.target.checked })
-                  playUiSound(e.target.checked ? 'toggle_off' : 'toggle_on')
-                }}
-              />
-              Mute
-            </label>
-          </div>
-        </div>
+        <VolumeRow
+          label="SFX volume"
+          volume={settings.sfxVolume}
+          muted={settings.sfxMuted ?? false}
+          onVolumeChange={(v) => onChange({ sfxVolume: v })}
+          onMutedChange={(m) => onChange({ sfxMuted: m })}
+          previewOnChange
+        />
 
         <div className="settings-row">
           <span>Difficulty</span>
@@ -158,6 +120,55 @@ export function SettingsScreen({ settings, confirmEmail, onChange, onResetProgre
             </button>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+interface VolumeRowProps {
+  label: string
+  volume: number
+  muted: boolean
+  onVolumeChange: (value: number) => void
+  onMutedChange: (muted: boolean) => void
+  /** SFX volume plays a sample on change so the new level is audible;
+   * music volume doesn't (playing an SFX blip to preview a music-volume
+   * change would be confusing, not helpful). */
+  previewOnChange?: boolean
+}
+
+function VolumeRow({ label, volume, muted, onVolumeChange, onMutedChange, previewOnChange }: VolumeRowProps) {
+  const inputId = `volume-${label.toLowerCase().replace(/\s+/g, '-')}`
+  return (
+    <div className="settings-row">
+      <label className="settings-row-label" htmlFor={inputId}>
+        {label}
+      </label>
+      <div className="settings-row-controls">
+        <input
+          id={inputId}
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={volume}
+          disabled={muted}
+          onChange={(e) => {
+            onVolumeChange(Number(e.target.value))
+            if (previewOnChange) playUiSound('ui_select')
+          }}
+        />
+        <label className="settings-mute-toggle">
+          <input
+            type="checkbox"
+            checked={muted}
+            onChange={(e) => {
+              onMutedChange(e.target.checked)
+              playUiSound(e.target.checked ? 'toggle_off' : 'toggle_on')
+            }}
+          />
+          Mute
+        </label>
       </div>
     </div>
   )
