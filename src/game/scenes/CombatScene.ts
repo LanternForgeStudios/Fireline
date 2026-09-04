@@ -301,7 +301,15 @@ export class CombatScene extends Phaser.Scene {
     this.setupInput()
 
     this.playCombatMusic()
+    // Real mission-end path (GameCanvas unmounting -> game.destroy()) tears
+    // scenes down via Systems.destroy(), which only ever emits DESTROY, not
+    // SHUTDOWN (that's reserved for scene.stop()/restart() transitions) —
+    // registering on SHUTDOWN alone meant this never fired in production,
+    // only in a test that used scene.restart() to simulate it. Registered
+    // on both: stopCombatMusic() is safe to call twice (combatMusicSource
+    // is nulled out after the first stop, so a second call is a no-op).
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.stopCombatMusic())
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.stopCombatMusic())
 
     this.emitHud()
   }

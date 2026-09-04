@@ -49,6 +49,31 @@ on top.
 
 ## Log
 
+### 2026-09-04 (37) — Third music-volume bug: combat music never actually stopped after a mission
+- Player-reported (again): combat music kept playing after a mission ended, even with mute or
+  volume set to 0. Third occurrence of this general bug class this session (see entries for the
+  hydration-race fix and the mission-end-sting reclassification) — but this one was specific to
+  today's new Web Audio combat-music implementation (entry 30).
+- Root cause: `stopCombatMusic()` was registered on `Phaser.Scenes.Events.SHUTDOWN` only. The real
+  mission-end path (`GameCanvas` unmounting → `game.destroy()`) tears scenes down via
+  `Systems.destroy()`, which only ever emits `Events.DESTROY` — confirmed by reading Phaser's own
+  source (`SceneManager.destroy()`/`Systems.destroy()`), not guessed. `SHUTDOWN` is reserved for
+  scene-level `stop()`/`restart()` transitions. This session's own live-verification passes for
+  entry 30 used `scene.scene.restart()` to simulate mission end, which *does* fire `SHUTDOWN` —
+  masking the bug in testing while it stayed completely broken on the real path.
+  Net effect: the orphaned `AudioBufferSourceNode` from the just-finished mission kept looping
+  forever, at whatever `audioSettings.musicVolume` was captured when *that* mission started —
+  deaf to any mute/volume change made afterward, since it was never told to stop and its gain was
+  never live-updated. Matches the report exactly.
+- Fixed by also registering the stop handler on `Events.DESTROY` (`stopCombatMusic()` is safe to
+  run twice — `combatMusicSource` is nulled after the first call, so a second is a no-op).
+- Verified live via Playwright against the *actual* production path this time (a real
+  `scene.endMission('complete')` → `EVT_MISSION_COMPLETE` → React unmounts `GameCanvas` →
+  `game.destroy()`, not a simulated `scene.restart()`): with music muted before launch,
+  `combatMusicSource` is confirmed nulled after mission end and every `Audio` element in the page
+  (intercepted via a `window.Audio` proxy, since the menu-music element is never attached to the
+  DOM) reads volume 0 throughout, both during the mission and after.
+
 ### 2026-09-04 (36) — 5th mission (boat escort) wired up, boat death animations fixed
 - **Operation Riverine Shield** — a 5th hand-authored mission, the second `type: 'Escort'` one, on
   a bright-daylight `'coastal'` landscape (Nightfall's landscape too, but a distinct sky palette

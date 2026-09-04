@@ -76,6 +76,10 @@ alongside them — worth double-checking their source/license before a public re
       set, but that folder wasn't present in the copy pulled from, so there's no ground truth to
       confirm against. Worth a real listen; report back if the seam still sounds off so the
       timestamp can be nudged, or if it's worth sourcing the pack's actual Loopable export instead.
+      **Follow-up bug, fixed 2026-09-04:** the new Web Audio node this introduced never actually
+      got stopped on a real mission end — registered on the wrong Phaser scene-teardown event
+      (`SHUTDOWN` instead of `DESTROY`), so it kept looping indefinitely after every mission,
+      ignoring any later mute/volume change. See PROGRESS.md entry (37).
 - [ ] A true military-themed SFX pack (actual automatic gunfire, rotor/engine loop, radio chatter)
       would read much better than the fantasy-pack placeholders currently in use
 
