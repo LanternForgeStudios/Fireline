@@ -26,7 +26,7 @@ const firebaseConfig = {
 // fails App Check token exchange with "App not registered", which silently
 // breaks every App-Check-enforced Cloud Function call (submitMissionResult,
 // resetProgress, purchaseUpgrade).
-const RECAPTCHA_ENTERPRISE_SITE_KEY = '6Lfa0KUtAAAAACvIBnmtEwdKJqtztXa95LYKMQa0'
+const RECAPTCHA_ENTERPRISE_SITE_KEY = '6LdvQ6gtAAAAADetRtA8Q3YTkPZz9J3u0l8vcDJx'
 
 export const firebaseApp = initializeApp(firebaseConfig)
 export const auth = getAuth(firebaseApp)
