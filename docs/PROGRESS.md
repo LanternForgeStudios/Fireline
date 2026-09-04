@@ -49,6 +49,27 @@ on top.
 
 ## Log
 
+### 2026-09-04 (27) — Hit-flinch reaction on non-lethal hits
+- Enemies previously gave zero visual feedback on a hit that didn't kill them — nothing happened
+  until the health bar ticked down, unlike the death animation's clear payoff on a kill. Added a
+  brief flinch reaction (`Enemy.playHitFlinch()`): a white flash via Phaser 4's `setTint(0xffffff)
+  .setTintMode(TintModes.FILL)` (the documented way to flash a sprite white on a hit) plus a quick
+  scale "punch" tween on the sprite.
+- Purely procedural, no new art — applied uniformly to every enemy type/texture (humanoid,
+  vehicle, drone, coastal boat reskin alike), unlike the walk cycle which only exists for the 4
+  humanoid types.
+- The punch tween runs on `sprite.scaleX/Y`, never on `container.scale` — the container's scale is
+  rewritten every frame by `update()` from the enemy's approach progress, so a tween on it would
+  just get overwritten the next tick. Runs independently of the walk-cycle animation (tint/scale
+  vs. `sprite.play()`), so a flinch mid-walk doesn't interrupt the walk loop.
+- Verified live end-to-end via Playwright against a real signed-up account on the local emulator
+  suite (this session didn't have the `pw-verify` live-site credentials — see prior entry): loaded
+  a mission, called `playHitFlinch()` on a live enemy, and confirmed via `sprite.isTinted`
+  (`false` → `true`, `tintMode: 1`/FILL) plus a direct before/after screenshot that the sprite
+  visibly flashes solid white. Also confirmed the scale punch returns cleanly to baseline after
+  the tween (0.4375 → 0.516 → 0.4375) and that a humanoid's walk animation keeps playing
+  uninterrupted through a flinch.
+
 ### 2026-09-04 (26) — Rank badge system (8 tiers, XP-based)
 - Added an 8-tier military rank system (Recruit → Private → Corporal → Sergeant → Lieutenant →
   Captain → Major → Colonel), driven by the `xp` field already tracked on `PlayerProfile` — no

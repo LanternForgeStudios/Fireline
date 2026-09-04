@@ -32,6 +32,7 @@ export class Enemy {
   progress = 0
   alive = true
 
+  private readonly scene: Phaser.Scene
   private readonly spawn: EnemySpawnPoint
   private readonly jitterSeed: number
   private nextFireAt: number
@@ -46,6 +47,7 @@ export class Enemy {
     textureKey: string,
     spawnTime: number,
   ) {
+    this.scene = scene
     this.def = def
     this.spawn = spawn
     this.health = def.maxHealth
@@ -126,6 +128,32 @@ export class Enemy {
     }
     this.updateHealthBar()
     return false
+  }
+
+  /**
+   * Brief non-lethal hit reaction: a white flash plus a quick scale "punch"
+   * on the sprite itself (never on `container.scale`, which update() rewrites
+   * every frame from `progress` — a tween on it would just get stomped next
+   * tick). Purely procedural, no new art, so it works uniformly across every
+   * enemy type/texture (humanoid, vehicle, drone, boat reskin alike) instead
+   * of needing a dedicated animation per type the way walk/death do.
+   */
+  playHitFlinch() {
+    this.scene.tweens.killTweensOf(this.sprite)
+    this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL)
+    const baseScaleX = this.sprite.scaleX
+    const baseScaleY = this.sprite.scaleY
+    this.sprite.setScale(baseScaleX * 1.18, baseScaleY * 1.18)
+    this.scene.tweens.add({
+      targets: this.sprite,
+      scaleX: baseScaleX,
+      scaleY: baseScaleY,
+      duration: 140,
+      ease: 'Back.Out',
+    })
+    this.scene.time.delayedCall(70, () => {
+      if (this.sprite.active) this.sprite.clearTint()
+    })
   }
 
   /**

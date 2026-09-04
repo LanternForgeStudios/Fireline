@@ -952,6 +952,8 @@ export class CombatScene extends Phaser.Scene {
         })
       })
       this.sound.play('sfx-kill', { volume: audioSettings.sfxVolume })
+    } else {
+      target.playHitFlinch()
     }
   }
 
