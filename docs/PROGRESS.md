@@ -49,6 +49,48 @@ on top.
 
 ## Log
 
+### 2026-09-03 (11) — Enemy death animations + landscape variety (coastal, urban)
+- Replaced the placeholder scale-up-and-fade death effect with real PixelLab animations for all 7
+  enemy types (`animate_object`, 7 frames each — see [ART_ASSETS.md](ART_ASSETS.md)). Required
+  converting each enemy's visual from a Phaser `Image` to a `Sprite` (`Enemy.ts`) so it can play an
+  animation, and registering each `${id}-death` AnimationManager entry once per texture load
+  (`CombatScene.buildEnemyAnimations`, guarded with `this.anims.exists()` since the
+  AnimationManager is shared/global across scene restarts, not per-scene).
+- Added 2 new landscapes (coastal, urban) alongside desert — each with its own ground tile
+  (`create_tiles_pro`) and backdrop (`create_image_pixflux`). `landscape` is now its own field on
+  `MissionTheme`, independently rolled from weather for procedural missions
+  (`generateMission.ts`), and hand-picked per hand-authored mission to match its narrative (desert
+  for Firebreak, urban for Steel Convoy, coastal for Nightfall).
+- Caught and fixed a real bug before it shipped: initially planned to keep the ground/mountain
+  texture keys fixed and just repoint `preload()` at a different file per mission — would have
+  silently broken, since Phaser's texture cache skips reloading an already-existing key across
+  scene restarts. Fixed by making the keys landscape-specific
+  (`` `ground-art-${landscape}` ``/`` `mountains-art-${landscape}` ``).
+- **Verification note:** after deploying, a live Playwright sweep-and-fire test repeatedly
+  registered 0 kills, which initially looked like a real regression from the Image→Sprite swap.
+  Root-caused with a targeted diagnostic instead (a temporary `window.__fireline` debug hook in a
+  local dev build, calling `handleFiring()` with the crosshair forced exactly onto a live enemy
+  and damage forced lethal) — the kill path (`containsPoint` → `takeDamage` → removal →
+  score/`enemiesDestroyed`) fired correctly on the first try. The 0-kill sweep results were an
+  artifact of the automated test's blind mouse-sweep aiming against small, fast-moving targets,
+  not a code bug. No production code changed as a result; the debug hook was reverted after use.
+
+### 2026-09-03 (10) — Enemy return-fire projectiles + touch aim assist
+- Enemies that already fired back (gunner, rocket, technical, armored, commander) now launch a
+  visible tracer bolt (`spawnEnemyProjectile`, distinct red/orange tint and additive blend from the
+  player's own pale-yellow tracer) that travels from the enemy to the gun mount and applies damage
+  on arrival rather than instantly on trigger — gives the player a beat to react/reposition instead
+  of taking unavoidable instant damage.
+- Added touch-only aim assist: while dragging the touch pad, the crosshair gets pulled toward the
+  nearest enemy within a small bonus radius (`applyTouchAimAssist`, `AIM_ASSIST_RADIUS_BONUS` /
+  `AIM_ASSIST_STRENGTH`), addressing reported difficulty tracking fast-closing targets on mobile.
+  Mouse aiming is untouched (still direct 1:1 cursor position).
+
+### 2026-09-03 (9) — Menu icons + rotor flicker / dust kickup VFX
+- Added PixelLab-generated icons to the Main Menu's Upgrades/Settings/Credits buttons.
+- Added rotor-blade flicker and ground dust kickup VFX to combat (both procedural, no new art) —
+  live-verified in an actual mission via Playwright.
+
 ### 2026-09-03 (8) — Playwright self-verification, 4 real mobile bugs found and fixed
 - Added `playwright` as a devDependency and a real test account
   (`pw-verify@lanternforgestudios.dev`) on the live Firebase project, purpose-built for

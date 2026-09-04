@@ -19,6 +19,13 @@ import {
 } from '../types'
 import { gameEvents } from '../events'
 
+/** The touch pads are functionally touch-only regardless (engagePad only fires for touch
+ * pointers) — this just decides whether to show them, so a mouse/trackpad player on desktop
+ * doesn't see two dead thumbsticks over the combat view. */
+function supportsTouch(): boolean {
+  return typeof window !== 'undefined' && (('ontouchstart' in window) || navigator.maxTouchPoints > 0)
+}
+
 export const WORLD_WIDTH = 1280
 export const WORLD_HEIGHT = 720
 
@@ -88,12 +95,18 @@ interface TouchPad {
   knob: Phaser.GameObjects.Arc
 }
 
-// Difficulty scales enemy toughness and how hard they hit back; spawn timing
-// and enemy variety stay the same across difficulties for this prototype.
-const DIFFICULTY_MULTIPLIERS: Record<Difficulty, { health: number; damage: number }> = {
-  easy: { health: 0.75, damage: 0.7 },
-  normal: { health: 1, damage: 1 },
-  hard: { health: 1.35, damage: 1.3 },
+// Difficulty scales enemy toughness, how hard/often they hit back, and the
+// player's own aircraft health; spawn timing and enemy variety stay the same
+// across difficulties for this prototype. fireIntervalMult multiplies each
+// enemy's fireIntervalMs (>1 = fires back less often), aircraftHealthMult
+// multiplies MAX_HEALTH.
+const DIFFICULTY_MULTIPLIERS: Record<
+  Difficulty,
+  { health: number; damage: number; fireIntervalMult: number; aircraftHealthMult: number }
+> = {
+  easy: { health: 0.75, damage: 0.7, fireIntervalMult: 1.4, aircraftHealthMult: 1.3 },
+  normal: { health: 1, damage: 1, fireIntervalMult: 1, aircraftHealthMult: 1 },
+  hard: { health: 1.35, damage: 1.3, fireIntervalMult: 0.85, aircraftHealthMult: 0.9 },
 }
 
 // Texture keys are landscape-specific (not a fixed 'ground-art'/'mountains-art'
@@ -135,6 +148,7 @@ export class CombatScene extends Phaser.Scene {
   private padLastPos: { x: number; y: number } | null = null
 
   private health = MAX_HEALTH
+  private maxHealth = MAX_HEALTH
   private score = 0
   private enemiesDestroyed = 0
   private waveIndex = 0
@@ -170,7 +184,8 @@ export class CombatScene extends Phaser.Scene {
   }
 
   create() {
-    this.health = MAX_HEALTH
+    this.maxHealth = Math.round(MAX_HEALTH * DIFFICULTY_MULTIPLIERS[audioSettings.difficulty].aircraftHealthMult)
+    this.health = this.maxHealth
     this.score = 0
     this.enemiesDestroyed = 0
     this.waveIndex = 0
@@ -493,7 +508,9 @@ export class CombatScene extends Phaser.Scene {
     this.crosshair.setDepth(2000)
   }
 
-  /** Always built (harmless, low-opacity for a mouse player who'll never touch it). */
+  /** Always built (touch-only functionally — engagePad only fires for touch pointers — but the
+   * visuals are hidden on devices with no touch support so a mouse/trackpad player doesn't see
+   * two dead thumbsticks sitting over their screen). */
   private buildTouchPad() {
     this.pads = {
       left: this.buildPadSide(TOUCH_PAD_MARGIN_X),
@@ -503,12 +520,15 @@ export class CombatScene extends Phaser.Scene {
 
   private buildPadSide(x: number): TouchPad {
     const center = { x, y: TOUCH_PAD_Y }
+    const visible = supportsTouch()
 
     const ring = this.add.circle(center.x, center.y, TOUCH_PAD_RADIUS, 0xffffff, 0.08)
     ring.setStrokeStyle(2, 0xffffff, 0.35)
     ring.setDepth(2100)
+    ring.setVisible(visible)
     const knob = this.add.circle(center.x, center.y, 26, 0xffffff, 0.25)
     knob.setDepth(2101)
+    knob.setVisible(visible)
 
     const label = this.add.text(center.x, center.y + TOUCH_PAD_RADIUS + 16, 'AIM', {
       fontFamily: 'monospace',
@@ -518,6 +538,7 @@ export class CombatScene extends Phaser.Scene {
     label.setOrigin(0.5, 0)
     label.setAlpha(0.35)
     label.setDepth(2100)
+    label.setVisible(visible)
 
     return { center, ring, knob }
   }
@@ -663,6 +684,7 @@ export class CombatScene extends Phaser.Scene {
       maxHealth: Math.round(baseDef.maxHealth * mult.health),
       impactDamage: Math.round(baseDef.impactDamage * mult.damage),
       fireDamagePerTick: Math.round(baseDef.fireDamagePerTick * mult.damage),
+      fireIntervalMs: Math.round(baseDef.fireIntervalMs * mult.fireIntervalMult),
     }
     const enemy = new Enemy(this, def, this.spawnPoint(), `enemy-${baseDef.id}`, this.time.now)
     this.enemies.push(enemy)
@@ -863,7 +885,7 @@ export class CombatScene extends Phaser.Scene {
   private emitHud() {
     const state: HudState = {
       health: this.health,
-      maxHealth: MAX_HEALTH,
+      maxHealth: this.maxHealth,
       heat: this.weapon.heat,
       maxHeat: this.weapon.maxHeat,
       overheated: this.weapon.overheated,
