@@ -209,13 +209,17 @@ export const MISSIONS: MissionDef[] = [
       "The ground team is exposed and the extraction window is short. This one's fast and ugly — hostiles are already converging by the time you're on station. Clear the LZ and hold it.",
     // Dusk over the water — the mission's namesake, and the LZ is a coastal
     // extraction point. Darkest, most urgent-feeling of the three.
+    // groundTint left neutral (0xffffff, same as Firebreak) — the tan
+    // 0xa9836e multiply was tuned for the old ground texture; the new
+    // seamless water tile (see docs/ART_ASSETS.md) is a lavender-blue that
+    // clashes when tinted warm, so it shows its true color instead.
     theme: {
       landscape: 'coastal',
       skyTop: 0x6b4a6e,
       skyBottom: 0xd9784e,
       mountainTint: 0x8a5a6e,
       mountainAlpha: 0.9,
-      groundTint: 0xa9836e,
+      groundTint: 0xffffff,
     },
     secondaryObjective: { type: 'clean-sweep', label: 'Clean Sweep — destroy every contact', bonusCredits: 90 },
     waves: [

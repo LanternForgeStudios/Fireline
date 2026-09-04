@@ -110,12 +110,43 @@ hand-picked pairing; acceptable first-pass variance, not re-tuned per landscape.
 | Landscape | Ground tile | Backdrop | Notes |
 | --- | --- | --- | --- |
 | Desert | `ground.png` | `mountains.png` | 64×64 tile via `create_tiles_pro` (id `ff5cabdb-8b77-4728-adf9-c50cef4f7fcb`, `tile_0` of 16); backdrop 400×68 via `create_image_pixflux` (job `2ac273b9-eaa8-47af-b561-ca80502bfd11`) |
-| Coastal | `coastal-ground.png` | `coastal.png` | tile via `create_tiles_pro` (id `79195108-7ecc-48b0-bdb7-a332d8a56413`, `tile_2` of 16 — picked for the clearest wave-line texture when tiled); backdrop via `create_image_pixflux` (job `af41c91d-fbe0-4a89-8c18-84c9e07ccf6a`), sea horizon with rocky islands and a sun glow |
+| Coastal | `coastal-ground.png` | `coastal.png` | ground tile regenerated 2026-09-04, see below; backdrop via `create_image_pixflux` (job `af41c91d-fbe0-4a89-8c18-84c9e07ccf6a`), sea horizon with rocky islands and a sun glow |
 | Urban | `urban-ground.png` | `urban.png` | tile via `create_tiles_pro` (id `8617ee1a-6925-4946-85ae-aaed69c3bbce`, `tile_0` of 16 — cracked asphalt/rubble); backdrop via `create_image_pixflux` (job `596a7ca2-a5fb-4fec-a07b-a9d3b31c92b0`), ruined city skyline silhouette |
-| Jungle | `jungle-ground.png` | `jungle.png` | tile via `create_tiles_pro` (id `7ab546fe-780b-4ada-9b65-4d3887c0e5a0`, `tile_0` of 16 — dense foliage with mud showing through); backdrop via `create_image_pixflux` (job `6b6e28d5-953d-4d03-b251-b19ff95251a6`), palm tree silhouette skyline with a sunset glow and birds |
+| Jungle | `jungle-ground.png` | `jungle.png` | ground tile regenerated 2026-09-04, see below; backdrop via `create_image_pixflux` (job `6b6e28d5-953d-4d03-b251-b19ff95251a6`), palm tree silhouette skyline with a sunset glow and birds |
 
 All four backdrops replace the old procedural sun circle the same way the desert one did — each
 bakes in its own light source (sun glow / smoke-lit skyline / jungle sunset).
+
+### Ground tile regeneration — jungle and coastal (2026-09-04)
+
+The original jungle/coastal ground tiles (like desert/urban above) came from `create_tiles_pro`
+with `tile_feature: 'tileset'` — a 16-tile **corner/transition set** meant for tiles that connect
+to *different* neighboring terrain (a path through grass, a shoreline meeting a jungle), not for
+repeating one tile uniformly. Desert sand and cracked urban asphalt are low-detail/noise-like
+enough that an edge-oriented tile still reads fine when repeated; jungle foliage clumps and water
+wave-lines are directional/asymmetric enough that the interlock seams were clearly visible —
+exactly the "part of a tile set that wants to make a path" issue reported.
+
+Regenerated both via `create_tiles_pro` *without* `tile_feature` (independent single-terrain tile
+variations, not a transition set), `square_topdown`/`top-down` view, 64×64, `outline_mode:
+'segmentation'`. Verified the fix by tiling each of the 16 candidates 3×3 into a contact sheet and
+inspecting for visible repeats before presenting options — most candidates in both batches were
+genuinely seamless (a real difference from the old tileset-mode tiles, not just a style change).
+
+- **Jungle**: job `c72eff3e-1149-4eb6-85c2-c038099311f0` → `tile_0` (dense leafy canopy, chosen by
+  the owner from the seamless candidates).
+- **Coastal**: job `eefa9c86-17ce-4e6d-9f8a-f60637e48675` → `tile_11` (deep-blue wave texture,
+  chosen by the owner). Came out in a lavender/purple tone rather than blue; `operation-nightfall`'s
+  `groundTint` (`missions.ts`) was `0xa9836e` (a warm tan multiply tuned for the *old* texture),
+  which read oddly against this tile — changed to `0xffffff` (neutral, same as Firebreak's) per
+  the owner's call: keep the tile's actual color, don't fight it with a tint built for different
+  art. `coastal` is only used by this one mission, so this is a fully-contained change.
+
+Verified live: launched both missions and confirmed the ground scrolls with no visible seams in
+either direction (screenshots taken via canvas capture — Playwright's page-level `screenshot()`
+and `canvas.toDataURL()` both returned solid black for the WebGL-rendered canvas in this headless
+environment, a known headless-Chromium/WebGL quirk, not a real rendering bug; forcing Phaser's
+Canvas2D renderer for the verification pass, then reverting, got a real screenshot).
 
 **Not done:** gameplay-affecting weather (still visual-mood only, tracked in
 [AUDIO_AND_POLISH.md](AUDIO_AND_POLISH.md)); a 5th+ landscape if more variety is wanted later.

@@ -49,6 +49,27 @@ on top.
 
 ## Log
 
+### 2026-09-04 (32) — Regenerated jungle/coastal ground tiles for real seamless tiling
+- Player-reported: jungle and water ground tiles didn't blend seamlessly when scrolled — looked
+  like pieces of a tileset meant for paths/interlocks, not a uniform repeating texture. Root cause
+  confirmed: the originals came from `create_tiles_pro` in transition-set mode (a 16-tile
+  corner/path set meant to connect to *different* neighbor terrain), which desert/urban's
+  low-detail textures hid but jungle/water's directional detail didn't.
+- Regenerated both in independent-tile mode (no transition-set feature) — see
+  [ART_ASSETS.md](ART_ASSETS.md) for job IDs and the full before/after reasoning. Built a 3×3-tiled
+  contact sheet of all 16 candidates per terrain so seamlessness could actually be judged before
+  presenting options, rather than picking from single isolated tiles.
+- Owner picked jungle `tile_0` and coastal `tile_11` from the candidates.
+- Also fixed a color clash the coastal pick exposed: `operation-nightfall`'s `groundTint`
+  (`missions.ts`) was tuned for the old texture and read oddly against the new one — changed to
+  neutral (`0xffffff`) per the owner's call, keeping the tile's true color over a mismatched tint.
+- Verified live: launched Operation Green Hell (jungle) and Operation Nightfall (coastal),
+  confirmed both scroll with zero visible tiling seams. Along the way, hit and worked around a
+  headless-Chromium quirk where both Playwright's `screenshot()` and the canvas's own
+  `toDataURL()` returned solid black for the WebGL-rendered Phaser canvas (no console/render
+  errors — genuinely a screenshot-capture issue in this environment, not the app) by temporarily
+  forcing Phaser's Canvas2D renderer for the verification pass only, then reverting.
+
 ### 2026-09-04 (31) — Music/SFX mute checkboxes, synced across devices
 - Added a "Mute" checkbox next to each volume slider on the Settings screen. Deliberately a
   separate flag (`PlayerSettings.musicMuted`/`sfxMuted`) rather than just zeroing the volume field
