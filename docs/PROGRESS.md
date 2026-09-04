@@ -49,6 +49,31 @@ on top.
 
 ## Log
 
+### 2026-09-04 (38) — Rebalanced upgrade costs against the rank curve
+- Owner asked for a rank-vs-gear balance check: since XP and credits both derive from the same
+  per-mission score (`xpEarned = score`, `creditsEarned ≈ score/10 + bonus` in
+  `functions/src/index.ts`), the ratio between them is fixed regardless of how well someone plays
+  (~7.85 XP per credit, confirmed against all 5 hand-authored missions' real wave compositions, not
+  estimated). At the prior cost curve (`k=50`, 90,000cr to max all 4 tracks), maxing gear finished
+  at ~70% of the way to Colonel (1,000,000 XP) — the last third of the rank grind had nothing left
+  to spend credits on.
+- Owner wanted that down to a 10-15% idle window. Since Colonel's XP was a deliberate choice made
+  earlier this session (not something to undo), the only real lever is the upgrade cost curve —
+  raising it moves the *gear* finish line later without touching rank. Solved algebraically for the
+  target range and confirmed a coefficient bump from k=50 to **k=62** in `cost(n) = k·(n²+n+1)`
+  lands at 111,600cr to max all 4 tracks, putting gear-maxing at ~87-88% of the Colonel climb
+  (~12.3-12.5% idle, both in the optimal-play and realistic-play scenarios — same ratio in both
+  since it's driven by the fixed XP:credit conversion rate, not by how well anyone plays).
+- Chose a uniform coefficient bump (every level scales by the same ~24%) over steepening just the
+  back half of the curve — smaller diff, keeps the single shared formula between
+  `src/game/data/upgrades.ts` and `functions/src/upgradeCatalog.ts` intact, and a first purchase
+  going from 150cr to 186cr doesn't meaningfully change the early-game feel the way the *idle
+  credits at max rank* problem actually mattered for.
+- Verified: client/server catalogs still match exactly (40/40 entries); recomputed the full
+  mission-count math with the new total (256 missions optimal / 393 realistic to max gear, vs. 292
+  / 449 to Colonel — 12.3-12.5% idle either way); confirmed live in the Upgrades screen that the
+  first purchase now reads "Buy AP Rounds I — 186 cr".
+
 ### 2026-09-04 (37) — Third music-volume bug: combat music never actually stopped after a mission
 - Player-reported (again): combat music kept playing after a mission ended, even with mute or
   volume set to 0. Third occurrence of this general bug class this session (see entries for the

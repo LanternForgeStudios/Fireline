@@ -138,11 +138,12 @@ alongside them — worth double-checking their source/license before a public re
       loadout line reflects what's actually owned. Not a "select between different guns" system —
       one persistent, upgradeable M134, which fits the GDD's "select loadout" + "upgradeable
       weapons" language better than adding weapon variety would have.
-- [ ] Upgrade costs/values (150cr for level 1 up to 5,550cr for level 10 per track, 90,000cr to max
-      all four — `cost(n) = 50·(n²+n+1)`, expanded 2026-09-04 from the original 3-level 150/350/650)
-      are a first guess, not balanced against actual play — a generated mission's credits-per-clear
-      varies a lot by luck of the draw, so whether the full 10-level climb on all 4 tracks feels
-      like a reasonable arc or takes forever needs real playtesting to know.
+- [ ] Upgrade costs (`cost(n) = 62·(n²+n+1)`, 186cr for level 1 up to 6,882cr for level 10 per
+      track, 111,600cr to max all four — raised from k=50/90,000cr 2026-09-04, see PROGRESS.md)
+      were re-derived against the rank curve's math rather than picked freestanding, but still
+      aren't validated against actual play — a generated mission's credits-per-clear varies a lot
+      by luck of the draw, so whether the full climb feels like a reasonable arc or takes forever
+      needs real playtesting to know.
 - [x] Settings screen has an autosave note (not a toast per change — simpler, avoids timing/spam
       issues from continuous slider drags; revisit if it doesn't read clearly enough in practice)
 - [x] `resetPlayerProgress` now also deletes the `missionResults` subcollection (batched, loops

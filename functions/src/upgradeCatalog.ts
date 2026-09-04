@@ -11,9 +11,10 @@ export interface UpgradeInfo {
   cost: number
 }
 
-// Cost curve mirrors src/game/data/upgrades.ts: cost(n) = 50*(n^2+n+1), which
-// the original 3 hand-picked costs (150, 350, 650) fit exactly.
-const LEVEL_COST = (n: number): number => 50 * (n * n + n + 1)
+// Cost curve mirrors src/game/data/upgrades.ts: cost(n) = k*(n^2+n+1), k=62
+// as of 2026-09-04 (was 50) to close a rank-vs-gear balance gap — see that
+// file's comment for the full reasoning.
+const LEVEL_COST = (n: number): number => 62 * (n * n + n + 1)
 
 function buildLevels(track: string): UpgradeInfo[] {
   return Array.from({ length: 10 }, (_, i) => {

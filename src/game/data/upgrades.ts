@@ -42,10 +42,16 @@ const COOLING_VALUES = [42, 52, 64, 80, 99, 123, 153, 189, 235, 291, 361]
 const HEAT_CAPACITY_VALUES = [100, 120, 145, 175, 212, 256, 309, 373, 450, 543, 656]
 const FIRE_RATE_VALUES = [70, 62, 55, 48, 43, 38, 33, 29, 26, 23, 20] // lower = faster
 
-// Cost curve: the original 3 costs (150, 350, 650) fit cost(n) = 50*(n^2+n+1)
-// exactly — levels 4-10 continue that same formula rather than a new one.
+// Cost curve: cost(n) = k*(n^2+n+1). The original 3 costs (150, 350, 650)
+// fit k=50 exactly; levels 4-10 continued that formula unchanged. Bumped to
+// k=62 (2026-09-04) to close a rank-vs-gear balance gap: maxing all 4
+// tracks previously finished at ~70% of the way to Colonel (1,000,000 XP),
+// leaving credits idle for the last third of the rank grind with nothing
+// left to spend them on. k=62 raises the all-4-tracks total from 90,000cr
+// to 111,600cr, landing gear-maxing at ~87-88% of the Colonel climb
+// (~10-15% idle) instead — see docs/PROGRESS.md for the full math.
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
-const LEVEL_COST = (n: number) => 50 * (n * n + n + 1)
+const LEVEL_COST = (n: number) => 62 * (n * n + n + 1)
 
 function buildLevels(track: UpgradeTrackId, namePrefix: string): UpgradeLevel[] {
   return ROMAN.map((numeral, i) => {
