@@ -37,6 +37,10 @@ const WANDER_RADIUS_X = 36
 const WANDER_RADIUS_Y = 20
 const WANDER_FREQ_X = (Math.PI * 2) / 4000
 const WANDER_FREQ_Y = (Math.PI * 2) / 5700
+// Player-reported: hover-mission contacts read too small on mobile. A flat multiplier on top
+// of the shared spawn/approach scale curve (rather than changing that curve, which flight
+// mode also relies on) keeps hover enemies clearly visible/tappable on a small screen.
+const HOVER_SCALE_MULTIPLIER = 1.3
 
 /**
  * A single hostile contact closing on the helicopter. Owns its Phaser
@@ -148,7 +152,7 @@ export class Enemy {
         y = this.spawn.targetY + Math.cos(this.jitterSeed * 1.3 + this.wanderT * WANDER_FREQ_Y) * WANDER_RADIUS_Y
       }
       this.container.setPosition(x, y)
-      this.container.setScale(scale)
+      this.container.setScale(scale * HOVER_SCALE_MULTIPLIER)
       const coverDepth = this.spawn.coverDepth ?? 0
       this.container.setDepth(this.progress < EMERGE_PROGRESS ? coverDepth - 1 : coverDepth + 1)
       return false

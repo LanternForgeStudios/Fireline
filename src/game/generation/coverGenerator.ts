@@ -5,12 +5,19 @@ import type { SeededRandom } from './rng'
 const COVER_VARIANTS: CoverObjectVariant[] = ['crates', 'sandbags', 'rubble', 'rocks']
 const MIN_COVER = 3
 const MAX_COVER = 5
-const COVER_X_MARGIN = 140
-// Mid-ground band — above IMPACT_Y_RANGE (where enemies grow largest/most visually busy)
-// so cover doesn't fight with them for attention, below the horizon.
-const COVER_Y_RANGE: [number, number] = [280, 520]
-const MIN_SEPARATION = 160
-const PLACEMENT_ATTEMPTS = 40
+// A hover mission's arena is deliberately more compact than a flight mission's full-field
+// approach (600x160 vs. the old 1000x240) — on a small mobile screen, spreading cover across
+// the whole canvas read as everything being too small/scattered; a tighter cluster makes
+// props, enemies, and the objective all read bigger without needing a camera zoom (which
+// would clip the touch pads — see the comment on COVER_OBJECT_SIZE in CombatScene.ts).
+const COVER_X_MARGIN = 340
+const COVER_Y_RANGE: [number, number] = [320, 480]
+const MIN_SEPARATION = 130
+// Bumped from 40 — the tighter arena above (600x160, down from the original 1000x240) makes
+// rejection sampling fail more often at 4-5 objects; more attempts costs nothing (a bounded
+// loop, not a perf concern) and meaningfully improves how often a mission actually gets the
+// cover count it drew instead of settling for fewer.
+const PLACEMENT_ATTEMPTS = 100
 
 const OBJECTIVE_FLAVORS: { label: string; artVariant: DefendObjectiveArtVariant }[] = [
   { label: 'Comms Relay', artVariant: 'relay' },

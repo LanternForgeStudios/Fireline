@@ -247,7 +247,7 @@ Upgrades screen's track icons.
 
 **Not done:** a mission-type icon for Reconnaissance (still no hand-authored mission of that type).
 
-### Hover-mission ground props (`public/env/cover-*.png`, `public/env/objective-*.png`, 96×96)
+### Hover-mission ground props (`public/env/cover-*.png`, `public/env/objective-*.png`, source art 96×96)
 
 Added 2026-09-04 for the "Base Defense" hover-mission archetype (see `docs/PROGRESS.md`) —
 stationary terrain cover enemies emerge from, and the defendable ground objective. Both sets
@@ -271,9 +271,15 @@ to carry the camera angle).
 
 No destroyed/explosion frame for either set — losing the objective cuts straight to the Result
 screen exactly like aircraft health hitting 0 already does, so an animation wasn't required to
-ship. Cover objects render with no idle tween (explicitly stationary, per the player's request);
-the defend objective reuses `buildEscortVehicle()`'s bob+sway tween pattern instead, since it's
-still meant to read as "a real object sitting in the world," just one that doesn't move around.
+ship. Both cover objects and the defend objective render with no idle tween — a relay/depot/
+checkpoint is meant to read as a planted, stationary structure, not something bobbing or
+swaying like the Escort mission's convoy vehicle. The objective still reacts to being hit (a
+brief angle-shake tween in `CombatScene.applyObjectiveDamage`).
+
+Display size bumped from the source art's native 96×96 to 140×140 (2026-09-05, player-reported
+"too small on mobile") via `setDisplaySize` — see `docs/PROGRESS.md`'s entry 44 for the full
+reasoning (a tighter hover-mission arena plus this size bump, instead of a camera zoom, which
+would have clipped the touch controls).
 
 ### Rank badges (`public/ui/icon-rank-*.png`, 64×64)
 

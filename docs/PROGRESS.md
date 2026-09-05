@@ -53,6 +53,46 @@ on top.
 
 ## Log
 
+### 2026-09-05 (44) — Hover missions: bigger/tighter arena for mobile, stationary objective
+- Player-reported: on mobile, hover-mission cover objects/enemies/objective read too small,
+  and the defend objective (a tower/relay/depot — a fixed structure) shouldn't sway like the
+  Escort mission's convoy vehicle does.
+- **Objective no longer sways**: `buildDefendObjective()` dropped the two idle bob/sway tweens
+  it copied from `buildEscortVehicle()` — the objective now sits perfectly still (it still
+  reacts to being hit via the existing angle-shake tween in `applyObjectiveDamage`). Verified
+  live: sampled its sprite position 4× over 2s, x/y never moved.
+- **Bigger/tighter arena instead of a camera zoom**: considered zooming the camera in for
+  hover missions (the obvious "make things bigger" lever, and there's already a full zoom
+  mechanic for GAU-19), but the touch pads/zoom button/crosshair are all rendered in raw world
+  coordinates with no scroll-factor exemption — the same single camera renders everything, so
+  zooming it moves and enlarges the touch pads too. Worked the math: even a modest 1.2x zoom
+  would push the aim-pad rings roughly half off-screen. Went a different, zero-risk-to-controls
+  route instead:
+  - `COVER_OBJECT_SIZE`/`DEFEND_OBJECTIVE_SIZE`: 96 → 140.
+  - Hover mode's arena is now a tighter 600×160 band (was 1000×240) — `coverGenerator.ts`'s
+    `COVER_X_MARGIN`/`COVER_Y_RANGE`, `CombatScene.ts`'s new `HOVER_X_SAFE_MARGIN`/
+    `HOVER_Y_SAFE_MARGIN` — so cover, enemies, and the objective all cluster more centrally
+    instead of spreading across the full 1280-wide field, reading bigger on a small screen
+    without any camera change. `MIN_SEPARATION` 160→130 and `PLACEMENT_ATTEMPTS` 40→100 to keep
+    procedural placement reliable in the smaller area. The two hand-authored missions' cover
+    coordinates were moved to fit the new bounds.
+  - New `Enemy.ts` constant `HOVER_SCALE_MULTIPLIER = 1.3` — hover-mode enemies now render 30%
+    larger than their flight-mode counterparts once emerged (`containsPoint`/hit-testing scale
+    with it automatically, so they're also easier to tap on mobile, not just easier to see).
+  - Fixed a latent bug found while touching this code: the enemy attack-position Y clamp was
+    bounded to flight-mode's `IMPACT_Y_RANGE` (545-610), which sits well below where hover
+    cover is actually placed (280-520 originally, 320-480 now) — every hover enemy's attack
+    point was being forced down into that band regardless of its cover's real y, rather than
+    staying near the cover it emerged from. Now clamps to generic safe canvas margins instead.
+- Verified live via Playwright at a landscape mobile viewport (844×390) against the Local
+  Emulator Suite: screenshot shows cover/objective/enemies all clearly larger and more
+  centrally clustered, touch pads unaffected/correctly positioned, objective health bar and
+  label rendering correctly. Procedural generation re-checked across 300 seeds: still fully
+  deterministic, all Base Defense cover placements land within the new tighter bounds with the
+  new minimum separation respected (~65% still get their full drawn count of 4-5 cover objects
+  in the smaller area; the rest settle for the 3-object floor — a minor content-variety
+  tradeoff, not a bug, not worth chasing further for this pass).
+
 ### 2026-09-05 (43) — Cleanup pass: aircraft was invulnerable in every hover mission
 - Scope: everything since the last cleanup (`e8a53e3..HEAD`, ~11 commits — the multi-weapon
   system, per-op gun recommendations, hover missions). `security-review` found nothing.

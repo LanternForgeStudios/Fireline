@@ -43,14 +43,25 @@ const SPAWN_X_MARGIN = 90
 // even though it shares ESCORT_VEHICLE_Y's value, since Escort and hover missions never
 // coexist and the two concepts shouldn't be coupled just because they land on the same y.
 const DEFEND_OBJECTIVE_Y = 460
-const COVER_OBJECT_SIZE = 96
-const DEFEND_OBJECTIVE_SIZE = 96
+// Bigger than the escort vehicle's 96 — a hover mission's whole "arena" is deliberately more
+// compact than a flight mission's full-field approach (see COVER_X_MARGIN in
+// coverGenerator.ts), so props read larger on a small mobile screen without needing a camera
+// zoom (which would clip the touch pads — they're rendered in raw world coordinates with no
+// scroll-factor exemption, so zooming the one shared camera moves/enlarges them right off the
+// edges of the screen; verified by the math before going this route instead).
+const COVER_OBJECT_SIZE = 140
+const DEFEND_OBJECTIVE_SIZE = 140
 // A hover-mode enemy's spawn point is the cover object it emerges from; its target is a
-// nearby "peek out" attack point this far to one side (random), clamped into the existing
-// IMPACT_Y_RANGE band vertically.
-const HOVER_ATTACK_OFFSET_MIN = 50
-const HOVER_ATTACK_OFFSET_MAX = 90
-const HOVER_ATTACK_Y_JITTER = 20
+// nearby "peek out" attack point this far to one side (random), staying close to the cover's
+// own y (HOVER_Y_SAFE_MARGIN below) rather than the flight-mode IMPACT_Y_RANGE band, which
+// sits well below where hover cover is actually placed.
+const HOVER_ATTACK_OFFSET_MIN = 40
+const HOVER_ATTACK_OFFSET_MAX = 70
+const HOVER_ATTACK_Y_JITTER = 15
+// Keeps hover enemy attack positions (and, incidentally, anything else placed with it) safely
+// inside the canvas regardless of which cover object they're near.
+const HOVER_Y_SAFE_MARGIN = 100
+const HOVER_X_SAFE_MARGIN = 180
 const DOOR_SILL_HEIGHT = 56
 // Real PixelLab death-animation frames per enemy type (see docs/ART_ASSETS.md)
 // — 6 generated frames plus PixelLab's own retained reference frame as frame
@@ -523,9 +534,12 @@ export class CombatScene extends Phaser.Scene {
   }
 
   /**
-   * The thing hover missions defend — a fixed ground prop (reuses buildEscortVehicle's
-   * idle-tween pattern) plus an in-world health bar (modeled on Enemy's own) so damage is
-   * visible on the objective itself, not just in the HUD.
+   * The thing hover missions defend — a fixed ground prop plus an in-world health bar
+   * (modeled on Enemy's own) so damage is visible on the objective itself, not just in the
+   * HUD. Explicitly stationary (no idle bob/sway, unlike buildEscortVehicle's convoy prop) —
+   * this is meant to read as a planted structure (relay tower, depot, checkpoint), not
+   * something riding along on uneven ground. It still reacts to being hit (see
+   * applyObjectiveDamage's angle-shake tween).
    */
   private buildDefendObjective() {
     const objective = missionState.current.defendObjective
@@ -534,8 +548,6 @@ export class CombatScene extends Phaser.Scene {
     const sprite = this.add.image(WORLD_WIDTH / 2, DEFEND_OBJECTIVE_Y, `objective-${objective.artVariant}`)
     sprite.setDisplaySize(DEFEND_OBJECTIVE_SIZE, DEFEND_OBJECTIVE_SIZE)
     sprite.setDepth(Math.floor(DEFEND_OBJECTIVE_Y))
-    this.tweens.add({ targets: sprite, y: DEFEND_OBJECTIVE_Y + 6, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
-    this.tweens.add({ targets: sprite, x: WORLD_WIDTH / 2 + 14, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
     this.defendObjectiveSprite = sprite
 
     const barY = DEFEND_OBJECTIVE_Y - DEFEND_OBJECTIVE_SIZE / 2 - 14
@@ -1090,13 +1102,16 @@ export class CombatScene extends Phaser.Scene {
     const side = Phaser.Math.Between(0, 1) === 0 ? -1 : 1
     const attackX = Phaser.Math.Clamp(
       cover.x + side * Phaser.Math.Between(HOVER_ATTACK_OFFSET_MIN, HOVER_ATTACK_OFFSET_MAX),
-      80,
-      WORLD_WIDTH - 80,
+      HOVER_X_SAFE_MARGIN,
+      WORLD_WIDTH - HOVER_X_SAFE_MARGIN,
     )
+    // Stays near the cover's own y (a small lateral peek), not the flight-mode IMPACT_Y_RANGE
+    // band — that band sits well below where hover cover is actually placed and previously
+    // forced every hover enemy's attack point down into it regardless of its cover's real y.
     const attackY = Phaser.Math.Clamp(
       cover.y + Phaser.Math.Between(-HOVER_ATTACK_Y_JITTER, HOVER_ATTACK_Y_JITTER),
-      IMPACT_Y_RANGE[0],
-      IMPACT_Y_RANGE[1],
+      HOVER_Y_SAFE_MARGIN,
+      WORLD_HEIGHT - HOVER_Y_SAFE_MARGIN,
     )
     return { x: cover.x, y: cover.y, targetX: attackX, targetY: attackY, hoverMode: true, coverDepth: depth }
   }
