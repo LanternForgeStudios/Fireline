@@ -53,6 +53,20 @@ on top.
 
 ## Log
 
+### 2026-09-05 (45) — Hover missions: widened the placement zone back out
+- Follow-up to entry 44: player confirmed the bigger scale reads well on mobile, but entry 44's
+  600×160 placement band (tightened specifically to make things read bigger) crammed cover
+  objects/enemies too close together once they were also bigger (140px sprites, up from 96px).
+- Widened `coverGenerator.ts`'s zone to 840×220 (a middle ground between the original 1000×240
+  and entry 44's over-tightened 600×160) and bumped `MIN_SEPARATION` 130→180 — at the new 140px
+  sprite size, 130 separation meant sprite edges actually overlapped by ~10px. Loosened
+  `CombatScene.ts`'s `HOVER_ATTACK_OFFSET_MIN/MAX`/`HOVER_ATTACK_Y_JITTER` back toward their
+  original values so enemies peek out further from cover, matching the roomier zone. Re-spread
+  both hand-authored missions' cover coordinates to match.
+- Verified live via Playwright at a landscape mobile viewport (844×390): screenshot shows a
+  well-spread, still-legible composition. Procedural generation re-checked across 300 seeds —
+  still deterministic, all placements within the new bounds, minimum separation respected.
+
 ### 2026-09-05 (44) — Hover missions: bigger/tighter arena for mobile, stationary objective
 - Player-reported: on mobile, hover-mission cover objects/enemies/objective read too small,
   and the defend objective (a tower/relay/depot — a fixed structure) shouldn't sway like the

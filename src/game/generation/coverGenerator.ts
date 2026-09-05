@@ -5,18 +5,17 @@ import type { SeededRandom } from './rng'
 const COVER_VARIANTS: CoverObjectVariant[] = ['crates', 'sandbags', 'rubble', 'rocks']
 const MIN_COVER = 3
 const MAX_COVER = 5
-// A hover mission's arena is deliberately more compact than a flight mission's full-field
-// approach (600x160 vs. the old 1000x240) — on a small mobile screen, spreading cover across
-// the whole canvas read as everything being too small/scattered; a tighter cluster makes
-// props, enemies, and the objective all read bigger without needing a camera zoom (which
-// would clip the touch pads — see the comment on COVER_OBJECT_SIZE in CombatScene.ts).
-const COVER_X_MARGIN = 340
-const COVER_Y_RANGE: [number, number] = [320, 480]
-const MIN_SEPARATION = 130
-// Bumped from 40 — the tighter arena above (600x160, down from the original 1000x240) makes
-// rejection sampling fail more often at 4-5 objects; more attempts costs nothing (a bounded
-// loop, not a perf concern) and meaningfully improves how often a mission actually gets the
-// cover count it drew instead of settling for fewer.
+// A hover mission's arena is a middle ground between a flight mission's full-field spread
+// (the original 1000x240) and an overly-cramped first attempt at "bigger" (600x160, which
+// read as everything piled on top of itself once cover/objective sprites got bigger — see
+// COVER_OBJECT_SIZE in CombatScene.ts) — 840x220 gives enough room to spread out while still
+// being more central than the original.
+const COVER_X_MARGIN = 220
+const COVER_Y_RANGE: [number, number] = [280, 500]
+// Bigger than the object size's own radius (140/2=70, so two objects at old MIN_SEPARATION=130
+// would visually overlap by 10px) — 180 guarantees a clear gap between sprite edges now that
+// they're bigger than when this constant was first tuned.
+const MIN_SEPARATION = 180
 const PLACEMENT_ATTEMPTS = 100
 
 const OBJECTIVE_FLAVORS: { label: string; artVariant: DefendObjectiveArtVariant }[] = [

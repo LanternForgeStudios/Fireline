@@ -43,21 +43,21 @@ const SPAWN_X_MARGIN = 90
 // even though it shares ESCORT_VEHICLE_Y's value, since Escort and hover missions never
 // coexist and the two concepts shouldn't be coupled just because they land on the same y.
 const DEFEND_OBJECTIVE_Y = 460
-// Bigger than the escort vehicle's 96 — a hover mission's whole "arena" is deliberately more
-// compact than a flight mission's full-field approach (see COVER_X_MARGIN in
-// coverGenerator.ts), so props read larger on a small mobile screen without needing a camera
-// zoom (which would clip the touch pads — they're rendered in raw world coordinates with no
-// scroll-factor exemption, so zooming the one shared camera moves/enlarges them right off the
-// edges of the screen; verified by the math before going this route instead).
+// Bigger than the escort vehicle's 96 — props read larger on a small mobile screen without
+// needing a camera zoom (which would clip the touch pads — they're rendered in raw world
+// coordinates with no scroll-factor exemption, so zooming the one shared camera moves/enlarges
+// them right off the edges of the screen; verified by the math before going this route
+// instead). The placement zone itself (see COVER_X_MARGIN in coverGenerator.ts) stays spread
+// out across most of the field — bigger sprites, not a cramped cluster, is what reads "bigger."
 const COVER_OBJECT_SIZE = 140
 const DEFEND_OBJECTIVE_SIZE = 140
 // A hover-mode enemy's spawn point is the cover object it emerges from; its target is a
 // nearby "peek out" attack point this far to one side (random), staying close to the cover's
 // own y (HOVER_Y_SAFE_MARGIN below) rather than the flight-mode IMPACT_Y_RANGE band, which
 // sits well below where hover cover is actually placed.
-const HOVER_ATTACK_OFFSET_MIN = 40
-const HOVER_ATTACK_OFFSET_MAX = 70
-const HOVER_ATTACK_Y_JITTER = 15
+const HOVER_ATTACK_OFFSET_MIN = 50
+const HOVER_ATTACK_OFFSET_MAX = 90
+const HOVER_ATTACK_Y_JITTER = 20
 // Keeps hover enemy attack positions (and, incidentally, anything else placed with it) safely
 // inside the canvas regardless of which cover object they're near.
 const HOVER_Y_SAFE_MARGIN = 100
