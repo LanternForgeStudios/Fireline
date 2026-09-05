@@ -19,6 +19,9 @@ import {
   type MissionResult,
 } from '../types'
 import { gameEvents } from '../events'
+import { WORLD_WIDTH, WORLD_HEIGHT } from '../worldConstants'
+
+export { WORLD_WIDTH, WORLD_HEIGHT }
 
 /** The touch pads are functionally touch-only regardless (engagePad only fires for touch
  * pointers) — this just decides whether to show them, so a mouse/trackpad player on desktop
@@ -26,9 +29,6 @@ import { gameEvents } from '../events'
 function supportsTouch(): boolean {
   return typeof window !== 'undefined' && (('ontouchstart' in window) || navigator.maxTouchPoints > 0)
 }
-
-export const WORLD_WIDTH = 1280
-export const WORLD_HEIGHT = 720
 
 const MAX_HEALTH = 100
 const HORIZON_Y = 130
@@ -38,6 +38,18 @@ const IMPACT_Y_RANGE: [number, number] = [545, 610]
 // (IMPACT_Y_RANGE) so it doesn't fight with them for attention.
 const ESCORT_VEHICLE_Y = 460
 const SPAWN_X_MARGIN = 90
+// Hover missions ("Base Defense") — see docs/PROGRESS.md. Kept as its own named constant
+// even though it shares ESCORT_VEHICLE_Y's value, since Escort and hover missions never
+// coexist and the two concepts shouldn't be coupled just because they land on the same y.
+const DEFEND_OBJECTIVE_Y = 460
+const COVER_OBJECT_SIZE = 96
+const DEFEND_OBJECTIVE_SIZE = 96
+// A hover-mode enemy's spawn point is the cover object it emerges from; its target is a
+// nearby "peek out" attack point this far to one side (random), clamped into the existing
+// IMPACT_Y_RANGE band vertically.
+const HOVER_ATTACK_OFFSET_MIN = 50
+const HOVER_ATTACK_OFFSET_MAX = 90
+const HOVER_ATTACK_Y_JITTER = 20
 const DOOR_SILL_HEIGHT = 56
 // Real PixelLab death-animation frames per enemy type (see docs/ART_ASSETS.md)
 // — 6 generated frames plus PixelLab's own retained reference frame as frame
@@ -217,6 +229,14 @@ export class CombatScene extends Phaser.Scene {
   private groundTextureKey!: string
   private mountainTextureKey!: string
   private escortVehicleTextureKey!: string
+  // Hover missions ("Base Defense") only — see buildCoverObjects/buildDefendObjective.
+  private coverDepthById = new Map<string, number>()
+  private defendObjectiveSprite?: Phaser.GameObjects.Image
+  private objectiveHealthBarBg?: Phaser.GameObjects.Rectangle
+  private objectiveHealthBarFill?: Phaser.GameObjects.Rectangle
+  private objectiveHealth = 0
+  private objectiveMaxHealth = 0
+  private objectiveNoDamageTaken = true
   private damageVignette!: Phaser.GameObjects.Rectangle
   private rotorFlicker!: Phaser.GameObjects.Rectangle
   private nextDustAtMs = 0
@@ -284,6 +304,14 @@ export class CombatScene extends Phaser.Scene {
       this.load.image(key, `${import.meta.env.BASE_URL}env/${file}`)
     }
 
+    if (missionState.current.mode === 'hover') {
+      for (const variant of ['crates', 'sandbags', 'rubble', 'rocks'] as const) {
+        this.load.image(`cover-${variant}`, `${import.meta.env.BASE_URL}env/cover-${variant}.png`)
+      }
+      const art = missionState.current.defendObjective!.artVariant
+      this.load.image(`objective-${art}`, `${import.meta.env.BASE_URL}env/objective-${art}.png`)
+    }
+
     this.load.audio('sfx-shot', `${import.meta.env.BASE_URL}audio/sfx/shot.wav`)
     this.load.audio('sfx-kill', `${import.meta.env.BASE_URL}audio/sfx/kill.wav`)
     this.load.audio('sfx-aircraft-damage', `${import.meta.env.BASE_URL}audio/sfx/aircraft_damage.wav`)
@@ -303,6 +331,10 @@ export class CombatScene extends Phaser.Scene {
     this.noDamageTaken = true
     this.totalEnemiesSpawned = 0
     this.enemies = []
+    this.coverDepthById.clear()
+    this.objectiveNoDamageTaken = true
+    this.objectiveMaxHealth = missionState.current.defendObjective?.maxHealth ?? 0
+    this.objectiveHealth = this.objectiveMaxHealth
     this.zoomHeld = false
     this.zoomTouchPointerId = null
     this.equippedGunDef = getGunDef(playerLoadout.equippedGun)
@@ -318,6 +350,10 @@ export class CombatScene extends Phaser.Scene {
     this.buildEnemyTextures()
     this.buildEnemyAnimations()
     if (missionState.current.type === 'Escort') this.buildEscortVehicle()
+    if (missionState.current.mode === 'hover') {
+      this.buildCoverObjects()
+      this.buildDefendObjective()
+    }
     this.buildHelicopterFrame()
     this.buildVfxTextures()
     this.buildDamageVignette()
@@ -465,6 +501,61 @@ export class CombatScene extends Phaser.Scene {
       repeat: -1,
       ease: 'Sine.InOut',
     })
+  }
+
+  /**
+   * Stationary terrain cover for hover missions — enemies spawn behind these and emerge
+   * from them (see hoverSpawnPoint/Enemy's hover branch). Deliberately no idle tween, unlike
+   * buildEscortVehicle's convoy prop: the user asked for visibly stationary obstacles, not a
+   * riding-along vehicle. Depth is purely y-based (consistent with everything else in the
+   * scene's pseudo-3D depth sort), recorded per cover id so Enemy can render behind/in front
+   * of the specific cover it emerged from.
+   */
+  private buildCoverObjects() {
+    for (const placement of missionState.current.coverObjects ?? []) {
+      const img = this.add.image(placement.x, placement.y, `cover-${placement.variant}`)
+      img.setDisplaySize(COVER_OBJECT_SIZE, COVER_OBJECT_SIZE)
+      const depth = Math.floor(placement.y)
+      img.setDepth(depth)
+      this.coverDepthById.set(placement.id, depth)
+    }
+  }
+
+  /**
+   * The thing hover missions defend — a fixed ground prop (reuses buildEscortVehicle's
+   * idle-tween pattern) plus an in-world health bar (modeled on Enemy's own) so damage is
+   * visible on the objective itself, not just in the HUD.
+   */
+  private buildDefendObjective() {
+    const objective = missionState.current.defendObjective
+    if (!objective) return
+
+    const sprite = this.add.image(WORLD_WIDTH / 2, DEFEND_OBJECTIVE_Y, `objective-${objective.artVariant}`)
+    sprite.setDisplaySize(DEFEND_OBJECTIVE_SIZE, DEFEND_OBJECTIVE_SIZE)
+    sprite.setDepth(Math.floor(DEFEND_OBJECTIVE_Y))
+    this.tweens.add({ targets: sprite, y: DEFEND_OBJECTIVE_Y + 6, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+    this.tweens.add({ targets: sprite, x: WORLD_WIDTH / 2 + 14, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+    this.defendObjectiveSprite = sprite
+
+    const barY = DEFEND_OBJECTIVE_Y - DEFEND_OBJECTIVE_SIZE / 2 - 14
+    this.objectiveHealthBarBg = this.add.rectangle(WORLD_WIDTH / 2, barY, 60, 7, 0x000000, 0.55)
+    this.objectiveHealthBarBg.setDepth(2200)
+    this.objectiveHealthBarFill = this.add.rectangle(WORLD_WIDTH / 2, barY, 60, 7, 0x4ea8f2, 0.95)
+    this.objectiveHealthBarFill.setDepth(2201)
+  }
+
+  /** Fixed anchor, not the objective sprite's own live (tweened/shaking) position — same
+   * reasoning GUN_ORIGIN is a fixed anchor rather than the crosshair's live position. */
+  private objectivePosition(): { x: number; y: number } {
+    return { x: WORLD_WIDTH / 2, y: DEFEND_OBJECTIVE_Y }
+  }
+
+  private updateObjectiveHealthBar() {
+    if (!this.objectiveHealthBarFill || !this.objectiveMaxHealth) return
+    const pct = Phaser.Math.Clamp(this.objectiveHealth / this.objectiveMaxHealth, 0, 1)
+    this.objectiveHealthBarFill.width = 60 * pct
+    this.objectiveHealthBarFill.x = WORLD_WIDTH / 2 - 30 + (60 * pct) / 2
+    this.objectiveHealthBarFill.fillColor = pct > 0.5 ? 0x4ea8f2 : pct > 0.25 ? 0xf2c14e : 0xef4444
   }
 
   /**
@@ -977,11 +1068,36 @@ export class CombatScene extends Phaser.Scene {
   }
 
   private spawnPoint(): EnemySpawnPoint {
+    return missionState.current.mode === 'hover' ? this.hoverSpawnPoint() : this.flightSpawnPoint()
+  }
+
+  private flightSpawnPoint(): EnemySpawnPoint {
     const x = Phaser.Math.Between(SPAWN_X_MARGIN, WORLD_WIDTH - SPAWN_X_MARGIN)
     const y = Phaser.Math.Between(HORIZON_Y_RANGE[0], HORIZON_Y_RANGE[1])
     const targetX = Phaser.Math.Clamp(x + Phaser.Math.Between(-140, 140), 80, WORLD_WIDTH - 80)
     const targetY = Phaser.Math.Between(IMPACT_Y_RANGE[0], IMPACT_Y_RANGE[1])
     return { x, y, targetX, targetY }
+  }
+
+  /** The enemy's spawn point is literally the cover object's own position (perfectly
+   * occluded at spawn — see Enemy's hover branch); its target is a nearby lateral
+   * "peek out" point. */
+  private hoverSpawnPoint(): EnemySpawnPoint {
+    const coverObjects = missionState.current.coverObjects ?? []
+    const cover = Phaser.Utils.Array.GetRandom(coverObjects)
+    const depth = this.coverDepthById.get(cover.id) ?? Math.floor(cover.y)
+    const side = Phaser.Math.Between(0, 1) === 0 ? -1 : 1
+    const attackX = Phaser.Math.Clamp(
+      cover.x + side * Phaser.Math.Between(HOVER_ATTACK_OFFSET_MIN, HOVER_ATTACK_OFFSET_MAX),
+      80,
+      WORLD_WIDTH - 80,
+    )
+    const attackY = Phaser.Math.Clamp(
+      cover.y + Phaser.Math.Between(-HOVER_ATTACK_Y_JITTER, HOVER_ATTACK_Y_JITTER),
+      IMPACT_Y_RANGE[0],
+      IMPACT_Y_RANGE[1],
+    )
+    return { x: cover.x, y: cover.y, targetX: attackX, targetY: attackY, hoverMode: true, coverDepth: depth }
   }
 
   private spawnEnemy(typeId: EnemyDef['id']) {
@@ -1003,8 +1119,12 @@ export class CombatScene extends Phaser.Scene {
   update(_time: number, delta: number) {
     if (this.missionEnded) return
 
-    this.ground.tilePositionX += delta * 0.06
-    this.ground.tilePositionY += delta * 0.03
+    // Hover missions hold position — the ground shouldn't visibly scroll under a stationary
+    // aircraft the way it does while flying forward.
+    if (missionState.current.mode !== 'hover') {
+      this.ground.tilePositionX += delta * 0.06
+      this.ground.tilePositionY += delta * 0.03
+    }
 
     this.weapon.tick(delta)
     this.updateAimWithRecoil()
@@ -1017,7 +1137,10 @@ export class CombatScene extends Phaser.Scene {
 
     if (this.health <= 0 && !this.missionEnded) {
       this.health = 0
-      this.endMission('failed')
+      this.endMission('failed', 'aircraft-destroyed')
+    } else if (missionState.current.mode === 'hover' && this.objectiveHealth <= 0 && !this.missionEnded) {
+      this.objectiveHealth = 0
+      this.endMission('failed', 'objective-destroyed')
     } else if (
       this.waveIndex >= missionState.current.waves.length &&
       this.enemies.length === 0 &&
@@ -1091,6 +1214,13 @@ export class CombatScene extends Phaser.Scene {
     const fromY = enemy.container.y
     const damage = enemy.def.fireDamagePerTick
 
+    // In hover missions, enemies mostly attack the defended objective, not the aircraft —
+    // drones are the one exception (the aerial, anti-air-suited type), so aircraft health
+    // and the no-damage bonus stay meaningfully at risk rather than decorative. Outside
+    // hover mode, behavior is unchanged: everything always targets the aircraft.
+    const targetsAircraft = missionState.current.mode !== 'hover' || enemy.def.id === 'drone'
+    const targetPoint = targetsAircraft ? GUN_ORIGIN : this.objectivePosition()
+
     this.spawnSpark(fromX, fromY, 0xff6644, 0.9, 140)
 
     const bolt = this.add.image(fromX, fromY, 'spark-tex')
@@ -1099,7 +1229,7 @@ export class CombatScene extends Phaser.Scene {
     bolt.setScale(0.3)
     bolt.setBlendMode(Phaser.BlendModes.ADD)
 
-    const dist = Phaser.Math.Distance.Between(fromX, fromY, GUN_ORIGIN.x, GUN_ORIGIN.y)
+    const dist = Phaser.Math.Distance.Between(fromX, fromY, targetPoint.x, targetPoint.y)
     const travelMs = Phaser.Math.Clamp(
       (dist / ENEMY_PROJECTILE_SPEED) * 1000,
       ENEMY_PROJECTILE_MIN_MS,
@@ -1108,15 +1238,16 @@ export class CombatScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: bolt,
-      x: GUN_ORIGIN.x,
-      y: GUN_ORIGIN.y,
+      x: targetPoint.x,
+      y: targetPoint.y,
       duration: travelMs,
       ease: 'Linear',
       onComplete: () => {
         bolt.destroy()
         if (this.missionEnded) return
-        this.spawnSpark(GUN_ORIGIN.x, GUN_ORIGIN.y, 0xff5533, 1.1, 160)
-        this.applyAircraftDamage(damage)
+        this.spawnSpark(targetPoint.x, targetPoint.y, 0xff5533, 1.1, 160)
+        if (targetsAircraft) this.applyAircraftDamage(damage)
+        else this.applyObjectiveDamage(damage)
       },
     })
   }
@@ -1133,6 +1264,27 @@ export class CombatScene extends Phaser.Scene {
     this.tweens.add({ targets: this.damageVignette, alpha: 0, duration: 350, ease: 'Cubic.Out' })
   }
 
+  /**
+   * Hover-mission analogue of applyAircraftDamage, for enemy fire routed at the defended
+   * objective instead of the aircraft (see spawnEnemyProjectile). Deliberately not the
+   * full-screen damageVignette — that stays reserved for aircraft hits, so the two damage
+   * types read as visually distinct (a localized spark + a shake on the objective itself).
+   */
+  private applyObjectiveDamage(amount: number) {
+    if (amount <= 0) return
+    this.objectiveHealth = Math.max(0, this.objectiveHealth - amount)
+    this.objectiveNoDamageTaken = false
+    this.updateObjectiveHealthBar()
+    this.sound.play('sfx-aircraft-damage', { volume: audioSettings.sfxVolume })
+    const pos = this.objectivePosition()
+    this.spawnSpark(pos.x, pos.y - 10, 0xff5533, 1.4, 220)
+    if (this.defendObjectiveSprite) {
+      // Targets `angle` specifically (not x/y, which the idle bob/sway tweens already own)
+      // so this shake layers on top of them instead of fighting or needing to kill/restart.
+      this.tweens.add({ targets: this.defendObjectiveSprite, angle: { from: -2, to: 2 }, duration: 60, yoyo: true, repeat: 2, onComplete: () => this.defendObjectiveSprite?.setAngle(0) })
+    }
+  }
+
   private handleFiring() {
     const wasOverheated = this.weapon.overheated
     if (!this.weapon.tryFire()) return
@@ -1146,7 +1298,11 @@ export class CombatScene extends Phaser.Scene {
     let target: Enemy | null = null
     for (const enemy of this.enemies) {
       if (!enemy.containsPoint(this.effectiveAim.x, this.effectiveAim.y)) continue
-      if (!target || enemy.progress > target.progress) target = enemy
+      // Depth, not progress: once several hover-mode enemies sit at progress === 1
+      // simultaneously, progress stops differentiating between them. Depth stays a valid
+      // tie-break for flight mode too since its depth (Math.floor(progress * 1000)) is
+      // already monotonic with progress — this is a strict unification, not a new branch.
+      if (!target || enemy.container.depth > target.container.depth) target = enemy
     }
     gameEvents.emit(EVT_HIT_MARKER, { hit: Boolean(target), x: this.effectiveAim.x, y: this.effectiveAim.y })
 
@@ -1189,7 +1345,7 @@ export class CombatScene extends Phaser.Scene {
     }
   }
 
-  private endMission(outcome: 'complete' | 'failed') {
+  private endMission(outcome: 'complete' | 'failed', failureReason?: 'aircraft-destroyed' | 'objective-destroyed') {
     this.missionEnded = true
     this.weapon.setTrigger(false)
 
@@ -1201,6 +1357,7 @@ export class CombatScene extends Phaser.Scene {
       const objective = missionState.current.secondaryObjective
       if (objective.type === 'no-damage') secondaryObjectiveComplete = this.noDamageTaken
       else if (objective.type === 'clean-sweep') secondaryObjectiveComplete = this.enemiesDestroyed >= this.totalEnemiesSpawned
+      else if (objective.type === 'protect-objective') secondaryObjectiveComplete = this.objectiveNoDamageTaken
     }
 
     const result: MissionResult = {
@@ -1212,6 +1369,7 @@ export class CombatScene extends Phaser.Scene {
       enemiesDestroyed: this.enemiesDestroyed,
       secondaryObjectiveComplete,
       difficulty: audioSettings.difficulty,
+      failureReason,
     }
     gameEvents.emit(outcome === 'complete' ? EVT_MISSION_COMPLETE : EVT_MISSION_FAILED, result)
   }
@@ -1228,6 +1386,8 @@ export class CombatScene extends Phaser.Scene {
       waveCount: missionState.current.waves.length,
       enemiesRemaining: this.enemies.length,
       zoomed: this.zoomHeld,
+      objectiveHealth: missionState.current.mode === 'hover' ? this.objectiveHealth : undefined,
+      objectiveMaxHealth: missionState.current.mode === 'hover' ? this.objectiveMaxHealth : undefined,
     }
     gameEvents.emit(EVT_HUD_UPDATE, state)
   }

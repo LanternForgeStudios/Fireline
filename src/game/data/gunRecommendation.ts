@@ -49,5 +49,8 @@ export function recommendGuns(mission: Pick<MissionDef, 'type' | 'secondaryObjec
   if (mission.secondaryObjective.type === 'clean-sweep') {
     return { ...base, note: `${base.note} The clean-sweep bonus also rewards not letting stragglers slip past.` }
   }
+  if (mission.secondaryObjective.type === 'protect-objective') {
+    return { ...base, note: `${base.note} The objective-defense bonus also rewards killing contacts before they get a shot off.` }
+  }
   return base
 }

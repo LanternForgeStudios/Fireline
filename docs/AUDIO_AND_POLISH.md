@@ -155,6 +155,12 @@ alongside them — worth double-checking their source/license before a public re
       successfully on the primary production account. Owner asked to leave it live for a while
       longer in case other production accounts still need it — remove the button, the wrapper, and
       the Cloud Function (redeploy after) once the owner confirms it's no longer needed.
+- [ ] Hover missions (Base Defense) are new (2026-09-04) — the objective health values
+      (260/300 hand-authored, `max(220, totalSpawns * 14)` procedural) and the drone-only
+      aircraft-risk split are first-pass numbers, not validated against real play. Worth a
+      look once there's actual playtesting data: does the objective ever feel too fragile/
+      tanky, does aircraft risk feel meaningfully present or still mostly decorative given only
+      one enemy type routes to it.
 - [x] Settings screen has an autosave note (not a toast per change — simpler, avoids timing/spam
       issues from continuous slider drags; revisit if it doesn't read clearly enough in practice)
 - [x] `resetPlayerProgress` now also deletes the `missionResults` subcollection (batched, loops

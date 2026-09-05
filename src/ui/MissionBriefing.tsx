@@ -47,6 +47,15 @@ export function MissionBriefing({ mission, equippedGun, unlockedUpgrades, onLaun
           </div>
         </div>
 
+        {mission.mode === 'hover' && mission.defendObjective && (
+          <div className="briefing-objective">
+            <span className="hud-label">Defend</span>
+            <p className="briefing-text mission-list-blurb">
+              Protect the {mission.defendObjective.label} — losing it ends the mission.
+            </p>
+          </div>
+        )}
+
         <div className="briefing-objective">
           <span className="hud-label">Bonus Objective</span>
           <p className="briefing-text mission-list-blurb">

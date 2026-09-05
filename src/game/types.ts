@@ -61,7 +61,7 @@ export interface MissionTheme {
 
 export type Difficulty = 'easy' | 'normal' | 'hard'
 
-export type SecondaryObjectiveType = 'no-damage' | 'clean-sweep'
+export type SecondaryObjectiveType = 'no-damage' | 'clean-sweep' | 'protect-objective'
 
 export interface SecondaryObjective {
   type: SecondaryObjectiveType
@@ -69,14 +69,43 @@ export interface SecondaryObjective {
   bonusCredits: number
 }
 
+/** 'hover': the helicopter holds position instead of flying forward — enemies emerge from
+ * stationary cover objects and wander near an attack point instead of closing a straight
+ * line, and there's a defendable ground objective with its own hard-fail health bar. See
+ * CoverObjectPlacement/DefendObjectiveDef below and docs/PROGRESS.md's hover-missions entry. */
+export type MissionMode = 'flight' | 'hover'
+
+export type CoverObjectVariant = 'crates' | 'sandbags' | 'rubble' | 'rocks'
+
+export interface CoverObjectPlacement {
+  /** Stable per-mission key — Enemy spawn/depth lookups reference cover objects by this, not index. */
+  id: string
+  variant: CoverObjectVariant
+  x: number
+  y: number
+}
+
+export type DefendObjectiveArtVariant = 'relay' | 'depot' | 'checkpoint'
+
+export interface DefendObjectiveDef {
+  label: string
+  maxHealth: number
+  artVariant: DefendObjectiveArtVariant
+}
+
 export interface MissionDef {
   id: string
   name: string
   type: 'Search & Destroy' | 'Escort' | 'Extraction' | 'Rescue' | 'Base Defense' | 'Reconnaissance'
+  mode: MissionMode
   briefing: string
   theme: MissionTheme
   waves: WaveDef[]
   secondaryObjective: SecondaryObjective
+  /** Present only when mode === 'hover'. */
+  coverObjects?: CoverObjectPlacement[]
+  /** Present only when mode === 'hover'. */
+  defendObjective?: DefendObjectiveDef
 }
 
 export interface HudState {
@@ -90,6 +119,9 @@ export interface HudState {
   waveCount: number
   enemiesRemaining: number
   zoomed: boolean
+  /** Only set when the mission's mode is 'hover'. */
+  objectiveHealth?: number
+  objectiveMaxHealth?: number
 }
 
 export interface MissionResult {
@@ -107,6 +139,9 @@ export interface MissionResult {
    * server-side reward clamping), tracked so the player can see their highest
    * difficulty clear per operation. See MissionStats. */
   difficulty: Difficulty
+  /** Client-display-only (Result screen copy) — not read by the server, no schema change
+   * needed there. Present only when outcome === 'failed'. */
+  failureReason?: 'aircraft-destroyed' | 'objective-destroyed'
 }
 
 /** Per-mission (per-"operation") lifetime stats, server-maintained in

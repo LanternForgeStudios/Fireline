@@ -9,7 +9,7 @@ on top.
 | Phase | Goal | Status |
 | --- | --- | --- |
 | 1 | Core Combat | **Done** — playable shooting prototype |
-| 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 5 missions (Search & Destroy, two Escorts, Extraction, Rescue) with a select screen, each with distinct visual theming, plus loadout selection via the weapon upgrade system (see Phase 4) |
+| 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 7 missions (Search & Destroy, two Escorts, Extraction, Rescue, two Base Defense) with a select screen, each with distinct visual theming, plus loadout selection via the weapon upgrade system (see Phase 4). Base Defense adds a second mission archetype (hover in place, defend a ground objective) — see the 2026-09-04 log entry |
 | 3 | Procedural Content | **Done** per the GDD's own list — seeded generation, encounter blocks, threat budgets, weather/time-of-day variety, and secondary objectives, all shipped. Weather stays visual-mood only, not gameplay-affecting — a deliberate scope call, not a gap |
 | 4 | Backend | **Done** — see below |
 | 5 | Release | Not started (web live on GitHub Pages; iOS/Capacitor future) |
@@ -52,6 +52,69 @@ on top.
       log entry below.
 
 ## Log
+
+### 2026-09-04 (42) — Hover missions ("Base Defense"): stationary cover, defendable objective
+- Player-requested second mission archetype: instead of flying forward with enemies closing
+  in a straight line, the helicopter holds position, enemies emerge from stationary cover
+  objects and wander near an attack point instead of charging in, and the objective is to
+  defend something instead of surviving an approach. Gives `'Base Defense'` (previously an
+  unused, mechanically-inert entry in `MissionDef['type']`) its first real behavior via a new
+  `mode: 'flight' | 'hover'` field, decoupled from `type` so the flavor label and the engine
+  mode stay independent concepts.
+- **Enemy movement**: `Enemy.update()` gained an additive hover branch — enemies spawn at a
+  cover object's own position (perfectly occluded behind it via depth ordering), emerge to a
+  nearby "peek out" attack point over the same easing curve flight mode already uses, then
+  switch to a persistent small-radius 2D wander (two incommensurate sine/cosine frequencies,
+  same "don't lock into an obvious loop" idea as the escort vehicle's two-different-period
+  tweens) instead of freezing. Hover enemies never "impact" — `update()` returns `false`
+  unconditionally in hover mode, so they're removed only by being killed, never by reaching a
+  target. `shouldFire`/`containsPoint`/`randomImpactPoint`/`takeDamage`/`playHitFlinch`/
+  `playDeath` needed zero changes — all already read live position/scale regardless of what
+  drives it. One follow-on fix: `handleFiring()`'s target tie-break switched from `progress`
+  to `container.depth` (progress stops differentiating once several hover enemies sit at 1.0
+  simultaneously; depth is a strict, mode-agnostic generalization since flight-mode depth was
+  already monotonic with progress).
+- **Defendable objective**: a new hard-fail condition parallel to aircraft health — a ground
+  prop (reuses `buildEscortVehicle()`'s idle-tween pattern) with its own health bar (in-world
+  overlay + a new HUD bottom-center slot). Losing it ends the mission exactly like aircraft
+  health hitting 0 does, via a new `failureReason` on `MissionResult` (client-display-only,
+  confirmed no server schema change needed — Cloud Functions only read the fields their input
+  interface declares). New secondary-objective type `protect-objective` ("never let the
+  objective take damage") joins `no-damage`/`clean-sweep`.
+- **Damage routing — "both stay at risk" (owner decision)**: in hover missions, `drone`
+  enemies' return fire still targets the aircraft; every other type's fire targets the
+  defended objective instead. Verified directly (forced a drone and an infantry projectile at
+  each other): drone fire took the aircraft from 100→90 health, infantry fire took the
+  objective from 260→250, confirming the split. This keeps aircraft health and the
+  `no-damage` bonus meaningfully live in hover missions rather than decorative.
+- **Procedural generation**: `mode` is derived from the already-picked `type`
+  (`type === 'Base Defense' ? 'hover' : 'flight'`) with **no new RNG draw**, so every seed
+  that doesn't roll Base Defense produces byte-identical missions to before this change —
+  verified across seeds 1-400 (all deterministic on re-generation, all Base Defense seeds
+  produced 3-5 non-overlapping cover placements ≥160px apart and a scaled objective health).
+  New `src/game/generation/coverGenerator.ts` handles cover placement + objective flavor/health
+  generation; `waveGenerator.ts`/`encounterBlocks.ts`/`WaveSpawn`/`WaveDef` needed zero changes
+  since spawn positions were already resolved live in `CombatScene`, never stored in mission
+  data, for both flight and hover missions alike.
+- **Content**: two new hand-authored missions, Operation Iron Gate (desert, defends a Comms
+  Relay, `protect-objective` bonus) and Operation Last Redoubt (urban, defends a Forward
+  Checkpoint, `clean-sweep` bonus, 5 waves) — mirrored into `functions/src/missionCatalog.ts`
+  the same way every prior hand-authored mission already required (no other server-side
+  awareness of hover mode needed).
+- **New art**: 4 cover-object props (crates/sandbags/rubble/rocks) and 3 defend-objective
+  props (relay/depot/checkpoint), all 96×96 via `create_image_pixflux`, plus 2 new 64×64
+  mission icons — see `docs/ART_ASSETS.md`.
+- Extracted `WORLD_WIDTH`/`WORLD_HEIGHT` out of `CombatScene.ts` into a new
+  `src/game/worldConstants.ts` so the new cover generator (pure data, no Phaser dependency)
+  doesn't need to import a Phaser scene module just for two constants.
+- **Verified live against the Local Emulator Suite**: launched Operation Iron Gate and
+  confirmed the ground stops scrolling (hover, no forward-flight illusion), 4 cover objects
+  render, the objective starts at full health with the HUD bar showing its label, an enemy's
+  position visibly changes after reaching its attack point (wandering, not frozen), the
+  damage-routing split behaves as designed (above), and force-destroying the objective
+  correctly ends the mission with the objective-specific Result screen subtitle. Temporary
+  DEV-only debug hooks (`window.__fireline`, `window.__generateMission`) used for this were
+  reverted before shipping.
 
 ### 2026-09-04 (41) — Per-operation gun recommendations
 - Player-requested, small follow-up to the multi-weapon system: Mission Briefing now shows a

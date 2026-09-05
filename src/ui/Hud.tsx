@@ -41,6 +41,10 @@ export function Hud() {
   const healthPct = Math.round((state.health / state.maxHealth) * 100)
   const heatPct = Math.round((state.heat / state.maxHeat) * 100)
   const wave = missionState.current.waves[state.waveIndex]
+  const objectivePct =
+    state.objectiveHealth !== undefined && state.objectiveMaxHealth
+      ? Math.round((state.objectiveHealth / state.objectiveMaxHealth) * 100)
+      : 0
 
   return (
     <div className="hud">
@@ -81,6 +85,18 @@ export function Hud() {
           />
         </div>
       </div>
+
+      {state.objectiveHealth !== undefined && (
+        <div className="hud-bottom-center">
+          <div className="hud-label">{missionState.current.defendObjective?.label ?? 'Objective'}</div>
+          <div className="hud-bar">
+            <div
+              className={`hud-bar-fill objective ${objectivePct <= 25 ? 'critical' : ''}`}
+              style={{ width: `${objectivePct}%` }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

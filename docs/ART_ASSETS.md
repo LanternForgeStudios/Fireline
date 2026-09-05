@@ -238,13 +238,42 @@ Shown at 2.2rem in the Armory (Upgrades) screen's gun-tab strip (`.gun-tab-icon`
 | Operation Green Hell | `icon-mission-greenhell.png` | 64×64 via `create_image_pixflux` (job `6bdc4410-aa1c-4f70-95ad-fc5ebb5b062d`), handheld distress beacon with a signal wave — first attempt (job `a0f86126-...`) came back as just a plain leaf, no beacon element, regenerated with the signal emphasized |
 | Operation Nightfall | `icon-mission-nightfall.png` | 64×64 via `create_image_pixflux` (job `5caaea5f-c94e-473c-99dc-3571b8b1b123`), crescent moon with a rope ladder |
 | Operation Riverine Shield | `icon-mission-riverineshield.png` | 64×64 via `create_image_pixflux` (job `64b986c6-b9fe-46af-b29c-331cfeb14335`), boat silhouette with a protective shield behind it |
+| Operation Iron Gate | `icon-mission-irongate.png` | 64×64 via `create_image_pixflux` (job `c9e8d33d-31af-4880-90dc-c48d47c21d53`), radio antenna tower with a shield behind it |
+| Operation Last Redoubt | `icon-mission-lastredoubt.png` | 64×64 via `create_image_pixflux` (job `9a94bf4d-073c-492a-94f6-1fe397786939`), sandbag bunker with a shield |
 | Randomly Generated (procedural) | `icon-mission-random.png` | 64×64 via `create_image_pixflux` (job `d653ce51-270c-415c-9821-f809deb15800`), die with a question mark — one fixed icon regardless of the rolled mission type, since procedural missions have no fixed identity to hang a specific icon on |
 
 Shown at 2.4rem on each Mission Select card (`.mission-list-icon`), same treatment as the
 Upgrades screen's track icons.
 
-**Not done:** mission-type icons for types with no hand-authored mission yet (Base Defense,
-Reconnaissance).
+**Not done:** a mission-type icon for Reconnaissance (still no hand-authored mission of that type).
+
+### Hover-mission ground props (`public/env/cover-*.png`, `public/env/objective-*.png`, 96×96)
+
+Added 2026-09-04 for the "Base Defense" hover-mission archetype (see `docs/PROGRESS.md`) —
+stationary terrain cover enemies emerge from, and the defendable ground objective. Both sets
+follow the same `create_image_pixflux` "bird's eye aerial view straight down from directly
+overhead, as if photographed from a helicopter flying above" prompting the escort vehicle's
+regeneration established (view/direction params alone aren't reliable — the text description has
+to carry the camera angle).
+
+| Cover variant | File | Notes |
+| --- | --- | --- |
+| Crates | `cover-crates.png` | job `3c1eeca8-a611-4d73-b2f3-b94243b04acd`, stacked wooden supply crates |
+| Sandbags | `cover-sandbags.png` | job `4180d525-d926-4e24-bd08-cb95145db8b7`, sandbag wall fortification |
+| Rubble | `cover-rubble.png` | job `9ca09914-1a77-4de3-81cf-56d2168458cc`, collapsed-building debris pile |
+| Rocks | `cover-rocks.png` | job `72d74dc4-f220-4bde-9537-f1a71884c6bb`, boulder cluster |
+
+| Defend-objective variant | File | Notes |
+| --- | --- | --- |
+| Comms Relay | `objective-relay.png` | job `a89f414e-d759-468c-a531-7f77f6cedf25`, radio antenna tower + generator shed |
+| Fuel Depot | `objective-depot.png` | job `8ed1a938-a7d6-427c-9952-ad65d3565e52`, fuel drums + storage tank |
+| Forward Checkpoint | `objective-checkpoint.png` | job `f561ec9c-b006-4194-87ab-d835a14e2322`, checkpoint building with a barrier gate |
+
+No destroyed/explosion frame for either set — losing the objective cuts straight to the Result
+screen exactly like aircraft health hitting 0 already does, so an animation wasn't required to
+ship. Cover objects render with no idle tween (explicitly stationary, per the player's request);
+the defend objective reuses `buildEscortVehicle()`'s bob+sway tween pattern instead, since it's
+still meant to read as "a real object sitting in the world," just one that doesn't move around.
 
 ### Rank badges (`public/ui/icon-rank-*.png`, 64×64)
 

@@ -6,6 +6,11 @@ export interface EnemySpawnPoint {
   y: number
   targetX: number
   targetY: number
+  /** Hover missions only — see Enemy.update()'s hover branch. */
+  hoverMode?: boolean
+  /** Hover missions only — the cover object's own Phaser depth, so the enemy can render
+   * behind it pre-emerge and in front of it once out. */
+  coverDepth?: number
 }
 
 // Spawn-time scale, and how much scale grows on top of that by the time an
@@ -19,6 +24,18 @@ export interface EnemySpawnPoint {
 // with this automatically — no separate tuning needed.
 const SPAWN_SCALE = 0.7875
 const APPROACH_SCALE_GROWTH = 1.55
+// Hover mode only: once emerged, an enemy wanders persistently around its attack point
+// instead of freezing — two incommensurate sine/cosine frequencies (not a repeating circle),
+// same "don't lock into an obvious loop" idea as CombatScene.buildEscortVehicle's two
+// differently-timed tweens. Flatter vertically to respect the oblique-ground perspective —
+// ground troops shouldn't bob up/down much. Emerges (crosses from behind cover to in front
+// of it) slightly before shouldFire's own progress >= 0.18 gate, so it's visibly out from
+// behind cover by the time it starts shooting.
+const EMERGE_PROGRESS = 0.15
+const WANDER_RADIUS_X = 36
+const WANDER_RADIUS_Y = 20
+const WANDER_FREQ_X = (Math.PI * 2) / 4000
+const WANDER_FREQ_Y = (Math.PI * 2) / 5700
 
 /**
  * A single hostile contact closing on the helicopter. Owns its Phaser
@@ -34,6 +51,8 @@ export class Enemy {
 
   private readonly spawn: EnemySpawnPoint
   private readonly jitterSeed: number
+  // Hover mode only — elapsed ms since fully emerged, drives the post-emerge wander.
+  private wanderT = 0
   private nextFireAt: number
   private readonly sprite: Phaser.GameObjects.Sprite
   // The sprite's scale right after setDisplaySize() — the fixed reference
@@ -105,11 +124,35 @@ export class Enemy {
     this.healthBarFill.setVisible(damaged)
   }
 
-  /** Advances position/scale. Returns true once it has reached the helicopter. */
+  /** Advances position/scale. Returns true once it has reached the helicopter (flight mode
+   * only — hover-mode enemies never "impact"; they're removed only by takeDamage()). */
   update(deltaMs: number): boolean {
     this.progress = Phaser.Math.Clamp(this.progress + deltaMs / this.def.approachMs, 0, 1)
     const eased = Math.pow(this.progress, 1.4)
     const scale = SPAWN_SCALE + eased * APPROACH_SCALE_GROWTH
+
+    if (this.spawn.hoverMode) {
+      let x: number
+      let y: number
+      if (this.progress < 1) {
+        // Emerging from cover: same linear interpolation as flight mode — spawn is the
+        // cover object's own position (fully hidden behind it), target is a nearby
+        // "peek out" attack point.
+        x = Phaser.Math.Linear(this.spawn.x, this.spawn.targetX, eased)
+        y = Phaser.Math.Linear(this.spawn.y, this.spawn.targetY, eased)
+      } else {
+        // Fully emerged: persistent small-radius 2D wander around the attack point.
+        this.wanderT += deltaMs
+        x = this.spawn.targetX + Math.sin(this.jitterSeed + this.wanderT * WANDER_FREQ_X) * WANDER_RADIUS_X
+        y = this.spawn.targetY + Math.cos(this.jitterSeed * 1.3 + this.wanderT * WANDER_FREQ_Y) * WANDER_RADIUS_Y
+      }
+      this.container.setPosition(x, y)
+      this.container.setScale(scale)
+      const coverDepth = this.spawn.coverDepth ?? 0
+      this.container.setDepth(this.progress < EMERGE_PROGRESS ? coverDepth - 1 : coverDepth + 1)
+      return false
+    }
+
     const jitterX =
       this.def.jitter > 0 ? Math.sin(this.jitterSeed + this.progress * 14) * this.def.jitter : 0
 

@@ -33,6 +33,8 @@ const SECONDARY_OBJECTIVE_BONUS: Record<string, number> = {
   'operation-green-hell': 95,
   'operation-nightfall': 90,
   'operation-riverine-shield': 95,
+  'operation-iron-gate': 100,
+  'operation-last-redoubt': 110,
 }
 
 // Mirrors src/game/data/missions.ts: each mission is an array of waves,
@@ -68,6 +70,19 @@ const MISSION_WAVES: Record<string, string[][]> = {
     ['technical', 'gunner', 'technical', 'infantry', 'infantry'],
     ['rocket', 'gunner', 'rocket', 'technical', 'drone', 'drone'],
     ['armored', 'technical', 'rocket', 'gunner', 'gunner', 'commander'],
+  ],
+  'operation-iron-gate': [
+    ['infantry', 'infantry', 'infantry'],
+    ['infantry', 'gunner', 'infantry', 'gunner', 'drone'],
+    ['gunner', 'technical', 'rocket', 'drone', 'drone', 'technical'],
+    ['armored', 'rocket', 'gunner', 'technical', 'commander', 'drone', 'rocket'],
+  ],
+  'operation-last-redoubt': [
+    ['infantry', 'infantry', 'infantry'],
+    ['infantry', 'gunner', 'infantry', 'gunner', 'drone'],
+    ['gunner', 'technical', 'rocket', 'drone', 'technical', 'drone'],
+    ['armored', 'rocket', 'gunner', 'technical', 'rocket', 'armored', 'drone'],
+    ['commander', 'armored', 'rocket', 'rocket', 'gunner', 'gunner', 'technical'],
   ],
 }
 

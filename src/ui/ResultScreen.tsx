@@ -16,6 +16,10 @@ const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Easy', normal: 'No
 
 export function ResultScreen({ result, objective, stats, onReturnToBase }: ResultScreenProps) {
   const success = result.outcome === 'complete'
+  const failureSubtitle =
+    result.failureReason === 'objective-destroyed'
+      ? 'The objective was lost before the area could be secured.'
+      : 'Damage exceeded structural limits before extraction.'
 
   useEffect(() => {
     playUiSound(success ? 'mission_complete' : 'mission_failed')
@@ -28,9 +32,7 @@ export function ResultScreen({ result, objective, stats, onReturnToBase }: Resul
           {success ? 'Extraction Complete' : 'Aircraft Down'}
         </h2>
         <p className="result-subtitle">
-          {success
-            ? 'All contacts cleared. The bird made it back.'
-            : 'Damage exceeded structural limits before extraction.'}
+          {success ? 'All contacts cleared. The bird made it back.' : failureSubtitle}
         </p>
 
         <div className="result-stats">

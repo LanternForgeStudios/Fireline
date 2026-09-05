@@ -11,6 +11,7 @@ export const MISSIONS: MissionDef[] = [
     id: 'operation-firebreak',
     name: 'Operation Firebreak',
     type: 'Search & Destroy',
+    mode: 'flight',
     briefing:
       'Hostile forces are massing near the ridge line. Ride shotgun, clear each wave of contacts, and keep the bird in the air until the area is secured.',
     // Clear midday desert — the baseline look.
@@ -83,6 +84,7 @@ export const MISSIONS: MissionDef[] = [
     id: 'operation-steel-convoy',
     name: 'Operation Steel Convoy',
     type: 'Escort',
+    mode: 'flight',
     briefing:
       'A supply convoy is running the pass below. Recon drones will spot it long before the technicals reach it — keep the sky over the convoy clear from first contact to the far checkpoint.',
     // Hazy, dust-choked midday over the ruined outskirts of a city — the convoy's
@@ -143,6 +145,7 @@ export const MISSIONS: MissionDef[] = [
     id: 'operation-green-hell',
     name: 'Operation Green Hell',
     type: 'Rescue',
+    mode: 'flight',
     briefing:
       "A recon team went dark under the canopy six hours ago. Their beacon's still pinging, faint and getting fainter — get in low, punch through whatever's dug in between here and them, and get them out before the jungle finishes the job the enemy started.",
     // Humid late-afternoon haze under a warm, hazy sky — pairs with the
@@ -205,6 +208,7 @@ export const MISSIONS: MissionDef[] = [
     id: 'operation-nightfall',
     name: 'Operation Nightfall',
     type: 'Extraction',
+    mode: 'flight',
     briefing:
       "The ground team is exposed and the extraction window is short. This one's fast and ugly — hostiles are already converging by the time you're on station. Clear the LZ and hold it.",
     // Dusk over the water — the mission's namesake, and the LZ is a coastal
@@ -261,6 +265,7 @@ export const MISSIONS: MissionDef[] = [
     id: 'operation-riverine-shield',
     name: 'Operation Riverine Shield',
     type: 'Escort',
+    mode: 'flight',
     briefing:
       "A supply boat is running upriver in broad daylight — no cover, no surprises for either side. Stay over the water from the first contact to the far bank and don't let a single hit through.",
     // Bright open-water daylight — the second Escort mission also lands on
@@ -323,6 +328,159 @@ export const MISSIONS: MissionDef[] = [
           { enemyType: 'gunner', delayMs: 3600 },
           { enemyType: 'gunner', delayMs: 4200 },
           { enemyType: 'commander', delayMs: 5600 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'operation-iron-gate',
+    name: 'Operation Iron Gate',
+    type: 'Base Defense',
+    mode: 'hover',
+    briefing:
+      "Hold position over the relay station and keep it transmitting. Hostiles are dug in across the flat — they'll break cover in waves, not all at once. Stay on station, pick them off as they show themselves, and don't let the relay go dark.",
+    // Bright, static desert noon — no scrolling horizon to sell forward motion here, the
+    // helicopter is holding position the whole mission.
+    theme: {
+      landscape: 'desert',
+      skyTop: 0xf2c98a,
+      skyBottom: 0xe89a5a,
+      mountainTint: 0xffffff,
+      mountainAlpha: 0.7,
+      groundTint: 0xffffff,
+    },
+    coverObjects: [
+      { id: 'cover-0', variant: 'crates', x: 250, y: 380 },
+      { id: 'cover-1', variant: 'sandbags', x: 520, y: 460 },
+      { id: 'cover-2', variant: 'crates', x: 760, y: 340 },
+      { id: 'cover-3', variant: 'sandbags', x: 1020, y: 480 },
+    ],
+    defendObjective: { label: 'Comms Relay', maxHealth: 260, artVariant: 'relay' },
+    secondaryObjective: {
+      type: 'protect-objective',
+      label: 'Objective Secure — never let the Comms Relay take damage',
+      bonusCredits: 100,
+    },
+    waves: [
+      {
+        name: 'Perimeter Breach',
+        spawns: [
+          { enemyType: 'infantry', delayMs: 0 },
+          { enemyType: 'infantry', delayMs: 1400 },
+          { enemyType: 'infantry', delayMs: 3200 },
+        ],
+      },
+      {
+        name: 'Flanking Squad',
+        spawns: [
+          { enemyType: 'infantry', delayMs: 0 },
+          { enemyType: 'gunner', delayMs: 1000 },
+          { enemyType: 'infantry', delayMs: 2400 },
+          { enemyType: 'gunner', delayMs: 3600 },
+          { enemyType: 'drone', delayMs: 5000 },
+        ],
+      },
+      {
+        name: 'Armor Probe',
+        spawns: [
+          { enemyType: 'gunner', delayMs: 0 },
+          { enemyType: 'technical', delayMs: 1200 },
+          { enemyType: 'rocket', delayMs: 2800 },
+          { enemyType: 'drone', delayMs: 4000 },
+          { enemyType: 'drone', delayMs: 4600 },
+          { enemyType: 'technical', delayMs: 6000 },
+        ],
+      },
+      {
+        name: 'Final Assault',
+        spawns: [
+          { enemyType: 'armored', delayMs: 0 },
+          { enemyType: 'rocket', delayMs: 1500 },
+          { enemyType: 'gunner', delayMs: 2600 },
+          { enemyType: 'technical', delayMs: 3800 },
+          { enemyType: 'commander', delayMs: 5000 },
+          { enemyType: 'drone', delayMs: 5800 },
+          { enemyType: 'rocket', delayMs: 7000 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'operation-last-redoubt',
+    name: 'Operation Last Redoubt',
+    type: 'Base Defense',
+    mode: 'hover',
+    briefing:
+      "The checkpoint below is the last thing holding this district. Hold station over it — hostiles are using the ruins for cover and will keep coming until every last one of them is down. No relief is coming; the checkpoint stands or it doesn't.",
+    // Dusty, overcast city ruins — matches the "last stand in a ruined block" briefing.
+    theme: {
+      landscape: 'urban',
+      skyTop: 0xc9bfa8,
+      skyBottom: 0xa89878,
+      mountainTint: 0xb8ac96,
+      mountainAlpha: 0.6,
+      groundTint: 0xe0d4b8,
+    },
+    coverObjects: [
+      { id: 'cover-0', variant: 'rubble', x: 220, y: 460 },
+      { id: 'cover-1', variant: 'rocks', x: 480, y: 320 },
+      { id: 'cover-2', variant: 'rubble', x: 800, y: 460 },
+      { id: 'cover-3', variant: 'rocks', x: 1080, y: 340 },
+    ],
+    defendObjective: { label: 'Forward Checkpoint', maxHealth: 300, artVariant: 'checkpoint' },
+    secondaryObjective: { type: 'clean-sweep', label: 'Clean Sweep — destroy every contact', bonusCredits: 110 },
+    waves: [
+      {
+        name: 'Contact at the Wire',
+        spawns: [
+          { enemyType: 'infantry', delayMs: 0 },
+          { enemyType: 'infantry', delayMs: 1400 },
+          { enemyType: 'infantry', delayMs: 3000 },
+        ],
+      },
+      {
+        name: 'Street Fighters',
+        spawns: [
+          { enemyType: 'infantry', delayMs: 0 },
+          { enemyType: 'gunner', delayMs: 1000 },
+          { enemyType: 'infantry', delayMs: 2200 },
+          { enemyType: 'gunner', delayMs: 3400 },
+          { enemyType: 'drone', delayMs: 4600 },
+        ],
+      },
+      {
+        name: 'Armor in the Alleys',
+        spawns: [
+          { enemyType: 'gunner', delayMs: 0 },
+          { enemyType: 'technical', delayMs: 1200 },
+          { enemyType: 'rocket', delayMs: 2600 },
+          { enemyType: 'drone', delayMs: 3800 },
+          { enemyType: 'technical', delayMs: 5000 },
+          { enemyType: 'drone', delayMs: 5600 },
+        ],
+      },
+      {
+        name: 'Breach',
+        spawns: [
+          { enemyType: 'armored', delayMs: 0 },
+          { enemyType: 'rocket', delayMs: 1400 },
+          { enemyType: 'gunner', delayMs: 2600 },
+          { enemyType: 'technical', delayMs: 3800 },
+          { enemyType: 'rocket', delayMs: 5000 },
+          { enemyType: 'armored', delayMs: 6200 },
+          { enemyType: 'drone', delayMs: 6800 },
+        ],
+      },
+      {
+        name: 'Last Stand at the Redoubt',
+        spawns: [
+          { enemyType: 'commander', delayMs: 0 },
+          { enemyType: 'armored', delayMs: 1200 },
+          { enemyType: 'rocket', delayMs: 2400 },
+          { enemyType: 'rocket', delayMs: 3200 },
+          { enemyType: 'gunner', delayMs: 4400 },
+          { enemyType: 'gunner', delayMs: 5200 },
+          { enemyType: 'technical', delayMs: 6400 },
         ],
       },
     ],

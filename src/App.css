@@ -939,6 +939,16 @@
   text-align: right;
 }
 
+.hud-bottom-center {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1rem 1.4rem;
+  min-width: 12rem;
+  text-align: center;
+}
+
 .hud-zoom-indicator {
   position: absolute;
   top: 1rem;
@@ -998,6 +1008,14 @@
 }
 
 .hud-bar-fill.heat.critical {
+  background: #ef4444;
+}
+
+.hud-bar-fill.objective {
+  background: #4ea8f2;
+}
+
+.hud-bar-fill.objective.critical {
   background: #ef4444;
 }
 

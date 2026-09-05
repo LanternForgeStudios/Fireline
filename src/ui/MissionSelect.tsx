@@ -22,6 +22,8 @@ const MISSION_ICON: Record<string, string> = {
   'operation-green-hell': 'icon-mission-greenhell.png',
   'operation-nightfall': 'icon-mission-nightfall.png',
   'operation-riverine-shield': 'icon-mission-riverineshield.png',
+  'operation-iron-gate': 'icon-mission-irongate.png',
+  'operation-last-redoubt': 'icon-mission-lastredoubt.png',
 }
 const RANDOM_MISSION_ICON = 'icon-mission-random.png'
 
