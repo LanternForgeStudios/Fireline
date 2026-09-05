@@ -144,10 +144,17 @@ alongside them — worth double-checking their source/license before a public re
       PROGRESS.md) were re-derived against the rank curve's math for the *single-gun* economy, but
       still aren't validated against actual play — a generated mission's credits-per-clear varies a
       lot by luck of the draw, so whether the full climb feels like a reasonable arc or takes
-      forever needs real playtesting to know. Now compounded by the 3 new guns' unlock costs
-      (29,000cr total) and track curves, which are first-pass numbers shaped like the existing cost
-      curve but not re-solved against any idle-credit target — a full multi-gun economy rebalance
-      is a deliberate, explicit follow-up once real per-gun playtesting data exists.
+      forever needs real playtesting to know.
+- [x] **Multi-gun economy reviewed 2026-09-05, no change wanted.** Real numbers (all 7
+      hand-authored missions, perfect-clear average 3,566 XP / 454cr per mission): maxing just the
+      M134 (111,600cr) still lands at ~88% of the Colonel climb (~280 missions), matching the
+      single-gun tuning's 10-15%-idle target. Unlocking all 4 guns is cheap (29,000cr, ~64
+      missions), but fully upgrading a second gun on top of the M134 (69,800-92,700cr depending on
+      which) already pushes the total past what Colonel-level play generates, and maxing the whole
+      armory (335,900cr) would take ~740 missions — ~2.6x the Colonel climb. Owner confirmed this
+      is fine as-is: "master your main gun by Colonel, the other 3 guns' upgrade tracks are a
+      post-Colonel long-tail" is the intended shape, not a gap to close. Not revisiting unless
+      real playtesting surfaces it as a problem.
 - [ ] **Temporary cleanup pending**: `migrateToGunSystem` (Cloud Function), its client wrapper
       (`src/firebase/playerProfile.ts`), and the "Sync loadout to new gun system" button on the
       Settings screen exist only to backfill `ownedGuns`/`equippedGun` and refund+clear pre-gun-
