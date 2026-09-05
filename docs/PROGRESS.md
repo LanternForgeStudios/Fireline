@@ -53,6 +53,19 @@ on top.
 
 ## Log
 
+### 2026-09-04 (41) — Per-operation gun recommendations
+- Player-requested, small follow-up to the multi-weapon system: Mission Briefing now shows a
+  "Recommended Gun(s)" line. `recommendGuns()` (`src/game/data/gunRecommendation.ts`) maps each
+  mission's `type` (Search & Destroy/Escort/Extraction/Rescue/Base Defense/Reconnaissance) to a
+  gun pairing, then appends a note based on the secondary objective (no-damage vs clean-sweep).
+  Deliberately type-driven rather than tallying enemy composition — every hand-authored mission
+  escalates to armor/commander by its final wave regardless of type, so composition alone barely
+  differentiated recommendations when tried; type does. Works unchanged for procedural missions
+  since they draw `type` from the same `MissionDef['type']` union.
+- Verified live via Playwright against the Local Emulator Suite: all 5 hand-authored missions show
+  distinct, sensible recommendations (Firebreak → M134; Steel Convoy/Riverine Shield → SAW/M134;
+  Green Hell/Nightfall → M60/GAU-19), each with an objective-aware note.
+
 ### 2026-09-04 (40) — Multi-weapon system: recoil, 4 purchasable guns, zoom
 - Player-requested: heat should visibly punish sustained fire (not just gate at 100%), and "the
   gun" should become a roster of purchasable guns with different stats/upgrade tracks/feel,

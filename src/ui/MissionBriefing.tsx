@@ -1,5 +1,6 @@
 import { playUiSound } from '../audio/uiSound'
 import { getGunDef, gunUpgradeTracks } from '../game/data/guns'
+import { recommendGuns } from '../game/data/gunRecommendation'
 import type { MissionDef } from '../game/types'
 
 interface MissionBriefingProps {
@@ -24,6 +25,10 @@ function loadoutSummary(gunId: string, unlockedUpgrades: string[]): string {
 }
 
 export function MissionBriefing({ mission, equippedGun, unlockedUpgrades, onLaunch, onBack }: MissionBriefingProps) {
+  const recommendation = recommendGuns(mission)
+  const recommendedNames = recommendation.gunIds.map((id) => getGunDef(id).name)
+  const equippedMatches = recommendation.gunIds.includes(equippedGun)
+
   return (
     <div className="screen briefing-screen">
       <div className="briefing-content">
@@ -46,6 +51,14 @@ export function MissionBriefing({ mission, equippedGun, unlockedUpgrades, onLaun
           <span className="hud-label">Bonus Objective</span>
           <p className="briefing-text mission-list-blurb">
             {mission.secondaryObjective.label} — +{mission.secondaryObjective.bonusCredits} credits
+          </p>
+        </div>
+
+        <div className="briefing-objective">
+          <span className="hud-label">Recommended Gun{recommendedNames.length > 1 ? 's' : ''}</span>
+          <p className="briefing-text mission-list-blurb">
+            {recommendedNames.join(' or ')} — {recommendation.note}
+            {!equippedMatches && ' (currently flying with something else)'}
           </p>
         </div>
 
