@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:itch": "tsc -b && vite build --mode itch",
     "lint": "oxlint",
     "preview": "vite preview",
     "emulators": "firebase emulators:start --import=./.emulator-data --export-on-exit"
