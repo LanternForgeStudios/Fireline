@@ -235,12 +235,11 @@ alongside them — worth double-checking their source/license before a public re
       `missions.ts`.
 - [ ] Weather in the generator (`weatherThemes.ts`) is visual-mood only; making it gameplay-affecting
       (visibility, spawn rate) is a separate follow-up, still open.
-- [ ] Mobile touch controls (aim pads, zoom button) visually shift/can move off-screen while a
-      zoom-capable gun's camera zoom is active — they're regular world-space Phaser objects with
-      no zoom exemption. Cosmetic only (touches at the pad's original screen location still work
-      correctly, confirmed via CDP touch), but the player loses their visual reference for where
-      to tap. Worse now that mobile zoom is a toggle (2026-09-05) rather than a hold, since
-      zoom-while-moving/firing is the whole point of that change. Real fix is a second,
-      never-zoomed UI camera with the main camera set to `.ignore()` the touch-control objects —
-      a bigger change (touches many object-creation sites in `CombatScene.ts`) than a quick
-      follow-up; see PROGRESS.md entry 47.
+- [x] Mobile touch controls (aim pads, zoom button) visually shifting/moving off-screen while
+      camera zoom was active — fixed (2026-09-05) by wrapping each pad's ring/knob/label and the
+      zoom button's circle/label in a `Phaser.GameObjects.Container`, then counter-scaling/
+      -positioning each container every frame (`syncTouchUiForZoom()`) to cancel out the camera's
+      zoom transform, so they render at a fixed screen position/size regardless of zoom level.
+      Cheaper than a second `.ignore()`-based UI camera, which would've required registering every
+      dynamically-created world object in `CombatScene.ts` against its ignore list. See
+      PROGRESS.md entry 48.

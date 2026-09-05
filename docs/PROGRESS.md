@@ -53,6 +53,24 @@ on top.
 
 ## Log
 
+### 2026-09-05 (48) — Fixed touch controls visually shifting while zoomed
+
+- Fixed the cosmetic bug flagged in entry (47): touch pads and the zoom button no longer
+  shift/shrink or move off-screen while a zoom-capable gun's camera zoom is active.
+- Each pad's ring/knob/label, and the zoom button's circle/label, are now grouped into a
+  `Phaser.GameObjects.Container` (local-origin children). A new `syncTouchUiForZoom()`, called
+  every frame from `update()`, counter-scales/-positions each container (`scale = 1/zoom`,
+  `position = center + (nominal - center)/zoom`) so the camera's own zoom transform cancels it
+  back out, leaving the rendered screen position/size fixed regardless of zoom level.
+- Chose this over a second `.ignore()`-based UI camera — that would've required registering every
+  dynamically-created world object in `CombatScene.ts` (enemies, sparks, tracers, dust, score
+  popups) against a camera ignore-list, a much larger and riskier change for the same result.
+  The crosshair is deliberately untouched — it's supposed to track the zoomed world, not stay fixed.
+- Verified live via CDP multi-touch against the Local Emulator Suite: zoom toggled on/off, screen
+  screenshot confirmed pads/zoom button render at their correct fixed on-screen position/size, and
+  move/drag/fire all still function correctly while zoomed.
+- `src/game/scenes/CombatScene.ts` only. Frontend-only, no backend changes.
+
 ### 2026-09-05 (47) — Pad labels + mobile zoom becomes a toggle
 - Follow-up to entry 46. Two player requests:
   1. **Pad labels**: idle pads (before either is touched) now read "FIRE/MOVE" — naming both

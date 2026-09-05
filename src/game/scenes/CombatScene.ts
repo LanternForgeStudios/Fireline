@@ -158,6 +158,10 @@ const ENEMY_PROJECTILE_MAX_MS = 650
 type PadSide = 'left' | 'right'
 interface TouchPad {
   center: { x: number; y: number }
+  // Holds ring/knob/label at local (0,0)-relative positions — see syncTouchUiForZoom, which
+  // repositions/rescales this container every frame to counter the camera's current zoom, so
+  // the pad stays visually fixed on screen regardless of a zoom-capable gun's zoom level.
+  container: Phaser.GameObjects.Container
   ring: Phaser.GameObjects.Arc
   knob: Phaser.GameObjects.Arc
   label: Phaser.GameObjects.Text
@@ -246,6 +250,8 @@ export class CombatScene extends Phaser.Scene {
   // across the two aim pads), hence the input-neutral name rather than "zoomHeld".
   private zoomActive = false
   private zoomButton?: Phaser.GameObjects.Arc
+  // See TouchPad.container's comment — same zoom-compensation treatment.
+  private zoomButtonContainer?: Phaser.GameObjects.Container
   private ground!: Phaser.GameObjects.TileSprite
   private groundTextureKey!: string
   private mountainTextureKey!: string
@@ -887,27 +893,27 @@ export class CombatScene extends Phaser.Scene {
     const center = { x, y: TOUCH_PAD_Y }
     const visible = supportsTouch()
 
-    const ring = this.add.circle(center.x, center.y, TOUCH_PAD_RADIUS, 0xffffff, 0.08)
+    // Children are positioned local-to-(0,0) — the container itself carries them to `center`
+    // and is what syncTouchUiForZoom repositions/rescales every frame, not these directly.
+    const ring = this.add.circle(0, 0, TOUCH_PAD_RADIUS, 0xffffff, 0.08)
     ring.setStrokeStyle(2, 0xffffff, 0.35)
-    ring.setDepth(2100)
-    ring.setVisible(visible)
-    const knob = this.add.circle(center.x, center.y, 26, 0xffffff, 0.25)
-    knob.setDepth(2101)
-    knob.setVisible(visible)
+    const knob = this.add.circle(0, 0, 26, 0xffffff, 0.25)
 
     // Starts idle — either pad could become move or fire depending on which is touched
     // first, so the label says both until a role is actually assigned (see setPadRole).
-    const label = this.add.text(center.x, center.y + TOUCH_PAD_RADIUS + 16, 'FIRE/MOVE', {
+    const label = this.add.text(0, TOUCH_PAD_RADIUS + 16, 'FIRE/MOVE', {
       fontFamily: 'monospace',
       fontSize: '13px',
       color: '#ffffff',
     })
     label.setOrigin(0.5, 0)
     label.setAlpha(0.35)
-    label.setDepth(2100)
-    label.setVisible(visible)
 
-    return { center, ring, knob, label }
+    const container = this.add.container(center.x, center.y, [ring, knob, label])
+    container.setDepth(2100)
+    container.setVisible(visible)
+
+    return { center, container, ring, knob, label }
   }
 
   /** Switches one pad's visuals between the three states a touch engagement cycles through:
@@ -929,7 +935,7 @@ export class CombatScene extends Phaser.Scene {
     } else {
       pad.ring.setStrokeStyle(2, 0xffffff, 0.35)
       pad.ring.setFillStyle(0xffffff, 0.08)
-      pad.knob.setPosition(pad.center.x, pad.center.y)
+      pad.knob.setPosition(0, 0) // local to the container, not pad.center — see buildPadSide
       pad.label.setText('FIRE/MOVE')
       pad.label.setColor('#ffffff')
     }
@@ -948,21 +954,24 @@ export class CombatScene extends Phaser.Scene {
    * down while also firing. Tap once to zoom in, tap again to zoom back out. */
   private buildZoomButton() {
     const visible = supportsTouch()
-    const button = this.add.circle(ZOOM_BUTTON_X, ZOOM_BUTTON_Y, ZOOM_BUTTON_RADIUS, 0xffffff, 0.1)
+    // Local-origin children, same container-based zoom-compensation treatment as the aim
+    // pads — see TouchPad.container's comment and syncTouchUiForZoom.
+    const button = this.add.circle(0, 0, ZOOM_BUTTON_RADIUS, 0xffffff, 0.1)
     button.setStrokeStyle(2, 0xf2c14e, 0.5)
-    button.setDepth(2100)
-    button.setVisible(visible)
 
-    const label = this.add.text(ZOOM_BUTTON_X, ZOOM_BUTTON_Y, 'ZOOM', {
+    const label = this.add.text(0, 0, 'ZOOM', {
       fontFamily: 'monospace',
       fontSize: '13px',
       color: '#f2c14e',
     })
     label.setOrigin(0.5, 0.5)
-    label.setDepth(2101)
-    label.setVisible(visible)
+
+    const container = this.add.container(ZOOM_BUTTON_X, ZOOM_BUTTON_Y, [button, label])
+    container.setDepth(2100)
+    container.setVisible(visible)
 
     this.zoomButton = button
+    this.zoomButtonContainer = container
   }
 
   /** Reflects the current on/off zoom state on the mobile button, regardless of whether it
@@ -972,6 +981,31 @@ export class CombatScene extends Phaser.Scene {
     if (!this.zoomButton) return
     this.zoomButton.setFillStyle(0xf2c14e, active ? 0.35 : 0.1)
     this.zoomButton.setStrokeStyle(2, 0xf2c14e, active ? 0.9 : 0.5)
+  }
+
+  /** Counter-scales/repositions the touch-control containers (aim pads, zoom button) so they
+   * stay visually fixed on screen regardless of the camera's current zoom — these are UI
+   * controls a thumb rests on, not world elements, and shouldn't visually drift or resize just
+   * because a zoom-capable gun happens to be zoomed in. Works by pre-dividing each container's
+   * position (relative to the camera's fixed center) and scale by the current zoom, so the
+   * camera's own zoom multiplication exactly cancels out — the container ends up rendered
+   * exactly where/how big it would be at zoom 1, at any zoom level. (The crosshair is
+   * deliberately NOT treated this way — it's supposed to shift with the zoomed world, like a
+   * real scope reticle tracking the same target as the world magnifies around it; see
+   * updateCrosshairFromMouse's getWorldPoint conversion, which is the correct handling for
+   * that case.) A no-op at zoom 1 (identity transform), so this is safe to call every frame
+   * unconditionally rather than gating it on whether zoom is currently active. */
+  private syncTouchUiForZoom() {
+    const zoom = this.cameras.main.zoom
+    const centerX = WORLD_WIDTH / 2
+    const centerY = WORLD_HEIGHT / 2
+    const compensate = (container: Phaser.GameObjects.Container, nominalX: number, nominalY: number) => {
+      container.setScale(1 / zoom)
+      container.setPosition(centerX + (nominalX - centerX) / zoom, centerY + (nominalY - centerY) / zoom)
+    }
+    compensate(this.pads.left.container, this.pads.left.center.x, this.pads.left.center.y)
+    compensate(this.pads.right.container, this.pads.right.center.x, this.pads.right.center.y)
+    if (this.zoomButtonContainer) compensate(this.zoomButtonContainer, ZOOM_BUTTON_X, ZOOM_BUTTON_Y)
   }
 
   private hitsZoomButton(pointer: Phaser.Input.Pointer): boolean {
@@ -1070,7 +1104,11 @@ export class CombatScene extends Phaser.Scene {
     this.crosshairPos.y = Phaser.Math.Linear(this.crosshairPos.y, nearest.container.y, AIM_ASSIST_STRENGTH)
   }
 
-  /** Knob just shows "which way is the finger currently offset" — purely visual, doesn't drive aim. */
+  /** Knob just shows "which way is the finger currently offset" — purely visual, doesn't drive
+   * aim. dx/dy compare the raw pointer against the pad's nominal (unzoomed) center, same as
+   * the activation-radius hit-test — correct regardless of zoom since neither side of that
+   * comparison is ever actually rendered-and-zoomed. The knob's own position is set local to
+   * the container (see buildPadSide), which is what actually gets zoom-compensated. */
   private updatePadKnobVisual(pointer: Phaser.Input.Pointer) {
     if (!this.moveSide) return
     const pad = this.pads[this.moveSide]
@@ -1078,7 +1116,7 @@ export class CombatScene extends Phaser.Scene {
     const dy = pointer.y - pad.center.y
     const dist = Math.max(1, Math.hypot(dx, dy))
     const knobDist = Math.min(dist, TOUCH_PAD_RADIUS)
-    pad.knob.setPosition(pad.center.x + (dx / dist) * knobDist, pad.center.y + (dy / dist) * knobDist)
+    pad.knob.setPosition((dx / dist) * knobDist, (dy / dist) * knobDist)
   }
 
   /** Ends the whole touch-control engagement — releasing movement stops firing too (even if
@@ -1229,6 +1267,7 @@ export class CombatScene extends Phaser.Scene {
     this.updateAimWithRecoil()
     this.cameras.main.setZoom(this.zoomActive ? this.equippedGunDef.zoom.factor : 1)
     this.setZoomButtonVisual(this.zoomActive)
+    this.syncTouchUiForZoom()
     this.updateWaveSpawning(delta)
     this.updateEnemies(delta)
     this.updateDustKickup(delta)
