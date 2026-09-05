@@ -1225,7 +1225,9 @@ export class CombatScene extends Phaser.Scene {
     const y = Phaser.Math.Between(HORIZON_Y_RANGE[0], HORIZON_Y_RANGE[1])
     const targetX = Phaser.Math.Clamp(x + Phaser.Math.Between(-140, 140), 80, WORLD_WIDTH - 80)
     const targetY = Phaser.Math.Between(IMPACT_Y_RANGE[0], IMPACT_Y_RANGE[1])
-    return { x, y, targetX, targetY }
+    // HealthPickup also uses this spawn point but never reads mobileFlightBoost (it has no
+    // scale-curve of its own to boost), so this is inert for pickups.
+    return { x, y, targetX, targetY, mobileFlightBoost: supportsTouch() }
   }
 
   /** The enemy's spawn point is literally the cover object's own position (perfectly

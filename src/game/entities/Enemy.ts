@@ -12,6 +12,9 @@ export interface EnemySpawnPoint {
   /** Hover missions only — the cover object's own Phaser depth, so the enemy can render
    * behind it pre-emerge and in front of it once out. */
   coverDepth?: number
+  /** Flight mode, touch devices only — see MOBILE_FLIGHT_SCALE_MULTIPLIER and
+   * CombatScene.flightSpawnPoint. */
+  mobileFlightBoost?: boolean
 }
 
 // Spawn-time scale, and how much scale grows on top of that by the time an
@@ -41,6 +44,12 @@ const WANDER_FREQ_Y = (Math.PI * 2) / 5700
 // of the shared spawn/approach scale curve (rather than changing that curve, which flight
 // mode also relies on) keeps hover enemies clearly visible/tappable on a small screen.
 const HOVER_SCALE_MULTIPLIER = 1.3
+// Player-reported: flight-mission contacts read too small on mobile too — same fix as hover's
+// multiplier above, applied on top of the shared curve rather than changing SPAWN_SCALE/
+// APPROACH_SCALE_GROWTH directly (that would also grow desktop, which wasn't reported as an
+// issue). Only set on spawn points CombatScene.flightSpawnPoint builds for a touch device, so
+// both the starting size and the fully-grown impact size scale up together on mobile only.
+const MOBILE_FLIGHT_SCALE_MULTIPLIER = 1.25
 
 /**
  * A single hostile contact closing on the helicopter. Owns its Phaser
@@ -164,7 +173,7 @@ export class Enemy {
     const x = Phaser.Math.Linear(this.spawn.x, this.spawn.targetX, eased) + jitterX
     const y = Phaser.Math.Linear(this.spawn.y, this.spawn.targetY, eased)
     this.container.setPosition(x, y)
-    this.container.setScale(scale)
+    this.container.setScale(this.spawn.mobileFlightBoost ? scale * MOBILE_FLIGHT_SCALE_MULTIPLIER : scale)
     this.container.setDepth(Math.floor(this.progress * 1000))
 
     return this.progress >= 1

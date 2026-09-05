@@ -53,6 +53,26 @@ on top.
 
 ## Log
 
+### 2026-09-05 (50) — Flight-mission enemies 25% bigger on mobile
+
+- Flight-mode enemies (approaching in a straight line, as opposed to hover mode's cover-emerge/
+  wander) now render 25% larger on touch devices, both at spawn and at their fully-grown impact
+  size — `Enemy.ts`'s new `MOBILE_FLIGHT_SCALE_MULTIPLIER`, applied as a flat multiplier on top
+  of the existing spawn/approach scale curve rather than changing `SPAWN_SCALE`/
+  `APPROACH_SCALE_GROWTH` directly (which would also grow desktop). Same idea as hover mode's
+  existing `HOVER_SCALE_MULTIPLIER`, except gated to touch devices only, per this request —
+  hover's multiplier was applied unconditionally to all devices when it shipped.
+  `containsPoint()`'s hit radius grows in step automatically since it reads `container.scale`
+  directly, same as every previous scale-tuning pass here.
+- New `mobileFlightBoost?: boolean` field on `EnemySpawnPoint`, set by
+  `CombatScene.flightSpawnPoint()` from the existing `supportsTouch()` check. Hover missions are
+  untouched — `hoverSpawnPoint()` never sets it, and the hover branch in `Enemy.update()` doesn't
+  read it at all.
+- Verified live: sampled enemy `container.scale` against the known scale-curve formula across an
+  entire mission on both a touch-emulated context and a plain desktop context — touch averaged
+  exactly 1.25x the expected curve value across 40 samples spanning the full progress range,
+  desktop averaged exactly 1.0x across 36 samples.
+
 ### 2026-09-05 (49) — Health pickups: crates + a random kill-heal chance
 
 - New `HealthPickup` entity (`src/game/entities/HealthPickup.ts`) — a shootable health crate that
