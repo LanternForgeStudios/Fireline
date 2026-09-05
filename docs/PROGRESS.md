@@ -53,6 +53,41 @@ on top.
 
 ## Log
 
+### 2026-09-05 (46) — Mobile controls: move-only + toggle-to-fire, and a real multi-touch bug
+- Player-requested redesign of the touch aim pads: previously, touching either pad both aimed
+  (drag) and fired (just by holding it) — the other pad sat unused. Now: whichever side is
+  touched first becomes the move pad for that engagement (drag only, never fires by itself),
+  and the OTHER side immediately relabels to a plain hold-to-fire button ("FIRE", distinct
+  ring color) for as long as movement stays engaged. Releasing the fire thumb alone just stops
+  firing — movement stays active. Releasing the move thumb ends the whole engagement: firing
+  force-stops even if the fire thumb is still down, and both pads reset to idle "AIM" circles
+  until either is touched again. New `CombatScene.engageMove`/`engageFire`/`releaseMove`/
+  `releaseFire`/`setPadRole`/`setFirePressed`, replacing the old single-`activePad` model.
+- **Found a real, pre-existing multi-touch bug while building this**: Phaser's game config
+  never set `input.activePointers` (default 1, meaning only 2 total Pointer slots: mouse +
+  one touch). A second simultaneous touch's native `pointerdown` fires correctly at the DOM
+  level (confirmed via a raw window-level listener) but Phaser's InputManager silently drops
+  it for lack of an allocated Pointer object — `CombatScene`'s own `pointerdown` handler never
+  saw it at all. This means the existing "hold zoom with one thumb while dragging the aim pad
+  with the other" feature could never have worked with genuine simultaneous touches on a real
+  device — it was only ever verified with a desktop right-click-hold. Fixed by setting
+  `input: { activePointers: 3 }` in `src/game/config.ts` (covers move+fire, plus zoom-hold on
+  top of that for zoom-capable guns).
+- **Verification note**: this bug was invisible to `page.evaluate()`-dispatched synthetic
+  `PointerEvent`s too — those reached the DOM (confirmed the same way) but Phaser's InputManager
+  ignored them regardless of `activePointers`, likely because they're untrusted synthetic events
+  rather than genuine input. Real verification required Chrome DevTools Protocol's
+  `Input.dispatchTouchEvent` (via `page.context().newCDPSession(page)`), which generates
+  trusted-equivalent touch input Phaser's InputManager actually processes — worth remembering
+  for any future touch-input verification in this project, since neither `page.touchscreen.tap()`
+  (single-touch only) nor manual `dispatchEvent` are sufficient for multi-touch checks.
+- Verified live via CDP multi-touch against the Local Emulator Suite: touching either pad first
+  correctly claims it for movement and relabels the other to FIRE; adding a second touch on the
+  fire side starts real firing (weapon heat rises); releasing just the fire touch stops firing
+  while movement stays engaged; releasing the move touch force-stops firing and resets both
+  pads to idle even with the fire thumb still down; symmetric in both directions (right-first
+  works identically to left-first).
+
 ### 2026-09-05 (45) — Hover missions: widened the placement zone back out
 - Follow-up to entry 44: player confirmed the bigger scale reads well on mobile, but entry 44's
   600×160 placement band (tightened specifically to make things read bigger) crammed cover

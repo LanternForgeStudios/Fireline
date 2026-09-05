@@ -24,9 +24,9 @@ import { WORLD_WIDTH, WORLD_HEIGHT } from '../worldConstants'
 
 export { WORLD_WIDTH, WORLD_HEIGHT }
 
-/** The touch pads are functionally touch-only regardless (engagePad only fires for touch
- * pointers) — this just decides whether to show them, so a mouse/trackpad player on desktop
- * doesn't see two dead thumbsticks over the combat view. */
+/** The touch pads are functionally touch-only regardless (engageMove/engageFire only fire for
+ * touch pointers) — this just decides whether to show them, so a mouse/trackpad player on
+ * desktop doesn't see two dead thumbsticks over the combat view. */
 function supportsTouch(): boolean {
   return typeof window !== 'undefined' && (('ontouchstart' in window) || navigator.maxTouchPoints > 0)
 }
@@ -113,11 +113,13 @@ const GUN_ORIGIN = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT - 24 }
 // crosshair as long as you hold any offset, which fights fine placement.
 // Delta tracking stops the instant the finger stops, same as a real mouse.
 //
-// Both a left and a right pad exist simultaneously (no handedness setting
-// — the player just uses whichever thumb suits the target) but only one is
-// live at a time: touching one while the other is already engaged is
-// ignored outright, so there's no way to drive both at once. Releasing the
-// active one frees the other up again.
+// Both a left and a right pad exist simultaneously (no handedness setting — the player just
+// uses whichever thumb suits them) but they're not independent thumbsticks: whichever side is
+// touched first becomes the move/aim pad for as long as it's held, and the OTHER side doubles
+// as a hold-to-fire button for that same span — movement alone never fires, and firing alone
+// never moves the crosshair. Releasing the move side ends the whole engagement (stops firing
+// too, even if the fire thumb is still down) and resets both back to idle circles until either
+// is touched again. See engageMove/engageFire/releaseMove/releaseFire.
 const TOUCH_PAD_Y = WORLD_HEIGHT - 150
 const TOUCH_PAD_MARGIN_X = 150
 const TOUCH_PAD_RADIUS = 80
@@ -158,7 +160,11 @@ interface TouchPad {
   center: { x: number; y: number }
   ring: Phaser.GameObjects.Arc
   knob: Phaser.GameObjects.Arc
+  label: Phaser.GameObjects.Text
 }
+// The pad a player isn't using to move doubles as a hold-to-fire button — a distinct color
+// from the idle/move "AIM" styling so it visibly reads as a different control once toggled.
+const FIRE_BUTTON_COLOR = 0xfff3c4
 
 // Difficulty scales enemy toughness, how hard/often they hit back, and the
 // player's own aircraft health; spawn timing and enemy variety stay the same
@@ -256,12 +262,17 @@ export class CombatScene extends Phaser.Scene {
   private combatMusicSource: AudioBufferSourceNode | null = null
 
   private pads!: Record<PadSide, TouchPad>
-  private activePad: PadSide | null = null
-  private padPointerId: number | null = null
-  // Last raw touch position for the active pad pointer — the *movement*
-  // between this and the current touch each frame is what drives the
-  // crosshair, not the position itself. null while no pad is engaged.
-  private padLastPos: { x: number; y: number } | null = null
+  // Whichever side the player is currently using to move/aim — the other side doubles as a
+  // fire button for the duration of this engagement. null when neither pad is touched, at
+  // which point both show as plain idle circles until either one is touched again.
+  private moveSide: PadSide | null = null
+  private movePointerId: number | null = null
+  // Last raw touch position for the move pointer — the *movement* between this and the
+  // current touch each frame is what drives the crosshair, not the position itself. null
+  // while no pad is engaged.
+  private movePadLastPos: { x: number; y: number } | null = null
+  // The touch pointer currently holding the fire button (the side opposite moveSide), if any.
+  private fireTouchPointerId: number | null = null
 
   private health = MAX_HEALTH
   private maxHealth = MAX_HEALTH
@@ -860,9 +871,9 @@ export class CombatScene extends Phaser.Scene {
     this.crosshair.setDepth(2000)
   }
 
-  /** Always built (touch-only functionally — engagePad only fires for touch pointers — but the
-   * visuals are hidden on devices with no touch support so a mouse/trackpad player doesn't see
-   * two dead thumbsticks sitting over their screen). */
+  /** Always built (touch-only functionally — engageMove/engageFire only fire for touch
+   * pointers — but the visuals are hidden on devices with no touch support so a mouse/
+   * trackpad player doesn't see two dead thumbsticks sitting over their screen). */
   private buildTouchPad() {
     this.pads = {
       left: this.buildPadSide(TOUCH_PAD_MARGIN_X),
@@ -892,7 +903,39 @@ export class CombatScene extends Phaser.Scene {
     label.setDepth(2100)
     label.setVisible(visible)
 
-    return { center, ring, knob }
+    return { center, ring, knob, label }
+  }
+
+  /** Switches one pad's visuals between the three states a touch engagement cycles through:
+   * idle (neither pad touched), move (this side is currently being dragged to aim — never
+   * fires by itself), and fire (the side opposite whichever is moving, a plain hold-to-fire
+   * button). */
+  private setPadRole(side: PadSide, role: 'idle' | 'move' | 'fire') {
+    const pad = this.pads[side]
+    if (role === 'move') {
+      pad.ring.setStrokeStyle(2, FIRE_BUTTON_COLOR, 0.6)
+      pad.ring.setFillStyle(0xffffff, 0.08)
+      pad.label.setText('AIM')
+      pad.label.setColor('#ffffff')
+    } else if (role === 'fire') {
+      pad.ring.setStrokeStyle(2, FIRE_BUTTON_COLOR, 0.7)
+      pad.ring.setFillStyle(0xffffff, 0.08)
+      pad.label.setText('FIRE')
+      pad.label.setColor('#fff3c4')
+    } else {
+      pad.ring.setStrokeStyle(2, 0xffffff, 0.35)
+      pad.ring.setFillStyle(0xffffff, 0.08)
+      pad.knob.setPosition(pad.center.x, pad.center.y)
+      pad.label.setText('AIM')
+      pad.label.setColor('#ffffff')
+    }
+  }
+
+  /** Brightens the fire pad's ring while actually held, for tactile confirmation a tap
+   * registered — separate from setPadRole('fire') so it can layer on top without needing to
+   * re-set the label/stroke color each press. */
+  private setFirePressed(side: PadSide, pressed: boolean) {
+    this.pads[side].ring.setFillStyle(0xffffff, pressed ? 0.22 : 0.08)
   }
 
   /** Mobile hold-to-zoom button — only built when the equipped gun has zoom enabled.
@@ -935,33 +978,49 @@ export class CombatScene extends Phaser.Scene {
     this.crosshairPos.y = Phaser.Math.Clamp(world.y, 0, WORLD_HEIGHT)
   }
 
-  /** Only one pad can be live at a time — if either is already engaged, a touch
-   * anywhere (including on the other pad) is ignored until it's released. */
-  private engagePad(pointer: Phaser.Input.Pointer) {
-    if (this.activePad !== null) return false
+  /** Only reachable while no side is engaged yet — the first touch on either pad claims that
+   * side for movement (aim only; holding it alone never fires) and turns the OTHER pad into a
+   * fire button for as long as this movement engagement lasts. */
+  private engageMove(pointer: Phaser.Input.Pointer): boolean {
+    if (this.moveSide !== null) return false
 
     for (const side of ['left', 'right'] as const) {
       const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.pads[side].center.x, this.pads[side].center.y)
       if (dist > TOUCH_PAD_ACTIVATION_RADIUS) continue
 
-      this.activePad = side
-      this.padPointerId = pointer.id
-      this.padLastPos = { x: pointer.x, y: pointer.y }
-      this.pads[side].ring.setStrokeStyle(2, 0xfff3c4, 0.6)
+      this.moveSide = side
+      this.movePointerId = pointer.id
+      this.movePadLastPos = { x: pointer.x, y: pointer.y }
+      this.setPadRole(side, 'move')
+      this.setPadRole(side === 'left' ? 'right' : 'left', 'fire')
       this.updatePadKnobVisual(pointer)
-      this.weapon.setTrigger(true)
       return true
     }
     return false
   }
 
+  /** Only reachable once movement is already engaged — a touch on the fire-labeled pad (the
+   * side opposite moveSide) fires for as long as it's held, same trigger the mouse/desktop
+   * path uses. Doesn't aim; the move pad already owns that. */
+  private engageFire(pointer: Phaser.Input.Pointer): boolean {
+    if (this.moveSide === null || this.fireTouchPointerId !== null) return false
+    const fireSide = this.moveSide === 'left' ? 'right' : 'left'
+    const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.pads[fireSide].center.x, this.pads[fireSide].center.y)
+    if (dist > TOUCH_PAD_ACTIVATION_RADIUS) return false
+
+    this.fireTouchPointerId = pointer.id
+    this.setFirePressed(fireSide, true)
+    this.weapon.setTrigger(true)
+    return true
+  }
+
   /** Trackpad-style: crosshair moves by the finger's *movement* since last frame, not its
    * absolute position — stops the instant the finger stops, unlike a deflection-based stick. */
   private updatePadDrag(pointer: Phaser.Input.Pointer) {
-    if (!this.padLastPos) return
-    const deltaX = pointer.x - this.padLastPos.x
-    const deltaY = pointer.y - this.padLastPos.y
-    this.padLastPos = { x: pointer.x, y: pointer.y }
+    if (!this.movePadLastPos) return
+    const deltaX = pointer.x - this.movePadLastPos.x
+    const deltaY = pointer.y - this.movePadLastPos.y
+    this.movePadLastPos = { x: pointer.x, y: pointer.y }
 
     // A fixed finger-pixel movement maps to a smaller world-space movement
     // while zoomed in, matching the reduced sensitivity a magnified scope
@@ -1000,8 +1059,8 @@ export class CombatScene extends Phaser.Scene {
 
   /** Knob just shows "which way is the finger currently offset" — purely visual, doesn't drive aim. */
   private updatePadKnobVisual(pointer: Phaser.Input.Pointer) {
-    if (!this.activePad) return
-    const pad = this.pads[this.activePad]
+    if (!this.moveSide) return
+    const pad = this.pads[this.moveSide]
     const dx = pointer.x - pad.center.x
     const dy = pointer.y - pad.center.y
     const dist = Math.max(1, Math.hypot(dx, dy))
@@ -1009,15 +1068,28 @@ export class CombatScene extends Phaser.Scene {
     pad.knob.setPosition(pad.center.x + (dx / dist) * knobDist, pad.center.y + (dy / dist) * knobDist)
   }
 
-  private releasePad() {
-    if (this.activePad) {
-      const pad = this.pads[this.activePad]
-      pad.ring.setStrokeStyle(2, 0xffffff, 0.35)
-      pad.knob.setPosition(pad.center.x, pad.center.y)
+  /** Ends the whole touch-control engagement — releasing movement stops firing too (even if
+   * the fire thumb is still physically down) and resets both pads back to idle circles, per
+   * the design: only a fresh touch on either pad re-establishes move/fire roles. */
+  private releaseMove() {
+    if (this.moveSide) {
+      this.setPadRole(this.moveSide, 'idle')
+      this.setPadRole(this.moveSide === 'left' ? 'right' : 'left', 'idle')
     }
-    this.activePad = null
-    this.padPointerId = null
-    this.padLastPos = null
+    this.moveSide = null
+    this.movePointerId = null
+    this.movePadLastPos = null
+    this.fireTouchPointerId = null
+    this.weapon.setTrigger(false)
+  }
+
+  /** Releasing just the fire thumb stops firing but leaves movement (and the fire pad's
+   * labeling) engaged — only releasing the move side ends the engagement entirely. */
+  private releaseFire() {
+    if (this.moveSide !== null) {
+      this.setFirePressed(this.moveSide === 'left' ? 'right' : 'left', false)
+    }
+    this.fireTouchPointerId = null
     this.weapon.setTrigger(false)
   }
 
@@ -1029,7 +1101,8 @@ export class CombatScene extends Phaser.Scene {
           this.zoomTouchPointerId = pointer.id
           return
         }
-        this.engagePad(pointer)
+        if (this.moveSide === null) this.engageMove(pointer)
+        else this.engageFire(pointer)
         return
       }
       if (this.equippedGunDef.zoom.enabled && pointer.rightButtonDown()) {
@@ -1041,7 +1114,7 @@ export class CombatScene extends Phaser.Scene {
     })
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       if (pointer.wasTouch) {
-        if (pointer.id === this.padPointerId) this.updatePadDrag(pointer)
+        if (pointer.id === this.movePointerId) this.updatePadDrag(pointer)
         return
       }
       this.updateCrosshairFromMouse(pointer)
@@ -1053,7 +1126,11 @@ export class CombatScene extends Phaser.Scene {
           this.zoomTouchPointerId = null
           return
         }
-        if (pointer.id === this.padPointerId) this.releasePad()
+        if (pointer.id === this.movePointerId) {
+          this.releaseMove()
+        } else if (pointer.id === this.fireTouchPointerId) {
+          this.releaseFire()
+        }
         return
       }
       if (pointer.button === 2) {
@@ -1068,7 +1145,8 @@ export class CombatScene extends Phaser.Scene {
           this.zoomHeld = false
           this.zoomTouchPointerId = null
         }
-        if (pointer.id === this.padPointerId) this.releasePad()
+        if (pointer.id === this.movePointerId) this.releaseMove()
+        else if (pointer.id === this.fireTouchPointerId) this.releaseFire()
         return
       }
       this.zoomHeld = false
