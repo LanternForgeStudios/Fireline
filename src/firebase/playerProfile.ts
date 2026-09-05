@@ -105,6 +105,10 @@ const resetProgressFn = httpsCallable(functions, 'resetProgress')
 const purchaseUpgradeFn = httpsCallable(functions, 'purchaseUpgrade')
 const purchaseGunFn = httpsCallable(functions, 'purchaseGun')
 const equipGunFn = httpsCallable(functions, 'equipGun')
+// TEMPORARY — see functions/src/index.ts's migrateToGunSystem doc comment.
+// Remove this wrapper, its Settings-screen button, and the Cloud Function
+// itself once the one production account that needs it has run it.
+const migrateToGunSystemFn = httpsCallable(functions, 'migrateToGunSystem')
 
 /** Records a finished mission; the Cloud Function derives uid from the caller's auth token.
  * Returns the operation's updated lifetime stats (completions/highestDifficulty) so the
@@ -148,4 +152,10 @@ export async function purchaseGun(gunId: string): Promise<void> {
 /** Equips an already-owned gun. Free and instant — no confirmation needed client-side. */
 export async function equipGun(gunId: string): Promise<void> {
   await equipGunFn({ gunId })
+}
+
+/** TEMPORARY — see migrateToGunSystemFn above. */
+export async function migrateToGunSystem(): Promise<{ backfilledGuns: boolean; refunded: number; clearedUpgrades: number }> {
+  const response = await migrateToGunSystemFn()
+  return response.data as { backfilledGuns: boolean; refunded: number; clearedUpgrades: number }
 }

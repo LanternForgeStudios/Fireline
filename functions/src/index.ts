@@ -230,6 +230,60 @@ export const purchaseUpgrade = onCall<{ upgradeId: string }>({ enforceAppCheck: 
 })
 
 /**
+ * TEMPORARY, one-time-use only. Backfills ownedGuns/equippedGun on the
+ * caller's own player doc if missing, and refunds+clears any pre-multi-
+ * weapon-system (un-prefixed, e.g. "damage-3") entries in unlockedUpgrades
+ * — those ids have no meaning under the new ${gunId}-${track}-${level}
+ * scheme. Self-service and auth-gated (only ever touches the caller's own
+ * doc, never enumerates other players) rather than a broad admin script, so
+ * it's safe to leave reachable only to the one signed-in owner who needs it.
+ * Idempotent: old-format ids (exactly one hyphen) are the only ones ever
+ * touched, so calling this again after it's already run is a no-op. Not a
+ * permanent migration path — remove this function and redeploy once the one
+ * production account that needs it has run it. See docs/PROGRESS.md.
+ */
+export const migrateToGunSystem = onCall({ enforceAppCheck: !isEmulator }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Must be signed in.')
+  }
+  const playerRef = db.collection('players').doc(request.auth.uid)
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(playerRef)
+    if (!snap.exists) {
+      throw new HttpsError('failed-precondition', 'Player profile does not exist yet.')
+    }
+    const data = snap.data()!
+    const update: Record<string, unknown> = {}
+
+    const needsGunBackfill = data.ownedGuns === undefined || data.equippedGun === undefined
+    if (needsGunBackfill) {
+      update.ownedGuns = ['m134']
+      update.equippedGun = 'm134'
+    }
+
+    const allUpgrades: string[] = Array.isArray(data.unlockedUpgrades) ? data.unlockedUpgrades : []
+    const oldFormatIds = allUpgrades.filter((id) => id.split('-').length === 2)
+    let refunded = 0
+    if (oldFormatIds.length > 0) {
+      for (const id of oldFormatIds) {
+        const level = Number(id.slice(id.lastIndexOf('-') + 1))
+        if (Number.isFinite(level) && level >= 1 && level <= 10) refunded += 62 * (level * level + level + 1)
+      }
+      const keptUpgrades = allUpgrades.filter((id) => !oldFormatIds.includes(id))
+      update.unlockedUpgrades = keptUpgrades
+      update.credits = FieldValue.increment(refunded)
+    }
+
+    if (Object.keys(update).length > 0) {
+      tx.update(playerRef, update)
+    }
+
+    return { ok: true, backfilledGuns: needsGunBackfill, refunded, clearedUpgrades: oldFormatIds.length }
+  })
+})
+
+/**
  * Purchases a new gun. Server-side for the same reason purchaseUpgrade is:
  * ownedGuns and credits are both client-write-blocked by firestore.rules.
  * Runs in a transaction so a double-click can't spend the same credits

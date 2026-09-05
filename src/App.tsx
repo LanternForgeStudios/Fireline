@@ -8,6 +8,7 @@ import {
   equipGun,
   loadAllMissionStats,
   loadOrCreatePlayerProfile,
+  migrateToGunSystem,
   purchaseGun,
   purchaseUpgrade,
   recordMissionResult,
@@ -263,6 +264,7 @@ function App() {
           confirmEmail={user.email}
           onChange={changeSettings}
           onResetProgress={resetProgress}
+          onMigrateGuns={migrateToGunSystem}
           onBack={goToMenu}
         />
       )}

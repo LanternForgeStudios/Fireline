@@ -8,13 +8,34 @@ interface SettingsScreenProps {
   onChange: (settings: Partial<PlayerSettings>) => void
   onResetProgress: () => void
   onBack: () => void
+  // TEMPORARY — see functions/src/index.ts's migrateToGunSystem doc comment.
+  // Remove this prop, the button below, and the Cloud Function itself once
+  // the one production account that needs it has run it.
+  onMigrateGuns: () => Promise<{ backfilledGuns: boolean; refunded: number; clearedUpgrades: number }>
 }
 
 const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard']
 
-export function SettingsScreen({ settings, confirmEmail, onChange, onResetProgress, onBack }: SettingsScreenProps) {
+export function SettingsScreen({ settings, confirmEmail, onChange, onResetProgress, onBack, onMigrateGuns }: SettingsScreenProps) {
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [emailInput, setEmailInput] = useState('')
+  const [migrateStatus, setMigrateStatus] = useState<string | null>(null)
+  const [migrating, setMigrating] = useState(false)
+
+  const handleMigrate = async () => {
+    setMigrating(true)
+    setMigrateStatus(null)
+    try {
+      const result = await onMigrateGuns()
+      setMigrateStatus(
+        `Done — backfilled: ${result.backfilledGuns}, refunded: ${result.refunded}cr, cleared ${result.clearedUpgrades} old upgrade(s).`,
+      )
+    } catch (err) {
+      setMigrateStatus(err instanceof Error ? err.message : 'Migration failed.')
+    } finally {
+      setMigrating(false)
+    }
+  }
 
   const emailMatches = confirmEmail !== null && emailInput.trim().toLowerCase() === confirmEmail.trim().toLowerCase()
 
@@ -63,6 +84,17 @@ export function SettingsScreen({ settings, confirmEmail, onChange, onResetProgre
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="reset-confirm">
+          <p className="briefing-text reset-confirm-text">
+            One-time fix for the new gun system — run this once to make sure your account's owned
+            guns and any old upgrade credits are set up correctly.
+          </p>
+          <button className="btn btn-secondary" disabled={migrating} onClick={handleMigrate}>
+            {migrating ? 'Running...' : 'Sync loadout to new gun system'}
+          </button>
+          {migrateStatus && <p className="briefing-text mission-list-blurb">{migrateStatus}</p>}
         </div>
 
         {confirmingReset && (
