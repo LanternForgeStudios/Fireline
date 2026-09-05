@@ -53,6 +53,38 @@ on top.
 
 ## Log
 
+### 2026-09-05 (47) — Pad labels + mobile zoom becomes a toggle
+- Follow-up to entry 46. Two player requests:
+  1. **Pad labels**: idle pads (before either is touched) now read "FIRE/MOVE" — naming both
+     roles they could take on — instead of the old, now-inaccurate "AIM" leftover from the
+     single-pad design. Once a role is actually assigned, the label simplifies to just that
+     word ("MOVE" or "FIRE").
+  2. **Mobile zoom is now a tap-toggle, not a hold**: with move/fire now split across the two
+     aim pads, both thumbs are already spoken for — a hold-based zoom button would need a third
+     thumb held down simultaneously to zoom while still moving/firing. Tap the mobile zoom
+     button once to zoom in, tap again to zoom back out; it stays on regardless of finger
+     lift. Desktop's right-click-hold zoom is unchanged (a spare hand is available there).
+     Renamed `zoomHeld` → `zoomActive` throughout `CombatScene.ts` since "held" no longer
+     describes the mobile path. Added a visual on/off state to the button itself (`setZoomButtonVisual`,
+     synced once per frame).
+- **Known follow-up, not fixed this pass**: while zoom is active, the touch pad rings/knobs/
+  labels (and the zoom button itself) visually shift and can move off-screen entirely — they're
+  regular world-space Phaser objects rendered through the same camera that's zooming, with no
+  scroll/zoom exemption. Verified this is **cosmetic only**: touching a pad at its *original*
+  (pre-zoom) screen location still correctly registers as move/fire even while zoomed, and
+  firing actually works (confirmed via CDP touch — heat rises normally). But the player loses
+  the visual reference for where to place their thumb once zoom kicks in, which the new
+  always-toggle-able zoom makes much more likely to be hit than the old hold-based version
+  (which needed 3 simultaneous fingers to trigger the same overlap). Real fix is a second,
+  never-zoomed UI camera with the main camera set to `.ignore()` the touch-control objects —
+  correct Phaser pattern, but touches many object-creation sites throughout `CombatScene.ts`
+  (every dynamically-spawned spark/tracer/enemy would need registering), a meaningfully bigger
+  change than this pass's scope. Flagged for the owner to decide priority on.
+- Verified live via CDP multi-touch: idle labels correct, move/fire relabeling correct in both
+  directions, zoom toggle turns on and stays on after release, toggles back off on a second tap
+  (confirmed in isolation), and functionally keeps working (hit-testing + actual firing) even
+  while the camera is zoomed, per the cosmetic-only finding above.
+
 ### 2026-09-05 (46) — Mobile controls: move-only + toggle-to-fire, and a real multi-touch bug
 - Player-requested redesign of the touch aim pads: previously, touching either pad both aimed
   (drag) and fired (just by holding it) — the other pad sat unused. Now: whichever side is

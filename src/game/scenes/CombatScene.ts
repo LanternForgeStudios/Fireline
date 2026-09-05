@@ -240,9 +240,12 @@ export class CombatScene extends Phaser.Scene {
   // + aim-assist), so aim-assist keeps pulling toward the player's real
   // target even while recoil is visually displacing where shots land.
   private effectiveAim = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }
-  private zoomHeld = false
+  // Whether the camera is currently zoomed in — desktop sets this via a right-click *hold*
+  // (see setupInput's mouse branch), but mobile's zoom button is a tap *toggle* instead (a
+  // hold would tie up the thumb that's needed for the fire button once move/fire are split
+  // across the two aim pads), hence the input-neutral name rather than "zoomHeld".
+  private zoomActive = false
   private zoomButton?: Phaser.GameObjects.Arc
-  private zoomTouchPointerId: number | null = null
   private ground!: Phaser.GameObjects.TileSprite
   private groundTextureKey!: string
   private mountainTextureKey!: string
@@ -358,8 +361,7 @@ export class CombatScene extends Phaser.Scene {
     this.objectiveNoDamageTaken = true
     this.objectiveMaxHealth = missionState.current.defendObjective?.maxHealth ?? 0
     this.objectiveHealth = this.objectiveMaxHealth
-    this.zoomHeld = false
-    this.zoomTouchPointerId = null
+    this.zoomActive = false
     this.equippedGunDef = getGunDef(playerLoadout.equippedGun)
     this.weapon = new Weapon(
       computeGunStats(this.equippedGunDef, playerLoadout.unlockedUpgrades),
@@ -893,7 +895,9 @@ export class CombatScene extends Phaser.Scene {
     knob.setDepth(2101)
     knob.setVisible(visible)
 
-    const label = this.add.text(center.x, center.y + TOUCH_PAD_RADIUS + 16, 'AIM', {
+    // Starts idle — either pad could become move or fire depending on which is touched
+    // first, so the label says both until a role is actually assigned (see setPadRole).
+    const label = this.add.text(center.x, center.y + TOUCH_PAD_RADIUS + 16, 'FIRE/MOVE', {
       fontFamily: 'monospace',
       fontSize: '13px',
       color: '#ffffff',
@@ -907,15 +911,15 @@ export class CombatScene extends Phaser.Scene {
   }
 
   /** Switches one pad's visuals between the three states a touch engagement cycles through:
-   * idle (neither pad touched), move (this side is currently being dragged to aim — never
-   * fires by itself), and fire (the side opposite whichever is moving, a plain hold-to-fire
-   * button). */
+   * idle (neither pad touched — either role is still possible, so the label names both),
+   * move (this side is currently being dragged to aim — never fires by itself), and fire
+   * (the side opposite whichever is moving, a plain hold-to-fire button). */
   private setPadRole(side: PadSide, role: 'idle' | 'move' | 'fire') {
     const pad = this.pads[side]
     if (role === 'move') {
       pad.ring.setStrokeStyle(2, FIRE_BUTTON_COLOR, 0.6)
       pad.ring.setFillStyle(0xffffff, 0.08)
-      pad.label.setText('AIM')
+      pad.label.setText('MOVE')
       pad.label.setColor('#ffffff')
     } else if (role === 'fire') {
       pad.ring.setStrokeStyle(2, FIRE_BUTTON_COLOR, 0.7)
@@ -926,7 +930,7 @@ export class CombatScene extends Phaser.Scene {
       pad.ring.setStrokeStyle(2, 0xffffff, 0.35)
       pad.ring.setFillStyle(0xffffff, 0.08)
       pad.knob.setPosition(pad.center.x, pad.center.y)
-      pad.label.setText('AIM')
+      pad.label.setText('FIRE/MOVE')
       pad.label.setColor('#ffffff')
     }
   }
@@ -938,10 +942,10 @@ export class CombatScene extends Phaser.Scene {
     this.pads[side].ring.setFillStyle(0xffffff, pressed ? 0.22 : 0.08)
   }
 
-  /** Mobile hold-to-zoom button — only built when the equipped gun has zoom enabled.
-   * Own touch-pointer id (zoomTouchPointerId), independent of the aim pads' single-
-   * active-pad exclusivity, so a player can hold zoom with one thumb while dragging
-   * an aim pad with the other. */
+  /** Mobile tap-to-toggle zoom button — only built when the equipped gun has zoom enabled.
+   * A toggle rather than a hold: once move/fire are split across the two aim pads, both
+   * thumbs are already spoken for, so there's no spare thumb left to hold a third button
+   * down while also firing. Tap once to zoom in, tap again to zoom back out. */
   private buildZoomButton() {
     const visible = supportsTouch()
     const button = this.add.circle(ZOOM_BUTTON_X, ZOOM_BUTTON_Y, ZOOM_BUTTON_RADIUS, 0xffffff, 0.1)
@@ -959,6 +963,15 @@ export class CombatScene extends Phaser.Scene {
     label.setVisible(visible)
 
     this.zoomButton = button
+  }
+
+  /** Reflects the current on/off zoom state on the mobile button, regardless of whether it
+   * was toggled by touch or (in principle) is active for some other reason — called once per
+   * frame in update() rather than threaded through every place zoomActive changes. */
+  private setZoomButtonVisual(active: boolean) {
+    if (!this.zoomButton) return
+    this.zoomButton.setFillStyle(0xf2c14e, active ? 0.35 : 0.1)
+    this.zoomButton.setStrokeStyle(2, 0xf2c14e, active ? 0.9 : 0.5)
   }
 
   private hitsZoomButton(pointer: Phaser.Input.Pointer): boolean {
@@ -1097,8 +1110,9 @@ export class CombatScene extends Phaser.Scene {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (pointer.wasTouch) {
         if (this.zoomButton && this.hitsZoomButton(pointer)) {
-          this.zoomHeld = true
-          this.zoomTouchPointerId = pointer.id
+          // A tap toggle, not a hold — see buildZoomButton's doc comment. Releasing this
+          // same touch (pointerup/pointerout below) deliberately does nothing.
+          this.zoomActive = !this.zoomActive
           return
         }
         if (this.moveSide === null) this.engageMove(pointer)
@@ -1106,8 +1120,8 @@ export class CombatScene extends Phaser.Scene {
         return
       }
       if (this.equippedGunDef.zoom.enabled && pointer.rightButtonDown()) {
-        this.zoomHeld = true
-        return // right-click zooms, doesn't fire
+        this.zoomActive = true
+        return // right-click zooms, doesn't fire — desktop keeps hold-to-zoom
       }
       this.updateCrosshairFromMouse(pointer)
       this.weapon.setTrigger(true)
@@ -1121,11 +1135,6 @@ export class CombatScene extends Phaser.Scene {
     })
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       if (pointer.wasTouch) {
-        if (pointer.id === this.zoomTouchPointerId) {
-          this.zoomHeld = false
-          this.zoomTouchPointerId = null
-          return
-        }
         if (pointer.id === this.movePointerId) {
           this.releaseMove()
         } else if (pointer.id === this.fireTouchPointerId) {
@@ -1134,22 +1143,18 @@ export class CombatScene extends Phaser.Scene {
         return
       }
       if (pointer.button === 2) {
-        this.zoomHeld = false
+        this.zoomActive = false
         return
       }
       this.weapon.setTrigger(false)
     })
     this.input.on('pointerout', (pointer: Phaser.Input.Pointer) => {
       if (pointer.wasTouch) {
-        if (pointer.id === this.zoomTouchPointerId) {
-          this.zoomHeld = false
-          this.zoomTouchPointerId = null
-        }
         if (pointer.id === this.movePointerId) this.releaseMove()
         else if (pointer.id === this.fireTouchPointerId) this.releaseFire()
         return
       }
-      this.zoomHeld = false
+      this.zoomActive = false
       this.weapon.setTrigger(false)
     })
   }
@@ -1222,7 +1227,8 @@ export class CombatScene extends Phaser.Scene {
 
     this.weapon.tick(delta)
     this.updateAimWithRecoil()
-    this.cameras.main.setZoom(this.zoomHeld ? this.equippedGunDef.zoom.factor : 1)
+    this.cameras.main.setZoom(this.zoomActive ? this.equippedGunDef.zoom.factor : 1)
+    this.setZoomButtonVisual(this.zoomActive)
     this.updateWaveSpawning(delta)
     this.updateEnemies(delta)
     this.updateDustKickup(delta)
@@ -1482,7 +1488,7 @@ export class CombatScene extends Phaser.Scene {
       waveIndex: Math.min(this.waveIndex, missionState.current.waves.length - 1),
       waveCount: missionState.current.waves.length,
       enemiesRemaining: this.enemies.length,
-      zoomed: this.zoomHeld,
+      zoomed: this.zoomActive,
       objectiveHealth: missionState.current.mode === 'hover' ? this.objectiveHealth : undefined,
       objectiveMaxHealth: missionState.current.mode === 'hover' ? this.objectiveMaxHealth : undefined,
     }
