@@ -53,6 +53,30 @@ on top.
 
 ## Log
 
+### 2026-09-05 (49) — Health pickups: crates + a random kill-heal chance
+
+- New `HealthPickup` entity (`src/game/entities/HealthPickup.ts`) — a shootable health crate that
+  drifts across the field on the same spawn-to-target path flight-mode enemies use, regardless of
+  the mission's own mode. Deliberately a separate lightweight class rather than reusing `Enemy`/
+  `EnemyTypeId` — it has no health-bar, no walk cycle, no fire-back, and isn't part of the
+  procedural threat-budget/wave-generation system at all, so adding it couldn't skew those.
+- Rolled once per wave-clear (50% chance, only when another wave is still coming) rather than on
+  a separate timer — ties resupply pacing to the game's existing rhythm. Destroying one restores
+  25 HP; left alone, it just reaches its target point and vanishes with no penalty, same idea as
+  an enemy "impact" but harmless.
+- Separately, every enemy kill now has an 8% chance to also restore 10 HP on the spot — a small
+  unannounced bonus independent of the crate mechanic.
+- Both heal sources play the same feedback: a green burst + a floating "+N HP" popup
+  (`CombatScene.spawnHealEffect`), distinct from the orange kill-spark/gold score popup, so a
+  heal reads as its own kind of moment — this is what makes the kill-heal chance visible at all,
+  since nothing else on screen would otherwise call it out.
+- New art: `public/env/health-crate.png` (64×64, PixelLab `create_image_pixflux`) — a wooden
+  supply crate with a red medical cross.
+- Verified live against the Local Emulator Suite: a crate spawned naturally on the first wave
+  clear, shooting it took health from 10 to 35 (exactly the +25 heal) with the "+25 HP" popup
+  visible on screen (screenshot confirmed), and an extended play session caught the kill-heal
+  chance firing independently (35 -> 45, no crate involved).
+
 ### 2026-09-05 (48) — Fixed touch controls visually shifting while zoomed
 
 - Fixed the cosmetic bug flagged in entry (47): touch pads and the zoom button no longer

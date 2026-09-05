@@ -318,6 +318,13 @@ closes on backdrop click), and the underlying progress bar were all verified liv
 Playwright against a real signed-up account on the local emulator suite (this session didn't have
 the live-site `pw-verify` test account's credentials — see prior note in this file's history).
 
+## Health pickup (`public/env/health-crate.png`, 64×64)
+
+Added 2026-09-05 for the health-crate/kill-heal mechanic (see `docs/PROGRESS.md` entry 49) — a
+wooden supply crate with a red medical cross via `create_image_pixflux`. Sized and styled to match
+the enemy sprites (low-oblique, not strict top-down) rather than the ground-prop convention, since
+it moves across the field the same way flight-mode enemies do rather than sitting stationary.
+
 ## Escort/support ground element (`public/env/escort-vehicle.png`)
 
 96×96 via `create_image_pixflux` — a friendly canvas-covered supply truck, sandy tan/olive colors,

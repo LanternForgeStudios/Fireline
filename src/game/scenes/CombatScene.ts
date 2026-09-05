@@ -5,6 +5,7 @@ import { computeGunStats, getGunDef, type GunDef } from '../data/guns'
 import { ENEMY_DEFS } from '../data/enemyTypes'
 import { missionState } from '../missionState'
 import { Enemy, type EnemySpawnPoint } from '../entities/Enemy'
+import { HealthPickup } from '../entities/HealthPickup'
 import { computeBarFill } from '../entities/healthBarFill'
 import { Weapon } from '../entities/Weapon'
 import { playerLoadout } from '../playerLoadout'
@@ -32,6 +33,17 @@ function supportsTouch(): boolean {
 }
 
 const MAX_HEALTH = 100
+const HEALTH_CRATE_TEXTURE = 'pickup-health-crate'
+// Rolled once per wave-clear rather than continuously — ties resupply pacing to the game's
+// existing natural rhythm instead of a separate timer. Both amounts are independently tunable
+// balance knobs, not derived from anything else.
+const HEALTH_CRATE_SPAWN_CHANCE = 0.5
+const HEALTH_CRATE_HEAL_AMOUNT = 25
+// A rarer, unannounced bonus on top of the deliberate crate-shooting above — most kills are just
+// kills, but every one gets a coin flip against this chance. spawnHealEffect (see
+// applyAircraftHeal) is what makes an otherwise-invisible bonus actually register to the player.
+const KILL_HEAL_CHANCE = 0.08
+const KILL_HEAL_AMOUNT = 10
 const HORIZON_Y = 130
 const HORIZON_Y_RANGE: [number, number] = [110, 165]
 const IMPACT_Y_RANGE: [number, number] = [545, 610]
@@ -236,6 +248,7 @@ export class CombatScene extends Phaser.Scene {
   private weapon!: Weapon
   private equippedGunDef!: GunDef
   private enemies: Enemy[] = []
+  private healthPickups: HealthPickup[] = []
   private crosshair!: Phaser.GameObjects.Image
   private crosshairPos = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }
   // Recomputed every frame from crosshairPos + the weapon's current recoil
@@ -329,6 +342,7 @@ export class CombatScene extends Phaser.Scene {
     this.mountainTextureKey = `mountains-art-${landscape}`
     this.load.image(this.groundTextureKey, `${import.meta.env.BASE_URL}env/${LANDSCAPE_GROUND_FILE[landscape]}`)
     this.load.image(this.mountainTextureKey, `${import.meta.env.BASE_URL}env/${LANDSCAPE_MOUNTAIN_FILE[landscape]}`)
+    this.load.image(HEALTH_CRATE_TEXTURE, `${import.meta.env.BASE_URL}env/health-crate.png`)
 
     if (missionState.current.type === 'Escort') {
       const { key, file } = escortVehicleAsset(landscape)
@@ -363,6 +377,7 @@ export class CombatScene extends Phaser.Scene {
     this.noDamageTaken = true
     this.totalEnemiesSpawned = 0
     this.enemies = []
+    this.healthPickups = []
     this.coverDepthById.clear()
     this.objectiveNoDamageTaken = true
     this.objectiveMaxHealth = missionState.current.defendObjective?.maxHealth ?? 0
@@ -1270,6 +1285,7 @@ export class CombatScene extends Phaser.Scene {
     this.syncTouchUiForZoom()
     this.updateWaveSpawning(delta)
     this.updateEnemies(delta)
+    this.updateHealthPickups(delta)
     this.updateDustKickup(delta)
     this.updateRotorFlicker(delta)
     this.handleFiring()
@@ -1320,6 +1336,21 @@ export class CombatScene extends Phaser.Scene {
       this.waveIndex += 1
       this.waveElapsedMs = 0
       this.waveSpawnedCount = 0
+      // Only while another wave is still coming — one spawned right as the mission ends would
+      // never get a chance to be shot before the Result screen takes over.
+      if (this.waveIndex < missionState.current.waves.length && Math.random() < HEALTH_CRATE_SPAWN_CHANCE) {
+        this.healthPickups.push(new HealthPickup(this, this.flightSpawnPoint(), HEALTH_CRATE_TEXTURE))
+      }
+    }
+  }
+
+  private updateHealthPickups(delta: number) {
+    for (let i = this.healthPickups.length - 1; i >= 0; i--) {
+      const pickup = this.healthPickups[i]
+      if (pickup.update(delta)) {
+        pickup.destroy()
+        this.healthPickups.splice(i, 1)
+      }
     }
   }
 
@@ -1406,6 +1437,39 @@ export class CombatScene extends Phaser.Scene {
     this.tweens.add({ targets: this.damageVignette, alpha: 0, duration: 350, ease: 'Cubic.Out' })
   }
 
+  /** Restores aircraft health (health crates, the random kill-heal chance) — no-ops silently
+   * once already at max, rather than showing an effect for a heal that didn't actually happen. */
+  private applyAircraftHeal(amount: number, x: number, y: number) {
+    const before = this.health
+    this.health = Math.min(this.maxHealth, this.health + amount)
+    if (this.health > before) this.spawnHealEffect(x, y, this.health - before)
+  }
+
+  /** Green burst + a "+N HP" popup — distinct from the orange kill-spark/gold score popup so a
+   * heal reads as its own kind of moment, not just another hit, especially for the unannounced
+   * random kill-heal chance where nothing else on screen would otherwise call it out. */
+  private spawnHealEffect(x: number, y: number, amount: number) {
+    this.spawnSpark(x, y, 0x4ade80, 2.2, 420)
+    const text = this.add.text(x, y, `+${amount} HP`, {
+      fontFamily: 'monospace',
+      fontSize: '18px',
+      fontStyle: 'bold',
+      color: '#8effa3',
+      stroke: '#0a2a12',
+      strokeThickness: 3,
+    })
+    text.setOrigin(0.5, 1)
+    text.setDepth(1900)
+    this.tweens.add({
+      targets: text,
+      y: y - 46,
+      alpha: 0,
+      duration: 750,
+      ease: 'Cubic.Out',
+      onComplete: () => text.destroy(),
+    })
+  }
+
   /**
    * Hover-mission analogue of applyAircraftDamage, for enemy fire routed at the defended
    * objective instead of the aircraft (see spawnEnemyProjectile). Deliberately not the
@@ -1446,6 +1510,30 @@ export class CombatScene extends Phaser.Scene {
       // already monotonic with progress — this is a strict unification, not a new branch.
       if (!target || enemy.container.depth > target.container.depth) target = enemy
     }
+
+    // Checked only when no enemy is under the crosshair — a health crate never steals a shot
+    // that would otherwise have hit a hostile.
+    if (!target) {
+      const pickup = this.healthPickups.find((p) => p.containsPoint(this.effectiveAim.x, this.effectiveAim.y))
+      if (pickup) {
+        gameEvents.emit(EVT_HIT_MARKER, { hit: true, x: this.effectiveAim.x, y: this.effectiveAim.y })
+        this.spawnTracer(pickup.container.x, pickup.container.y)
+        this.healthPickups = this.healthPickups.filter((p) => p !== pickup)
+        const px = pickup.container.x
+        const py = pickup.container.y
+        this.tweens.add({
+          targets: pickup.container,
+          alpha: 0,
+          scale: pickup.container.scale * 1.5,
+          duration: 220,
+          ease: 'Cubic.Out',
+          onComplete: () => pickup.destroy(),
+        })
+        this.applyAircraftHeal(HEALTH_CRATE_HEAL_AMOUNT, px, py)
+        return
+      }
+    }
+
     gameEvents.emit(EVT_HIT_MARKER, { hit: Boolean(target), x: this.effectiveAim.x, y: this.effectiveAim.y })
 
     // Staggered across the hit circle, not always dead-center — at high
@@ -1469,6 +1557,11 @@ export class CombatScene extends Phaser.Scene {
       this.enemies = this.enemies.filter((e) => e !== killedTarget)
       this.spawnSpark(killedTarget.container.x, killedTarget.container.y, 0xff6b3d, 1.8, 260)
       this.spawnScorePopup(killedTarget.container.x, killedTarget.container.y, killedTarget.def.scoreValue)
+      // Unannounced bonus, independent of the deliberate health-crate mechanic above — offset
+      // slightly from the score popup so the two floating texts don't stack on the same spot.
+      if (Math.random() < KILL_HEAL_CHANCE) {
+        this.applyAircraftHeal(KILL_HEAL_AMOUNT, killedTarget.container.x + 26, killedTarget.container.y - 12)
+      }
       // Real death-animation frames (docs/ART_ASSETS.md) replace the old
       // placeholder scale-up-and-fade — a short fade after the animation's
       // last frame avoids an abrupt pop when the container is destroyed.
