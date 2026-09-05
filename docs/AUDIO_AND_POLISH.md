@@ -155,12 +155,11 @@ alongside them — worth double-checking their source/license before a public re
       successfully on the primary production account. Owner asked to leave it live for a while
       longer in case other production accounts still need it — remove the button, the wrapper, and
       the Cloud Function (redeploy after) once the owner confirms it's no longer needed.
-- [ ] **Owner decision needed**: the primary production account's `migrateToGunSystem` run
-      (above) refunded old upgrades at the wrong (post-rebalance, `k=62`) cost rate instead of
-      the `k=50` rate those upgrades were actually purchased under — a ~24% overpayment,
-      fixed 2026-09-05 (see PROGRESS.md entry 43) for any future account that runs it. The
-      already-migrated account's credits were not adjusted; decide whether the small one-time
-      excess is worth clawing back or just leaving as-is.
+- [x] The primary production account's `migrateToGunSystem` run (above) refunded old upgrades
+      at the wrong (post-rebalance, `k=62`) cost rate instead of the `k=50` rate those upgrades
+      were actually purchased under — a ~24% overpayment, fixed 2026-09-05 (see PROGRESS.md
+      entry 43) for any future account that runs it. Owner decided (2026-09-05) to leave the
+      already-migrated account's credits as-is — not worth clawing back.
 - [ ] Hover missions (Base Defense) are new (2026-09-04) — the objective health values
       (260/300 hand-authored, `max(220, totalSpawns * 14)` procedural) and the rocket-only
       aircraft-risk split (fixed from a non-functional drone-based split 2026-09-05 — see
