@@ -1,12 +1,31 @@
 import { initializeApp } from 'firebase-admin/app'
-import { FieldValue, getFirestore, type CollectionReference } from 'firebase-admin/firestore'
-import { HttpsError, onCall } from 'firebase-functions/v2/https'
+import { FieldValue, getFirestore, type CollectionReference, type DocumentReference, type Transaction } from 'firebase-admin/firestore'
+import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https'
 import { getGun } from './gunCatalog'
 import { getMissionBounds } from './missionCatalog'
 import { getUpgrade, priorLevelsOf } from './upgradeCatalog'
 
 initializeApp()
 const db = getFirestore()
+
+/** Every callable in this file requires a signed-in caller and only ever acts on that
+ * caller's own uid — shared here so the check/error stays identical everywhere. */
+function requireAuthUid(request: CallableRequest): string {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Must be signed in.')
+  }
+  return request.auth.uid
+}
+
+/** The player-doc-must-already-exist check every transactional callable below needs before
+ * reading/writing progression fields. */
+async function requirePlayerSnap(tx: Transaction, playerRef: DocumentReference) {
+  const snap = await tx.get(playerRef)
+  if (!snap.exists) {
+    throw new HttpsError('failed-precondition', 'Player profile does not exist yet.')
+  }
+  return snap
+}
 
 // Firebase sets this automatically when running under `firebase
 // emulators:start` — never set in a deployed function. There's no local
@@ -60,10 +79,7 @@ async function deleteAllDocs(ref: CollectionReference) {
  * silently dropping a real player's result over an off-by-one in the catalog.
  */
 export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck: !isEmulator }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Must be signed in.')
-  }
-  const uid = request.auth.uid
+  const uid = requireAuthUid(request)
   const data = request.data
 
   if (data.outcome !== 'complete' && data.outcome !== 'failed') {
@@ -155,10 +171,8 @@ export const submitMissionResult = onCall<MissionResultInput>({ enforceAppCheck:
  * out." Keeps displayName and settings untouched.
  */
 export const resetProgress = onCall({ enforceAppCheck: !isEmulator }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Must be signed in.')
-  }
-  const playerRef = db.collection('players').doc(request.auth.uid)
+  const uid = requireAuthUid(request)
+  const playerRef = db.collection('players').doc(uid)
 
   await playerRef.update({
     xp: 0,
@@ -186,21 +200,16 @@ export const resetProgress = onCall({ enforceAppCheck: !isEmulator }, async (req
  * player's actual current Firestore state rather than trusting the client.
  */
 export const purchaseUpgrade = onCall<{ upgradeId: string }>({ enforceAppCheck: !isEmulator }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Must be signed in.')
-  }
+  const uid = requireAuthUid(request)
   const upgrade = getUpgrade(request.data.upgradeId)
   if (!upgrade) {
     throw new HttpsError('invalid-argument', `Unknown upgrade: ${request.data.upgradeId}`)
   }
 
-  const playerRef = db.collection('players').doc(request.auth.uid)
+  const playerRef = db.collection('players').doc(uid)
 
   await db.runTransaction(async (tx) => {
-    const snap = await tx.get(playerRef)
-    if (!snap.exists) {
-      throw new HttpsError('failed-precondition', 'Player profile does not exist yet.')
-    }
+    const snap = await requirePlayerSnap(tx, playerRef)
     const data = snap.data()!
     const owned: string[] = data.unlockedUpgrades ?? []
     const ownedGuns: string[] = data.ownedGuns ?? []
@@ -241,18 +250,20 @@ export const purchaseUpgrade = onCall<{ upgradeId: string }>({ enforceAppCheck: 
  * touched, so calling this again after it's already run is a no-op. Not a
  * permanent migration path — remove this function and redeploy once the one
  * production account that needs it has run it. See docs/PROGRESS.md.
+ *
+ * Refund uses OLD_LEVEL_COST (k=50) deliberately, not the current k=62
+ * formula in upgradeCatalog.ts — every old-format id was actually purchased
+ * back when k=50 was in effect, so refunding at k=62 would overpay by ~24%
+ * per level. (Fixed 2026-09-05 — an earlier version of this function used
+ * k=62 and already ran once against production; see docs/PROGRESS.md.)
  */
+const OLD_LEVEL_COST = (n: number): number => 50 * (n * n + n + 1)
 export const migrateToGunSystem = onCall({ enforceAppCheck: !isEmulator }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Must be signed in.')
-  }
-  const playerRef = db.collection('players').doc(request.auth.uid)
+  const uid = requireAuthUid(request)
+  const playerRef = db.collection('players').doc(uid)
 
   return db.runTransaction(async (tx) => {
-    const snap = await tx.get(playerRef)
-    if (!snap.exists) {
-      throw new HttpsError('failed-precondition', 'Player profile does not exist yet.')
-    }
+    const snap = await requirePlayerSnap(tx, playerRef)
     const data = snap.data()!
     const update: Record<string, unknown> = {}
 
@@ -268,7 +279,7 @@ export const migrateToGunSystem = onCall({ enforceAppCheck: !isEmulator }, async
     if (oldFormatIds.length > 0) {
       for (const id of oldFormatIds) {
         const level = Number(id.slice(id.lastIndexOf('-') + 1))
-        if (Number.isFinite(level) && level >= 1 && level <= 10) refunded += 62 * (level * level + level + 1)
+        if (Number.isFinite(level) && level >= 1 && level <= 10) refunded += OLD_LEVEL_COST(level)
       }
       const keptUpgrades = allUpgrades.filter((id) => !oldFormatIds.includes(id))
       update.unlockedUpgrades = keptUpgrades
@@ -290,21 +301,16 @@ export const migrateToGunSystem = onCall({ enforceAppCheck: !isEmulator }, async
  * twice.
  */
 export const purchaseGun = onCall<{ gunId: string }>({ enforceAppCheck: !isEmulator }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Must be signed in.')
-  }
+  const uid = requireAuthUid(request)
   const gun = getGun(request.data.gunId)
   if (!gun) {
     throw new HttpsError('invalid-argument', `Unknown gun: ${request.data.gunId}`)
   }
 
-  const playerRef = db.collection('players').doc(request.auth.uid)
+  const playerRef = db.collection('players').doc(uid)
 
   await db.runTransaction(async (tx) => {
-    const snap = await tx.get(playerRef)
-    if (!snap.exists) {
-      throw new HttpsError('failed-precondition', 'Player profile does not exist yet.')
-    }
+    const snap = await requirePlayerSnap(tx, playerRef)
     const data = snap.data()!
     const owned: string[] = data.ownedGuns ?? []
     if (owned.includes(gun.id)) {
@@ -330,21 +336,16 @@ export const purchaseGun = onCall<{ gunId: string }>({ enforceAppCheck: !isEmula
  * equip a gun it never purchased.
  */
 export const equipGun = onCall<{ gunId: string }>({ enforceAppCheck: !isEmulator }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Must be signed in.')
-  }
+  const uid = requireAuthUid(request)
   const gun = getGun(request.data.gunId)
   if (!gun) {
     throw new HttpsError('invalid-argument', `Unknown gun: ${request.data.gunId}`)
   }
 
-  const playerRef = db.collection('players').doc(request.auth.uid)
+  const playerRef = db.collection('players').doc(uid)
 
   await db.runTransaction(async (tx) => {
-    const snap = await tx.get(playerRef)
-    if (!snap.exists) {
-      throw new HttpsError('failed-precondition', 'Player profile does not exist yet.')
-    }
+    const snap = await requirePlayerSnap(tx, playerRef)
     const owned: string[] = snap.data()!.ownedGuns ?? []
     if (!owned.includes(gun.id)) {
       throw new HttpsError('failed-precondition', 'Purchase this gun first.')

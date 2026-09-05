@@ -53,6 +53,61 @@ on top.
 
 ## Log
 
+### 2026-09-05 (43) — Cleanup pass: aircraft was invulnerable in every hover mission
+- Scope: everything since the last cleanup (`e8a53e3..HEAD`, ~11 commits — the multi-weapon
+  system, per-op gun recommendations, hover missions). `security-review` found nothing.
+  `code-review` (high effort) mostly hit a session rate limit mid-run; the one angle that
+  completed (reuse) plus a follow-up consolidated correctness pass together found 3 real bugs,
+  fixed here.
+- **Real bug, most significant**: `spawnEnemyProjectile`'s hover-mission "keep the aircraft at
+  risk too" exception (per the owner's explicit "both stay at risk" decision, see entry 42)
+  targeted `drone` enemies at the aircraft — but `ENEMY_DEFS.drone.firesBack` is `false`, so a
+  drone can never call `shouldFire()`/reach `spawnEnemyProjectile()` at all. Combined with
+  hover-mode enemies never "impacting" the aircraft either, **the aircraft was fully
+  invulnerable in every hover mission** — health never moved regardless of what fired at you,
+  and a generated hover mission rolling the `no-damage` bonus objective always awarded it for
+  free. My own earlier live-verification of this exact behavior was fooled by calling
+  `spawnEnemyProjectile()` directly via a debug hook, bypassing `shouldFire()`'s `firesBack`
+  gate entirely — a real lesson about verifying through the actual game loop, not a shortcut
+  that skips the exact gate in question. Fixed by switching the exception to `rocket` (which
+  does have `firesBack: true`, and is a more thematically plausible anti-air threat than a
+  kamikaze drone anyway). Re-verified properly this time: spawned a real rocket through
+  `spawnEnemy()`, let it reach `shouldFire()` on its own after ~9s in Operation Iron Gate —
+  aircraft health dropped from 100 to 73 — while a real gunner still routed to the objective
+  (260→242), confirming the type split now actually holds during real play.
+- **Real bug**: the temporary `migrateToGunSystem` Cloud Function refunded old-format upgrades
+  at the *current* `k=62` cost formula instead of the `k=50` formula those upgrades were
+  actually purchased under (this session's k=50→62 rebalance predates the multi-weapon system
+  by a few commits) — a ~24% overpayment per migrated level. Added a dedicated `OLD_LEVEL_COST`
+  (k=50) constant for the refund calculation. **This already ran once against the production
+  account** before the fix — the owner may want to decide whether to claw back the ~24% excess
+  credited, or leave it (small, one-time, one account).
+- **Real bug**: `UpgradesScreen.tsx`'s per-action pending/error state was keyed by bare track
+  name (`upgrade-${track.id}`, e.g. `upgrade-damage`) instead of being gun-scoped, even though
+  multiple owned guns share track names (m134/m60/gau19 all have a `damage` track). Switching
+  gun tabs while a purchase was in flight showed the wrong gun's track as pending, and an error
+  from one gun's purchase could render under a different gun's tab. Fixed by scoping the key to
+  `upgrade-${selectedGun.id}-${track.id}`.
+- **Simplification** (from the reuse-cleanup angle, applied): extracted `requireAuthUid`/
+  `requirePlayerSnap` helpers in `functions/src/index.ts` — `purchaseUpgrade`, `purchaseGun`,
+  `equipGun`, and `migrateToGunSystem` all re-typed the same auth-guard + "player doc must
+  exist" transaction skeleton, which had already silently drifted once (mismatched not-found
+  wording). Extracted `computeBarFill()` (new `src/game/entities/healthBarFill.ts`) — `Enemy`'s
+  own health bar and `CombatScene`'s new defend-objective health bar duplicated the exact same
+  width/offset/three-tier-color formula with different constants.
+- **Skipped, deliberately**: a finding to also extract `SettingsScreen.tsx`'s migrate-button
+  pending/error handling into a shared hook with `UpgradesScreen.tsx`'s `runAction` — the
+  migrate button is itself temporary (see entry 41's follow-up note), not worth the churn. A
+  finding to extract a generic `findById` helper across `functions/src/{gunCatalog,
+  upgradeCatalog}.ts`'s one-line `Array.find` lookups — three one-liners are already about as
+  simple as a wrapper would make them; skipped as unnecessary abstraction.
+- Verified: `npm run build`/`npm run lint` clean (frontend + functions). Firestore rules
+  cross-checked against `playerProfile.ts`'s current field set — no drift. Deployed rules/
+  functions state confirmed to match what's in the repo (both deployed at the end of the
+  hover-missions milestone, nothing changed since). `README.md`'s Status/Stack/Project-layout
+  sections refreshed — they'd gone stale again describing "a persistent upgradeable M134" and
+  five missions, both wrong since the multi-weapon and hover-missions work landed.
+
 ### 2026-09-04 (42) — Hover missions ("Base Defense"): stationary cover, defendable objective
 - Player-requested second mission archetype: instead of flying forward with enemies closing
   in a straight line, the helicopter holds position, enemies emerge from stationary cover

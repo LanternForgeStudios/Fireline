@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { EnemyDef } from '../types'
+import { computeBarFill } from './healthBarFill'
 
 export interface EnemySpawnPoint {
   x: number
@@ -115,11 +116,11 @@ export class Enemy {
   }
 
   private updateHealthBar() {
-    const pct = Phaser.Math.Clamp(this.health / this.def.maxHealth, 0, 1)
-    this.healthBarFill.width = 34 * pct
-    this.healthBarFill.x = -17 + (34 * pct) / 2
-    this.healthBarFill.fillColor = pct > 0.5 ? 0x4ade80 : pct > 0.25 ? 0xf2c14e : 0xef4444
-    const damaged = pct < 1
+    const fill = computeBarFill(this.health / this.def.maxHealth, 34, 0x4ade80)
+    this.healthBarFill.width = fill.width
+    this.healthBarFill.x = fill.x
+    this.healthBarFill.fillColor = fill.color
+    const damaged = this.health < this.def.maxHealth
     this.healthBarBg.setVisible(damaged)
     this.healthBarFill.setVisible(damaged)
   }

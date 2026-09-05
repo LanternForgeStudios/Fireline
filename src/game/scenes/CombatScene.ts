@@ -5,6 +5,7 @@ import { computeGunStats, getGunDef, type GunDef } from '../data/guns'
 import { ENEMY_DEFS } from '../data/enemyTypes'
 import { missionState } from '../missionState'
 import { Enemy, type EnemySpawnPoint } from '../entities/Enemy'
+import { computeBarFill } from '../entities/healthBarFill'
 import { Weapon } from '../entities/Weapon'
 import { playerLoadout } from '../playerLoadout'
 import {
@@ -552,10 +553,10 @@ export class CombatScene extends Phaser.Scene {
 
   private updateObjectiveHealthBar() {
     if (!this.objectiveHealthBarFill || !this.objectiveMaxHealth) return
-    const pct = Phaser.Math.Clamp(this.objectiveHealth / this.objectiveMaxHealth, 0, 1)
-    this.objectiveHealthBarFill.width = 60 * pct
-    this.objectiveHealthBarFill.x = WORLD_WIDTH / 2 - 30 + (60 * pct) / 2
-    this.objectiveHealthBarFill.fillColor = pct > 0.5 ? 0x4ea8f2 : pct > 0.25 ? 0xf2c14e : 0xef4444
+    const fill = computeBarFill(this.objectiveHealth / this.objectiveMaxHealth, 60, 0x4ea8f2)
+    this.objectiveHealthBarFill.width = fill.width
+    this.objectiveHealthBarFill.x = WORLD_WIDTH / 2 + fill.x
+    this.objectiveHealthBarFill.fillColor = fill.color
   }
 
   /**
@@ -1215,10 +1216,13 @@ export class CombatScene extends Phaser.Scene {
     const damage = enemy.def.fireDamagePerTick
 
     // In hover missions, enemies mostly attack the defended objective, not the aircraft —
-    // drones are the one exception (the aerial, anti-air-suited type), so aircraft health
-    // and the no-damage bonus stay meaningfully at risk rather than decorative. Outside
-    // hover mode, behavior is unchanged: everything always targets the aircraft.
-    const targetsAircraft = missionState.current.mode !== 'hover' || enemy.def.id === 'drone'
+    // rocket teams are the one exception (the plausibly anti-air-capable type), so aircraft
+    // health and the no-damage bonus stay meaningfully at risk rather than decorative.
+    // (Originally routed 'drone' instead, but drone.firesBack is false — it can never reach
+    // this method at all, which made the exception dead code and the aircraft fully
+    // invulnerable in every hover mission. Fixed 2026-09-05, see docs/PROGRESS.md.)
+    // Outside hover mode, behavior is unchanged: everything always targets the aircraft.
+    const targetsAircraft = missionState.current.mode !== 'hover' || enemy.def.id === 'rocket'
     const targetPoint = targetsAircraft ? GUN_ORIGIN : this.objectivePosition()
 
     this.spawnSpark(fromX, fromY, 0xff6644, 0.9, 140)

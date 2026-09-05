@@ -131,7 +131,11 @@ export function UpgradesScreen({
                 const next = nextPurchasableLevel(track, unlockedUpgrades)
                 const maxed = next === null
                 const canAfford = next !== null && credits >= next.cost
-                const actionKey = `upgrade-${track.id}`
+                // Gun-scoped, not just the bare track name — multiple owned guns share track
+                // names (e.g. m134/m60/gau19 all have 'damage'), so a bare `upgrade-${track.id}`
+                // key let an in-flight purchase on one gun show as pending/erroring on another
+                // gun's identically-named track after switching tabs mid-request.
+                const actionKey = `upgrade-${selectedGun.id}-${track.id}`
 
                 return (
                   <div

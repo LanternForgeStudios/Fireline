@@ -155,12 +155,19 @@ alongside them — worth double-checking their source/license before a public re
       successfully on the primary production account. Owner asked to leave it live for a while
       longer in case other production accounts still need it — remove the button, the wrapper, and
       the Cloud Function (redeploy after) once the owner confirms it's no longer needed.
+- [ ] **Owner decision needed**: the primary production account's `migrateToGunSystem` run
+      (above) refunded old upgrades at the wrong (post-rebalance, `k=62`) cost rate instead of
+      the `k=50` rate those upgrades were actually purchased under — a ~24% overpayment,
+      fixed 2026-09-05 (see PROGRESS.md entry 43) for any future account that runs it. The
+      already-migrated account's credits were not adjusted; decide whether the small one-time
+      excess is worth clawing back or just leaving as-is.
 - [ ] Hover missions (Base Defense) are new (2026-09-04) — the objective health values
-      (260/300 hand-authored, `max(220, totalSpawns * 14)` procedural) and the drone-only
-      aircraft-risk split are first-pass numbers, not validated against real play. Worth a
-      look once there's actual playtesting data: does the objective ever feel too fragile/
-      tanky, does aircraft risk feel meaningfully present or still mostly decorative given only
-      one enemy type routes to it.
+      (260/300 hand-authored, `max(220, totalSpawns * 14)` procedural) and the rocket-only
+      aircraft-risk split (fixed from a non-functional drone-based split 2026-09-05 — see
+      PROGRESS.md entry 43, drones can't fire at all) are first-pass numbers, not validated
+      against real play. Worth a look once there's actual playtesting data: does the objective
+      ever feel too fragile/tanky, does aircraft risk feel meaningfully present with only
+      rocket teams routed to it (most missions only have 1-2 rockets per wave).
 - [x] Settings screen has an autosave note (not a toast per change — simpler, avoids timing/spam
       issues from continuous slider drags; revisit if it doesn't read clearly enough in practice)
 - [x] `resetPlayerProgress` now also deletes the `missionResults` subcollection (batched, loops
