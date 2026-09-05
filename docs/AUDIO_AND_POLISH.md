@@ -148,6 +148,13 @@ alongside them — worth double-checking their source/license before a public re
       (29,000cr total) and track curves, which are first-pass numbers shaped like the existing cost
       curve but not re-solved against any idle-credit target — a full multi-gun economy rebalance
       is a deliberate, explicit follow-up once real per-gun playtesting data exists.
+- [ ] **Temporary cleanup pending**: `migrateToGunSystem` (Cloud Function), its client wrapper
+      (`src/firebase/playerProfile.ts`), and the "Sync loadout to new gun system" button on the
+      Settings screen exist only to backfill `ownedGuns`/`equippedGun` and refund+clear pre-gun-
+      system `unlockedUpgrades` on accounts that existed before 2026-09-04. Already run
+      successfully on the primary production account. Owner asked to leave it live for a while
+      longer in case other production accounts still need it — remove the button, the wrapper, and
+      the Cloud Function (redeploy after) once the owner confirms it's no longer needed.
 - [x] Settings screen has an autosave note (not a toast per change — simpler, avoids timing/spam
       issues from continuous slider drags; revisit if it doesn't read clearly enough in practice)
 - [x] `resetPlayerProgress` now also deletes the `missionResults` subcollection (batched, loops
