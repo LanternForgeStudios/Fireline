@@ -35,6 +35,14 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
+      # itch.io needs relative asset paths (it extracts the zip into its own
+      # CDN path, not /Fireline/), so it gets a second build with a different
+      # base — see vite.config.ts's `mode === 'itch'` branch.
+      - run: npm run build:itch
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-itch
+          path: dist-itch
 
   deploy:
     needs: build
@@ -45,3 +53,19 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+  deploy-itch:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-itch
+          path: dist-itch
+      - uses: yeslayla/butler-publish-itchio-action@master
+        env:
+          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
+          ITCH_USER: lanternforgestudios
+          ITCH_GAME: fireline
+          CHANNEL: html5
+          PACKAGE: dist-itch
