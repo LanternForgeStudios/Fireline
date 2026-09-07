@@ -46,16 +46,16 @@ avoid audio clutter layered on top of the per-shot `shot.wav` at the gun's ~14 s
 Available if a distinct "confirmed hit" cue is wanted later (e.g. only on the killing blow, or
 gated to feel less busy).
 
-### Licensing — action needed before a public release
+### Licensing — resolved
 
 The xDeviruchi tracks (`music/menu.ogg`, `music/combat.ogg`) are free-with-attribution, not
 public domain: commercial use is allowed, but the pack's license requires crediting
 **"Original music by Marllon Silva (xDeviruchi)"** (ideally with a link to their YouTube channel)
-somewhere reachable from the game — an in-game credits screen or the README would satisfy it.
-**No credits screen exists yet** — add one before shipping past the prototype stage. Full terms:
-`forgotten-wilds/public/assets/audio/library/music/xDeviruchi/DOCUMENTATION & LICENSE.pdf`.
-The `sfx/` files came from generic asset-pack folders without an equivalent license doc found
-alongside them — worth double-checking their source/license before a public release too.
+somewhere reachable from the game. Satisfied by the Credits screen (Main Menu → Credits). Full
+terms: `forgotten-wilds/public/assets/audio/library/music/xDeviruchi/DOCUMENTATION & LICENSE.pdf`.
+The `sfx/` files came from generic asset-pack folders with no equivalent license doc alongside
+them — owner confirmed 2026-09-06 (ahead of the itch.io launch) that their source/license is
+fine, no further action needed.
 
 ### Known follow-ups
 

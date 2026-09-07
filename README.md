@@ -1,6 +1,6 @@
 # Fireline — Helicopter Gunner
 
-**[▶ Play live](https://lanternforgestudios.github.io/Fireline/)**
+**[▶ Play on GitHub Pages](https://lanternforgestudios.github.io/Fireline/)** · **[▶ Play on itch.io](https://lanternforgestudios.itch.io/fireline)**
 
 An arcade first-person rail shooter: you're the door gunner on an AI-piloted helicopter, clearing waves of hostiles until extraction. Built per the [design doc](docs/GDD.md) ([original .docx](docs/Helicopter_Gunner_GDD_v0.1.docx)) on React + TypeScript + Vite + Phaser 4.
 
@@ -16,12 +16,14 @@ weather/time-of-day variety, secondary objectives, procedural cover-object place
 Defense — see `src/game/generation/`). Seven enemy types with PixelLab art (four with a looping
 approach walk cycle, plus boat reskins for coastal missions). Four purchasable guns (M134
 default/free, M60, GAU-19, SAW), each with its own stats, upgrade tracks, and heat-driven
-recoil — GAU-19 also has a hold-to-zoom mode — bought and equipped via the Armory (Main Menu →
+recoil — GAU-19 also has a zoom mode (hold on desktop, tap-to-toggle on mobile) — bought and equipped via the Armory (Main Menu →
 Armory). An 8-tier XP-based rank system, aircraft health (plus a separate defendable-objective
 health bar in Base Defense missions), and a login → menu → mission select → briefing → combat →
 results loop. Google/Email accounts with Firestore-backed progression (XP, credits, owned/
 equipped guns, mission history, settings — including independent music/SFX mute — that hydrate
-on any device); rewards and purchases both run server-side via Cloud Functions. See
+on any device); rewards and purchases both run server-side via Cloud Functions. Health pickups —
+shootable crates plus a random chance on any kill — let you recover aircraft health mid-mission.
+See
 [docs/PROGRESS.md](docs/PROGRESS.md) for the detailed status log and
 [docs/ART_ASSETS.md](docs/ART_ASSETS.md) / [docs/AUDIO_AND_POLISH.md](docs/AUDIO_AND_POLISH.md)
 for asset and polish tracking.
@@ -61,11 +63,18 @@ doesn't apply to `emulators:start`).
 
 ## Deployment
 
-`.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages via `actions/deploy-pages` on every push to `main`. Live now at **https://lanternforgestudios.github.io/Fireline/** — this is the primary way to play and share the game while it's in development. `vite.config.ts` sets the `/Fireline/` base path for this. GitHub Pages will remain the host until the game is ready to port to iOS (and possibly Android) via Capacitor, per the GDD.
+`.github/workflows/deploy.yml` runs on every push to `main` and publishes two independent live builds:
+
+- **GitHub Pages** — `dist/` (base path `/Fireline/`, set in `vite.config.ts`) via `actions/deploy-pages`. Live at **https://lanternforgestudios.github.io/Fireline/**.
+- **itch.io** — a second build, `dist-itch/` (`npm run build:itch`, relative asset paths instead of `/Fireline/` — itch extracts the upload into its own CDN path), pushed via [butler](https://itch.io/docs/butler/) (`yeslayla/butler-publish-itchio-action`, authenticated with the `BUTLER_CREDENTIALS` repo secret) to the `html5` channel of **https://lanternforgestudios.itch.io/fireline**.
+
+Both builds talk to the same live Firebase backend. itch embeds the game from its own CDN domain (`html-classic.itch.zone`), not `lanternforgestudios.itch.io` itself — that domain is on Firebase Auth's authorized-domains list and the reCAPTCHA Enterprise key's allowed domains alongside the GitHub Pages domain, so sign-in works from either build.
+
+Both will stay live until the game is ready to port to iOS (and possibly Android) via Capacitor, per the GDD.
 
 ## How to play
 
-Sign in (Google or email/password — required, progression is account-bound), pick a mission, then move the mouse to aim and hold the left mouse button to fire the door gun. On touch devices, the crosshair lifts above your finger so it isn't hidden by the hand aiming it. Watch the heat gauge — overheating locks the gun until it cools, and sustained fire pushes your aim off-target too. In flight missions, enemies that reach the helicopter, or that shoot back, damage the aircraft; keep it above zero health through every wave to complete the mission. In Base Defense missions the helicopter holds position instead — enemies emerge from cover and mostly attack a defendable ground objective instead of the aircraft, so protect it (some contacts still shoot at the aircraft too) until every wave is cleared.
+Sign in (Google or email/password — required, progression is account-bound), pick a mission, then move the mouse to aim and hold the left mouse button to fire the door gun (hold right-click to zoom, on guns that support it). On touch devices, touch either side of the screen to start aiming from that thumb — dragging moves the crosshair, and the *other* side becomes a fire button you hold down to shoot; lifting the aiming thumb resets both back to idle circles until you touch again. Tap the zoom button (bottom center, zoom-capable guns only) to toggle zoom on/off. Watch the heat gauge — overheating locks the gun until it cools, and sustained fire pushes your aim off-target too. In flight missions, enemies that reach the helicopter, or that shoot back, damage the aircraft; keep it above zero health through every wave to complete the mission. In Base Defense missions the helicopter holds position instead — enemies emerge from cover and mostly attack a defendable ground objective instead of the aircraft, so protect it (some contacts still shoot at the aircraft too) until every wave is cleared. Shoot down a drifting health crate, or get lucky on a kill, to recover some aircraft health mid-mission.
 
 ## Project layout
 
@@ -75,7 +84,7 @@ src/
   firebase/                 # auth, Firestore player profile/settings/mission history
   game/
     scenes/CombatScene.ts   # the playable combat loop (flight + hover/Base Defense modes)
-    entities/                # Enemy, Weapon (heat + recoil), shared health-bar-fill math
+    entities/                # Enemy, HealthPickup, Weapon (heat + recoil), shared health-bar-fill math
     data/                    # enemy stats, gun catalog, mission definitions, gun recommendations
     generation/               # procedural mission generation (waves, cover objects, briefing text)
     playerLoadout.ts          # live equipped-gun/upgrades handle shared between React and Phaser

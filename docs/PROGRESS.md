@@ -12,7 +12,7 @@ on top.
 | 2 | Mission System | **Done** per the GDD's own deliverable ("complete extraction mission") — 7 missions (Search & Destroy, two Escorts, Extraction, Rescue, two Base Defense) with a select screen, each with distinct visual theming, plus loadout selection via the weapon upgrade system (see Phase 4). Base Defense adds a second mission archetype (hover in place, defend a ground objective) — see the 2026-09-04 log entry |
 | 3 | Procedural Content | **Done** per the GDD's own list — seeded generation, encounter blocks, threat budgets, weather/time-of-day variety, and secondary objectives, all shipped. Weather stays visual-mood only, not gameplay-affecting — a deliberate scope call, not a gap |
 | 4 | Backend | **Done** — see below |
-| 5 | Release | Not started (web live on GitHub Pages; iOS/Capacitor future) |
+| 5 | Release | Web live on both GitHub Pages and itch.io (2026-09-06); iOS/Capacitor future |
 
 ## Backend (Phase 4) detail
 
@@ -52,6 +52,41 @@ on top.
       log entry below.
 
 ## Log
+
+### 2026-09-06 (51) — Launched on itch.io
+
+- Added a second CI-driven deploy target alongside GitHub Pages: `.github/workflows/deploy.yml`
+  now also builds `dist-itch/` (`npm run build:itch`, relative asset paths — itch extracts the
+  upload zip into its own CDN path rather than `/Fireline/`) and pushes it via
+  `yeslayla/butler-publish-itchio-action` (authenticated with the `BUTLER_CREDENTIALS` repo
+  secret, generated from the owner's itch.io API keys page) to the `html5` channel of
+  `lanternforgestudios/fireline`. Runs on every push to `main`, same as the Pages deploy.
+  `vite.config.ts` picks the base path from `--mode itch`.
+- **Domain whitelist**: itch embeds HTML5 games from its own CDN domain
+  (`html-classic.itch.zone`), not the `lanternforgestudios.itch.io` project-page domain — found by
+  inspecting the embed iframe's `src` on the published page. Added to both Firebase Auth's
+  authorized domains and the reCAPTCHA Enterprise key's allowed domains, alongside the GitHub
+  Pages domain. Domain-level whitelisting stays valid across future pushes even though the
+  numeric path segment in that iframe URL changes with every new butler upload.
+  `lanternforgestudios.itch.io` itself was also added to both, as cheap insurance against itch
+  changing its embed method later, though it isn't the domain the auth JS actually runs from
+  today.
+- Generated itch.io page assets (`docs/itch-page-assets/`, not committed — one-off marketing
+  collateral, not game code): a cover image (400×316, matching itch's 315:250 cover-image ratio)
+  and two gameplay screenshots (a Firebreak firefight, and an Iron Gate Base Defense mission
+  showing cover objects + the defended objective's health bar), all via PixelLab/live capture.
+  Wrote the page's title, tagline, and full description copy for the owner to paste in directly.
+  Same session, resolved the one open item from the audio-licensing note below.
+- **Licensing resolved**: the `sfx/` asset-pack files had no license doc alongside them (flagged
+  as a pre-release action item since 2026-09-02) — owner confirmed their source/license is fine
+  ahead of this launch. See `docs/AUDIO_AND_POLISH.md`.
+- Confirmed live end-to-end on the owner's own itch.io page: game loads inside the embed, and
+  after the domain whitelist, sign-in (email/password) works from inside itch's iframe.
+- README updated: itch.io link alongside the GitHub Pages one, an accurate description of the
+  current touch-control scheme (the "How to play" section still described the pre-redesign
+  single-touch-drag scheme from before entry 46's move/fire pad rework), a Deployment section
+  rewrite covering both CI targets, and a mention of the health-pickup mechanic (entry 49) that
+  was missing from the Status paragraph.
 
 ### 2026-09-05 (50) — Flight-mission enemies 25% bigger on mobile
 
