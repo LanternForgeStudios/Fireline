@@ -75,7 +75,7 @@ export interface SecondaryObjective {
  * CoverObjectPlacement/DefendObjectiveDef below and docs/PROGRESS.md's hover-missions entry. */
 export type MissionMode = 'flight' | 'hover'
 
-export type CoverObjectVariant = 'crates' | 'sandbags' | 'rubble' | 'rocks'
+export type CoverObjectVariant = 'crates' | 'sandbags' | 'wreckage' | 'outpost'
 
 export interface CoverObjectPlacement {
   /** Stable per-mission key — Enemy spawn/depth lookups reference cover objects by this, not index. */

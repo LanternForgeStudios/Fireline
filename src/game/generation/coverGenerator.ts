@@ -2,7 +2,7 @@ import { COVER_OBJECT_SIZE, DEFEND_OBJECTIVE_Y, WORLD_WIDTH } from '../worldCons
 import type { CoverObjectPlacement, CoverObjectVariant, DefendObjectiveArtVariant, DefendObjectiveDef, WaveDef } from '../types'
 import type { SeededRandom } from './rng'
 
-const COVER_VARIANTS: CoverObjectVariant[] = ['crates', 'sandbags', 'rubble', 'rocks']
+const COVER_VARIANTS: CoverObjectVariant[] = ['crates', 'sandbags', 'wreckage', 'outpost']
 const MIN_COVER = 3
 const MAX_COVER = 5
 // Player-reported: cover objects (and the boats that emerge from them) sometimes overlapped

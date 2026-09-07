@@ -260,8 +260,8 @@ to carry the camera angle).
 | --- | --- | --- |
 | Crates | `cover-crates.png` | job `3c1eeca8-a611-4d73-b2f3-b94243b04acd`, stacked wooden supply crates |
 | Sandbags | `cover-sandbags.png` | job `4180d525-d926-4e24-bd08-cb95145db8b7`, sandbag wall fortification |
-| Rubble | `cover-rubble.png` | job `9ca09914-1a77-4de3-81cf-56d2168458cc`, collapsed-building debris pile |
-| Rocks | `cover-rocks.png` | job `72d74dc4-f220-4bde-9537-f1a71884c6bb`, boulder cluster |
+| Wreckage | `cover-wreckage.png` | job `f8178e07-d655-4ae5-8f14-217693503440`, burned-out wrecked technical with scattered debris — replaces the original sphere-cluster "Rubble" variant (2026-09-07, player-reported: didn't read as debris, just looked like a pile of balls) |
+| Outpost | `cover-outpost.png` | job `090846a6-b8a9-44eb-8e9c-d588d51f1387`, camouflage tent beside a wooden watchtower with a radio antenna — replaces the original boulder-cluster "Rocks" variant (2026-09-07, player-reported: a rock pile made no sense as a spot enemies/vehicles spawn from) |
 
 | Defend-objective variant | File | Notes |
 | --- | --- | --- |
@@ -294,8 +294,8 @@ and still used for desert/urban/jungle.
 | --- | --- | --- |
 | Crates | `cover-crates-coastal.png` | job `46764c24-5579-440b-88be-334629ef8c3f`, a small wooden raft with lashed supply crates |
 | Sandbags | `cover-sandbags-coastal.png` | job `947708d9-4fbd-4ddf-b5b2-bec84ec0c18a`, a cluster of anchored channel marker buoys |
-| Rubble | `cover-rubble-coastal.png` | job `0afd6a2a-6d5b-4db6-8b7b-8eb3a74066c2`, a partially sunk wooden boat wreck |
-| Rocks | `cover-rocks-coastal.png` | job `4d0e2dfc-e2f5-49de-a97f-9519dca44425`, a rocky reef breaking the surface |
+| Wreckage | `cover-wreckage-coastal.png` | job `0afd6a2a-6d5b-4db6-8b7b-8eb3a74066c2`, a partially sunk wooden boat wreck — kept as-is under the renamed key, it already read as a wrecked vehicle equivalent for water |
+| Outpost | `cover-outpost-coastal.png` | job `1f5c8e95-d0a2-4d87-83fd-f67a0c509c8d`, a watchtower with a radio antenna and a tent on a wooden dock over water, on pilings with waves at the base — replaces the original rocky-reef "Rocks" variant; first attempt (job `be81304a-7601-4ab2-acb0-00f3f673403b`) came back too visually muddled to read clearly at native size and was discarded |
 
 | Defend-objective variant | Coastal file | Notes |
 | --- | --- | --- |
@@ -322,7 +322,7 @@ false starts before the shipped version:
 **Verified live:** Local Emulator Suite (`npm run emulators`) + `npm run dev` + a Playwright
 script that signs up a fresh throwaway account (no need for the live `pw-verify` credentials) —
 temporarily flipped `operation-iron-gate` (Comms Relay, crates/sandbags cover) and
-`operation-last-redoubt` (Forward Checkpoint, rubble/rocks cover) to `landscape: 'coastal'`,
+`operation-last-redoubt` (Forward Checkpoint, wreckage/outpost cover) to `landscape: 'coastal'`,
 screenshotted both missions live, confirmed all four cover variants and two of the three
 objective flavors render correctly with no box artifacts and enemy boats correctly emerge from
 the reskinned cover, then reverted both missions back to their original landscapes

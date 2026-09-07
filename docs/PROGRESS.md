@@ -53,6 +53,50 @@ on top.
 
 ## Log
 
+### 2026-09-07 (55) — Rubble cover replaced with a wrecked-vehicle cluster
+
+- Player-reported (same pass as entry 54, immediately after): the "Rubble" variant — a cluster
+  of grey/blue spheres — didn't read as collapsed-building debris, just looked like a pile of
+  balls.
+- Renamed `CoverObjectVariant`'s `rubble` → `wreckage` in the same five spots as entry 54's
+  `rocks` → `outpost` rename (`types.ts`, `coverGenerator.ts`, `CombatScene.ts`'s
+  `COASTAL_COVER_FILE` map and preload loop, and Operation Last Redoubt's `missions.ts`
+  placements).
+- Land art regenerated: `cover-wreckage.png` (job `f8178e07-d655-4ae5-8f14-217693503440`) —
+  burned-out wrecked technical with scattered scorched debris, same `create_image_pixflux`
+  recipe as the rest of the set. The coastal file needed no new generation — the existing
+  `cover-rubble-coastal.png` (a partially sunk wooden boat wreck) was already a wrecked-vehicle
+  equivalent for water, so it was simply renamed to `cover-wreckage-coastal.png`.
+- Deleted the now-unreferenced `cover-rubble.png`.
+- **Verified live**, same approach as entry 54: Local Emulator Suite + `npm run dev` + a
+  Playwright script signing up a throwaway account, screenshotting Operation Last Redoubt with
+  its real `landscape: 'urban'` (confirmed the new wreckage art) and again temporarily flipped to
+  `landscape: 'coastal'` (confirmed the renamed boat-wreck art still resolves under the new key),
+  then reverted the mission back to `urban` (`git diff` confirmed clean before finishing).
+
+### 2026-09-07 (54) — Rock-pile cover replaced with a military outpost
+
+- Player-reported: the "Rocks" cover variant (a boulder cluster) didn't make sense as a spot
+  enemies and vehicles spawn from in hover missions — a natural rock formation isn't a place
+  troops or a technical would plausibly be staged.
+- Renamed the `CoverObjectVariant` union member `rocks` → `outpost` everywhere it's referenced
+  (`types.ts`, `coverGenerator.ts`'s `COVER_VARIANTS`, `CombatScene.ts`'s `COASTAL_COVER_FILE`
+  map and preload loop, and the two hand-authored placements in Operation Last Redoubt's
+  `missions.ts`) — no mission/save data persists variant names across sessions, so this is a
+  pure rename with no migration needed.
+- New art via `create_image_pixflux` (96×96, `detailed shading`, `no_background: true`, same
+  "bird's eye aerial view straight down from directly overhead" prompting as the rest of this
+  set): `cover-outpost.png` (job `090846a6-b8a9-44eb-8e9c-d588d51f1387`) — a camouflage tent
+  beside a wooden watchtower with a radio antenna, on grass/dirt — and
+  `cover-outpost-coastal.png` (job `1f5c8e95-d0a2-4d87-83fd-f67a0c509c8d`) — the same
+  tent-and-watchtower on a piling-mounted dock over water. First coastal attempt (job
+  `be81304a-7601-4ab2-acb0-00f3f673403b`) rendered too visually muddled to read clearly at
+  native size — regenerated with an explicit "high contrast between structures" and "visible
+  waves lapping at the base" hint, which fixed it.
+- Deleted the now-unreferenced `cover-rocks.png`/`cover-rocks-coastal.png`.
+- Confirmed via `npm run build` (type-check + production build) that no other code referenced
+  the `rocks` variant name.
+
 ### 2026-09-07 (53) — Hover-mission cover no longer overlaps the objective, wider placement
 
 - Player-reported: cover objects (and the boats that spawn from them) sometimes overlapped the

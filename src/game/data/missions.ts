@@ -428,10 +428,10 @@ export const MISSIONS: MissionDef[] = [
     // combined sprite radius, so edges touched with no clear gap) — moved to 830 for a clear
     // 190px gap, matching coverGenerator.ts's MIN_SEPARATION.
     coverObjects: [
-      { id: 'cover-0', variant: 'rubble', x: 260, y: 460 },
-      { id: 'cover-1', variant: 'rocks', x: 540, y: 300 },
-      { id: 'cover-2', variant: 'rubble', x: 830, y: 460 },
-      { id: 'cover-3', variant: 'rocks', x: 1020, y: 320 },
+      { id: 'cover-0', variant: 'wreckage', x: 260, y: 460 },
+      { id: 'cover-1', variant: 'outpost', x: 540, y: 300 },
+      { id: 'cover-2', variant: 'wreckage', x: 830, y: 460 },
+      { id: 'cover-3', variant: 'outpost', x: 1020, y: 320 },
     ],
     defendObjective: { label: 'Forward Checkpoint', maxHealth: 300, artVariant: 'checkpoint' },
     secondaryObjective: { type: 'clean-sweep', label: 'Clean Sweep — destroy every contact', bonusCredits: 110 },

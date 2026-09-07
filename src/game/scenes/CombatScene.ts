@@ -246,14 +246,15 @@ function escortVehicleAsset(landscape: LandscapeId): { key: string; file: string
 // Hover-mission cover/objective art is ground-oriented (crates on dirt, a comms tower on
 // grass) and reads wrong sitting on open water — same problem escortVehicleAsset/
 // COASTAL_BOAT_TYPES solve for the escort prop and enemies. Coastal gets its own water-themed
-// file per variant (a raft, buoys, wreckage, a reef; an offshore relay platform, a fuel barge,
-// a harbor checkpoint on pilings) instead of the land art, keyed separately so both sets stay
-// cached across missions without colliding (same reasoning as LANDSCAPE_GROUND_FILE above).
+// file per variant (a raft, buoys, wreckage, a piling-mounted outpost; an offshore relay
+// platform, a fuel barge, a harbor checkpoint on pilings) instead of the land art, keyed
+// separately so both sets stay cached across missions without colliding (same reasoning as
+// LANDSCAPE_GROUND_FILE above).
 const COASTAL_COVER_FILE: Record<CoverObjectVariant, string> = {
   crates: 'cover-crates-coastal.png',
   sandbags: 'cover-sandbags-coastal.png',
-  rubble: 'cover-rubble-coastal.png',
-  rocks: 'cover-rocks-coastal.png',
+  wreckage: 'cover-wreckage-coastal.png',
+  outpost: 'cover-outpost-coastal.png',
 }
 function coverAsset(variant: CoverObjectVariant, landscape: LandscapeId): { key: string; file: string } {
   return landscape === 'coastal'
@@ -381,7 +382,7 @@ export class CombatScene extends Phaser.Scene {
     }
 
     if (missionState.current.mode === 'hover') {
-      for (const variant of ['crates', 'sandbags', 'rubble', 'rocks'] as const) {
+      for (const variant of ['crates', 'sandbags', 'wreckage', 'outpost'] as const) {
         const { key, file } = coverAsset(variant, landscape)
         this.load.image(key, `${import.meta.env.BASE_URL}env/${file}`)
       }
