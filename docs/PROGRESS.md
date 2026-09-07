@@ -53,6 +53,39 @@ on top.
 
 ## Log
 
+### 2026-09-07 (53) — Hover-mission cover no longer overlaps the objective, wider placement
+
+- Player-reported: cover objects (and the boats that spawn from them) sometimes overlapped the
+  defended objective; separately asked for the full map to be usable for spawn points.
+- Root cause, found by computing actual distances: both hand-authored hover missions had a cover
+  object well inside the 140px combined sprite radius of the fixed objective position (640, 460)
+  — Operation Iron Gate's `cover-1` was 120px away (a real 20px visual overlap, every single
+  play), Operation Last Redoubt's `cover-2` was exactly 140px away (edges touching, no gap). The
+  procedural generator (`coverGenerator.ts`) had the opposite problem — it checked new cover
+  placements against each other but never against the objective's position at all, so a
+  procedurally-generated mission could roll cover directly on top of it by chance.
+- Fixed both: nudged the two hand-authored coordinates to a clean 190px gap (`missions.ts`), and
+  added the missing objective-distance check to `placeCoverObjects` in `coverGenerator.ts` —
+  same `MIN_SEPARATION` (180) already used between cover objects, since `COVER_OBJECT_SIZE` and
+  `DEFEND_OBJECTIVE_SIZE` are equal.
+- `DEFEND_OBJECTIVE_Y`/`COVER_OBJECT_SIZE`/`DEFEND_OBJECTIVE_SIZE` moved from `CombatScene.ts` to
+  `worldConstants.ts` (alongside `WORLD_WIDTH`/`HEIGHT`, extracted there for the same reason:
+  `coverGenerator.ts` needs them and must not import a Phaser scene module — see that file's own
+  comment on `WORLD_WIDTH`/`HEIGHT`).
+- **Full map**: the procedural placement zone was a deliberately cramped, central 840×220 band
+  from an earlier "arena feels too spread out" tuning pass that predates the bigger 140px sprite
+  size — widened to use nearly the entire canvas. X now spans the full width (`COVER_OBJECT_SIZE
+  / 2 + 20` margin, just enough to keep a sprite's edge on-screen); Y now mirrors flight mode's
+  own `HORIZON_Y_RANGE[1]`..`IMPACT_Y_RANGE[1]` band (165..610), the same near-full vertical
+  depth already used, and visually proven, for flight-mode enemies in the identical scene.
+- **Verified**: a standalone 20,000-seed simulation of the real placement algorithm (mulberry32
+  PRNG, matching `rng.ts`'s `SeededRandom` bit-for-bit) confirmed zero placement failures, a
+  minimum distance to the objective and between any two cover objects of exactly 180px (never
+  below `MIN_SEPARATION`) across every trial, and that the full configured x/y range actually
+  gets used. Also verified live via the Local Emulator Suite + Playwright (same approach as entry
+  52): screenshotted both hand-authored hover missions, confirmed a clear visible gap between
+  cover and the objective in both.
+
 ### 2026-09-06 (52) — Water-themed hover-mission props
 
 - Player-reported: the "Base Defense" (hover) mission archetype's ground cover objects (crates,

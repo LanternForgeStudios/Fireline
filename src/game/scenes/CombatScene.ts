@@ -23,7 +23,7 @@ import {
   type MissionResult,
 } from '../types'
 import { gameEvents } from '../events'
-import { WORLD_WIDTH, WORLD_HEIGHT } from '../worldConstants'
+import { COVER_OBJECT_SIZE, DEFEND_OBJECTIVE_SIZE, DEFEND_OBJECTIVE_Y, WORLD_WIDTH, WORLD_HEIGHT } from '../worldConstants'
 
 export { WORLD_WIDTH, WORLD_HEIGHT }
 
@@ -53,18 +53,17 @@ const IMPACT_Y_RANGE: [number, number] = [545, 610]
 // (IMPACT_Y_RANGE) so it doesn't fight with them for attention.
 const ESCORT_VEHICLE_Y = 460
 const SPAWN_X_MARGIN = 90
-// Hover missions ("Base Defense") — see docs/PROGRESS.md. Kept as its own named constant
-// even though it shares ESCORT_VEHICLE_Y's value, since Escort and hover missions never
-// coexist and the two concepts shouldn't be coupled just because they land on the same y.
-const DEFEND_OBJECTIVE_Y = 460
-// Bigger than the escort vehicle's 96 — props read larger on a small mobile screen without
-// needing a camera zoom (which would clip the touch pads — they're rendered in raw world
-// coordinates with no scroll-factor exemption, so zooming the one shared camera moves/enlarges
-// them right off the edges of the screen; verified by the math before going this route
-// instead). The placement zone itself (see COVER_X_MARGIN in coverGenerator.ts) stays spread
-// out across most of the field — bigger sprites, not a cramped cluster, is what reads "bigger."
-const COVER_OBJECT_SIZE = 140
-const DEFEND_OBJECTIVE_SIZE = 140
+// DEFEND_OBJECTIVE_Y/COVER_OBJECT_SIZE/DEFEND_OBJECTIVE_SIZE live in worldConstants.ts, not
+// here — coverGenerator.ts needs them too, to keep procedurally-placed cover clear of the
+// objective's fixed position (see MIN_SEPARATION there). Kept as its own constant rather than
+// reusing ESCORT_VEHICLE_Y's identical value, since Escort and hover missions never coexist and
+// the two concepts shouldn't be coupled just because they land on the same y. Sizing bigger than
+// the escort vehicle's 96 — props read larger on a small mobile screen without needing a camera
+// zoom (which would clip the touch pads — they're rendered in raw world coordinates with no
+// scroll-factor exemption, so zooming the one shared camera moves/enlarges them right off the
+// edges of the screen; verified by the math before going this route instead). The placement zone
+// itself (see COVER_X_MARGIN in coverGenerator.ts) stays spread out across most of the field —
+// bigger sprites, not a cramped cluster, is what reads "bigger."
 // A hover-mode enemy's spawn point is the cover object it emerges from; its target is a
 // nearby "peek out" attack point this far to one side (random), staying close to the cover's
 // own y (HOVER_Y_SAFE_MARGIN below) rather than the flight-mode IMPACT_Y_RANGE band, which

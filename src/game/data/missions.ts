@@ -349,9 +349,12 @@ export const MISSIONS: MissionDef[] = [
       mountainAlpha: 0.7,
       groundTint: 0xffffff,
     },
+    // cover-1 was originally x:520 (only 120px from the objective at x:640/y:460 — well inside
+    // the 140px combined sprite radius, so it visually overlapped) — moved to 450 for a clear
+    // 190px gap, matching coverGenerator.ts's MIN_SEPARATION.
     coverObjects: [
       { id: 'cover-0', variant: 'crates', x: 280, y: 320 },
-      { id: 'cover-1', variant: 'sandbags', x: 520, y: 460 },
+      { id: 'cover-1', variant: 'sandbags', x: 450, y: 460 },
       { id: 'cover-2', variant: 'crates', x: 760, y: 320 },
       { id: 'cover-3', variant: 'sandbags', x: 1000, y: 460 },
     ],
@@ -421,10 +424,13 @@ export const MISSIONS: MissionDef[] = [
       mountainAlpha: 0.6,
       groundTint: 0xe0d4b8,
     },
+    // cover-2 was originally x:780 (only 140px from the objective at x:640/y:460 — exactly the
+    // combined sprite radius, so edges touched with no clear gap) — moved to 830 for a clear
+    // 190px gap, matching coverGenerator.ts's MIN_SEPARATION.
     coverObjects: [
       { id: 'cover-0', variant: 'rubble', x: 260, y: 460 },
       { id: 'cover-1', variant: 'rocks', x: 540, y: 300 },
-      { id: 'cover-2', variant: 'rubble', x: 780, y: 460 },
+      { id: 'cover-2', variant: 'rubble', x: 830, y: 460 },
       { id: 'cover-3', variant: 'rocks', x: 1020, y: 320 },
     ],
     defendObjective: { label: 'Forward Checkpoint', maxHealth: 300, artVariant: 'checkpoint' },
