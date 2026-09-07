@@ -14,6 +14,8 @@ import {
   EVT_HUD_UPDATE,
   EVT_MISSION_COMPLETE,
   EVT_MISSION_FAILED,
+  type CoverObjectVariant,
+  type DefendObjectiveArtVariant,
   type EnemyDef,
   type EnemyTypeId,
   type HudState,
@@ -242,6 +244,35 @@ function escortVehicleAsset(landscape: LandscapeId): { key: string; file: string
   return landscape === 'coastal' ? { key: 'escort-boat', file: 'escort-boat.png' } : { key: 'escort-vehicle', file: 'escort-vehicle.png' }
 }
 
+// Hover-mission cover/objective art is ground-oriented (crates on dirt, a comms tower on
+// grass) and reads wrong sitting on open water — same problem escortVehicleAsset/
+// COASTAL_BOAT_TYPES solve for the escort prop and enemies. Coastal gets its own water-themed
+// file per variant (a raft, buoys, wreckage, a reef; an offshore relay platform, a fuel barge,
+// a harbor checkpoint on pilings) instead of the land art, keyed separately so both sets stay
+// cached across missions without colliding (same reasoning as LANDSCAPE_GROUND_FILE above).
+const COASTAL_COVER_FILE: Record<CoverObjectVariant, string> = {
+  crates: 'cover-crates-coastal.png',
+  sandbags: 'cover-sandbags-coastal.png',
+  rubble: 'cover-rubble-coastal.png',
+  rocks: 'cover-rocks-coastal.png',
+}
+function coverAsset(variant: CoverObjectVariant, landscape: LandscapeId): { key: string; file: string } {
+  return landscape === 'coastal'
+    ? { key: `cover-${variant}-coastal`, file: COASTAL_COVER_FILE[variant] }
+    : { key: `cover-${variant}`, file: `cover-${variant}.png` }
+}
+
+const COASTAL_OBJECTIVE_FILE: Record<DefendObjectiveArtVariant, string> = {
+  relay: 'objective-relay-coastal.png',
+  depot: 'objective-depot-coastal.png',
+  checkpoint: 'objective-checkpoint-coastal.png',
+}
+function objectiveAsset(art: DefendObjectiveArtVariant, landscape: LandscapeId): { key: string; file: string } {
+  return landscape === 'coastal'
+    ? { key: `objective-${art}-coastal`, file: COASTAL_OBJECTIVE_FILE[art] }
+    : { key: `objective-${art}`, file: `objective-${art}.png` }
+}
+
 export const COMBAT_SCENE_KEY = 'combat'
 
 export class CombatScene extends Phaser.Scene {
@@ -352,10 +383,12 @@ export class CombatScene extends Phaser.Scene {
 
     if (missionState.current.mode === 'hover') {
       for (const variant of ['crates', 'sandbags', 'rubble', 'rocks'] as const) {
-        this.load.image(`cover-${variant}`, `${import.meta.env.BASE_URL}env/cover-${variant}.png`)
+        const { key, file } = coverAsset(variant, landscape)
+        this.load.image(key, `${import.meta.env.BASE_URL}env/${file}`)
       }
       const art = missionState.current.defendObjective!.artVariant
-      this.load.image(`objective-${art}`, `${import.meta.env.BASE_URL}env/objective-${art}.png`)
+      const { key, file } = objectiveAsset(art, landscape)
+      this.load.image(key, `${import.meta.env.BASE_URL}env/${file}`)
     }
 
     this.load.audio('sfx-shot', `${import.meta.env.BASE_URL}audio/sfx/shot.wav`)
@@ -558,8 +591,9 @@ export class CombatScene extends Phaser.Scene {
    * of the specific cover it emerged from.
    */
   private buildCoverObjects() {
+    const landscape = missionState.current.theme.landscape
     for (const placement of missionState.current.coverObjects ?? []) {
-      const img = this.add.image(placement.x, placement.y, `cover-${placement.variant}`)
+      const img = this.add.image(placement.x, placement.y, coverAsset(placement.variant, landscape).key)
       img.setDisplaySize(COVER_OBJECT_SIZE, COVER_OBJECT_SIZE)
       const depth = Math.floor(placement.y)
       img.setDepth(depth)
@@ -579,7 +613,8 @@ export class CombatScene extends Phaser.Scene {
     const objective = missionState.current.defendObjective
     if (!objective) return
 
-    const sprite = this.add.image(WORLD_WIDTH / 2, DEFEND_OBJECTIVE_Y, `objective-${objective.artVariant}`)
+    const landscape = missionState.current.theme.landscape
+    const sprite = this.add.image(WORLD_WIDTH / 2, DEFEND_OBJECTIVE_Y, objectiveAsset(objective.artVariant, landscape).key)
     sprite.setDisplaySize(DEFEND_OBJECTIVE_SIZE, DEFEND_OBJECTIVE_SIZE)
     sprite.setDepth(Math.floor(DEFEND_OBJECTIVE_Y))
     this.defendObjectiveSprite = sprite

@@ -53,6 +53,37 @@ on top.
 
 ## Log
 
+### 2026-09-06 (52) — Water-themed hover-mission props
+
+- Player-reported: the "Base Defense" (hover) mission archetype's ground cover objects (crates,
+  sandbags, rubble, rocks) and defended objective (Comms Relay's tower + generator shed, Fuel
+  Depot, Forward Checkpoint) are all land-oriented art, which reads wrong on a coastal/water
+  landscape — the same mismatch `COASTAL_BOAT_TYPES`/`escortVehicleAsset` already solve for
+  enemies and the Escort mission's support vehicle.
+- Generated a coastal-specific file for every cover variant and every objective flavor via
+  PixelLab (`public/env/*-coastal.png`, see [ART_ASSETS.md](ART_ASSETS.md)): a floating crate
+  raft, an anchored buoy cluster, a sunk boat wreck, and a rocky reef for cover; an offshore
+  relay platform (replaces the land comms tower — the specific case reported), a floating fuel
+  barge, and a pilings-mounted harbor checkpoint for the objective.
+- `CombatScene.ts` gained `coverAsset`/`objectiveAsset`, the same per-landscape-swap pattern as
+  `escortVehicleAsset` — picks the `-coastal` file/texture key when `theme.landscape === 'coastal'`
+  and the existing land file everywhere else, so desert/urban/jungle hover missions are unaffected.
+- **Bug caught by live verification, not by eyeballing the generated images:** the first
+  no-forced-palette regeneration pass looked fine in isolation but rendered as a hard-edged
+  rectangular box on top of the water tile in-game — those images had an opaque background
+  (alpha 255 at every corner) instead of the transparent-outside-the-object treatment the land
+  cover/objective art actually uses. Regenerated a third time with `no_background: true`;
+  confirmed corner alpha 0 on all seven files before re-testing. See
+  [ART_ASSETS.md](ART_ASSETS.md) for the full three-attempt story.
+- **Verified live**, Chrome extension unavailable this session: Local Emulator Suite
+  (`npm run emulators`) + `npm run dev` + a Playwright script that signs up a fresh throwaway
+  account (no live `pw-verify` credentials needed) — temporarily flipped `operation-iron-gate`
+  and `operation-last-redoubt` to `landscape: 'coastal'`, screenshotted both live, confirmed all
+  four cover variants + two of three objective flavors (Comms Relay, Forward Checkpoint) render
+  correctly with boats correctly emerging from the reskinned cover, then reverted both missions
+  (`git status` confirmed clean). Fuel Depot isn't used by any hand-authored mission, so it's
+  only been checked as a static asset, not in a live mission.
+
 ### 2026-09-06 (51) — Launched on itch.io
 
 - Added a second CI-driven deploy target alongside GitHub Pages: `.github/workflows/deploy.yml`

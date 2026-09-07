@@ -281,6 +281,55 @@ Display size bumped from the source art's native 96×96 to 140×140 (2026-09-05,
 reasoning (a tighter hover-mission arena plus this size bump, instead of a camera zoom, which
 would have clipped the touch controls).
 
+**Coastal water reskins (`public/env/cover-*-coastal.png`, `public/env/objective-*-coastal.png`,
+96×96, 2026-09-06):** player-reported — the land cover/objective art (crates on dirt, a comms
+tower + generator shed on grass) read wrong on a water hover mission, the same problem
+`COASTAL_BOAT_TYPES`/`escortVehicleAsset` already solve for enemies and the escort prop. Every
+cover variant and every objective flavor gets its own water-themed file, picked by
+`CombatScene.coverAsset`/`objectiveAsset` whenever `theme.landscape === 'coastal'` (same
+per-landscape-swap pattern, just extended to these two prop sets) — the land files are untouched
+and still used for desert/urban/jungle.
+
+| Cover variant | Coastal file | Notes |
+| --- | --- | --- |
+| Crates | `cover-crates-coastal.png` | job `46764c24-5579-440b-88be-334629ef8c3f`, a small wooden raft with lashed supply crates |
+| Sandbags | `cover-sandbags-coastal.png` | job `947708d9-4fbd-4ddf-b5b2-bec84ec0c18a`, a cluster of anchored channel marker buoys |
+| Rubble | `cover-rubble-coastal.png` | job `0afd6a2a-6d5b-4db6-8b7b-8eb3a74066c2`, a partially sunk wooden boat wreck |
+| Rocks | `cover-rocks-coastal.png` | job `4d0e2dfc-e2f5-49de-a97f-9519dca44425`, a rocky reef breaking the surface |
+
+| Defend-objective variant | Coastal file | Notes |
+| --- | --- | --- |
+| Comms Relay | `objective-relay-coastal.png` | job `29c72f89-98e9-44a0-93d2-f09ce12c7739`, an offshore relay platform on pilings with an antenna mast — replaces the land comms-tower-on-grass art, which was the specific case reported |
+| Fuel Depot | `objective-depot-coastal.png` | job `2ece0313-7828-4612-8791-ea106ce85bcf`, a floating fuel barge with storage tanks |
+| Forward Checkpoint | `objective-checkpoint-coastal.png` | job `c6af09b1-d376-4b22-bc07-b2199d545c2c`, a harbor checkpoint on pilings with a barrier gate over the boat lane |
+
+Generated via `create_image_pixflux` at 96×96 with the same "bird's eye aerial view straight down
+from directly overhead" prompting as the land set, `detailed shading`, `no_background: true`. Two
+false starts before the shipped version:
+- First attempt forced the coastal ground tile's palette via `color_image_base64` to guarantee a
+  color match — came back as flat near-monochrome silhouettes with no readable detail, so that
+  param was dropped in favor of just naming the water color ("deep blue ocean water") in the text
+  description.
+- Second attempt (no palette forcing, but `no_background` left unset) looked correct in isolation
+  but rendered as a hard-edged rectangular box sitting on top of the water tile in-game — the land
+  cover/objective art is fully transparent outside the object (verified by decoding both PNGs'
+  alpha channel directly: corner alpha 0 on the land set, 255 on this attempt), so Phaser was
+  compositing an opaque 96×96 square instead of a floating object. Caught via a live Playwright
+  screenshot (see the verification note below), not by looking at the generated image alone.
+  Regenerated a third time with `no_background: true` — confirmed corner alpha 0 on all seven
+  files before re-testing.
+
+**Verified live:** Local Emulator Suite (`npm run emulators`) + `npm run dev` + a Playwright
+script that signs up a fresh throwaway account (no need for the live `pw-verify` credentials) —
+temporarily flipped `operation-iron-gate` (Comms Relay, crates/sandbags cover) and
+`operation-last-redoubt` (Forward Checkpoint, rubble/rocks cover) to `landscape: 'coastal'`,
+screenshotted both missions live, confirmed all four cover variants and two of the three
+objective flavors render correctly with no box artifacts and enemy boats correctly emerge from
+the reskinned cover, then reverted both missions back to their original landscapes
+(`git diff`/`git status` confirmed clean before finishing). Fuel Depot isn't used by any
+hand-authored mission (only reachable via the procedural generator rolling coastal + Base
+Defense + that objective flavor), so it was checked as a static asset only, not in a live mission.
+
 ### Rank badges (`public/ui/icon-rank-*.png`, 64×64)
 
 An 8-tier XP-based rank system, shown on the Main Menu next to the player's stats
